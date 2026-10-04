@@ -27,13 +27,20 @@ type sceneSink struct {
 func (s *sceneSink) Publish(sc *client.Scene) { s.mu.Lock(); s.sc = sc; s.mu.Unlock() }
 func (s *sceneSink) Effects(fx []proto.FX)    { s.mu.Lock(); s.fx = append(s.fx, fx...); s.mu.Unlock() }
 
-// TestWalkPipeline walks the hero over open land through the real server,
-// client and snapshots, animating at 60 frames a second: the hero must glide
-// at an even pace without stopping between cells.
-func TestWalkPipeline(t *testing.T) {
-	if testing.Short() {
-		t.Skip("real-time test")
-	}
+// walkWorld runs a real server and client with a hero in a clearing of
+// w×h cells cut for the test (the hero at its bottom-left corner, nobody
+// else around).
+type walkWorld struct {
+	t    *testing.T
+	srv  *server.Server
+	scr  tcell.SimulationScreen
+	sink *sceneSink
+	r    *worldRenderer
+	done chan error
+}
+
+func startWalk(t *testing.T, w, h int) *walkWorld {
+	t.Helper()
 	t.Setenv("RATAS_HOME", t.TempDir())
 	db, _, err := content.LoadDefault("")
 	if err != nil {
@@ -44,43 +51,66 @@ func TestWalkPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := newWorldRenderer(f)
-	sink := &sceneSink{}
+	ww := &walkWorld{t: t, r: newWorldRenderer(f), sink: &sceneSink{}, done: make(chan error, 1)}
 	srvCh := make(chan *server.Server, 1)
 	client.LocalServerHook = func(s *server.Server) { srvCh <- s }
-	defer func() { client.LocalServerHook = nil }()
-	scr := tcell.NewSimulationScreen("UTF-8")
+	t.Cleanup(func() { client.LocalServerHook = nil })
+	ww.scr = tcell.NewSimulationScreen("UTF-8")
 	cfg := config.Default()
 	cfg.AIEnabled = false
-	done := make(chan error, 1)
 	go func() {
-		done <- client.RunWith(scr, sink, cfg, nil, client.StartOptions{New: true, Seed: 5, Name: "Ходок", Class: "rogue"})
+		ww.done <- client.RunWith(ww.scr, ww.sink, cfg, nil, client.StartOptions{New: true, Seed: 5, Name: "Ходок", Class: "rogue"})
 	}()
-	srv := <-srvCh
+	ww.srv = <-srvCh
 	time.Sleep(500 * time.Millisecond)
-	scr.SetSize(120, 40)
-	var pace float64
-	srv.Call(func(g *game.Game) {
+	ww.scr.SetSize(120, 40)
+	ww.srv.Call(func(g *game.Game) {
 		p := g.Online["Ходок"]
 		l := g.Levels["overworld"]
-		for y := 10; y < l.H-10; y++ {
-			for x := 10; x < l.W-30; x++ {
-				ok := true
-				for dx := 0; dx < 16 && ok; dx++ {
-					ok = l.Free(x+dx, y) && l.Def(x+dx, y).MoveCost <= 1 && l.Def(x+dx, y).Damage == 0
+		// the first open spot far from the edges; the clearing is cut there
+		for y := 10 + h; y < l.H-10; y++ {
+			for x := 10; x < l.W-10-w; x++ {
+				if def := l.Def(x, y); !l.Free(x, y) || def.MoveCost > 1 || def.Damage > 0 {
+					continue
 				}
-				if ok {
-					g.PlaceForTest(p, "overworld", world.Pos{X: x, Y: y})
-					for _, e := range g.Entities {
-						if e.Kind == game.KMonster && e.Level == "overworld" && e.Pos.Dist(p.Pos) < 30 {
-							g.Remove(e)
-						}
+				for _, e := range g.Entities {
+					if e.Kind != game.KPlayer && e.Level == "overworld" && e.Pos.Dist(world.Pos{X: x, Y: y}) < 40+w {
+						g.Remove(e)
 					}
-					return
 				}
+				ground := l.At(x, y)
+				for dy := 0; dy < h; dy++ {
+					for dx := 0; dx < w; dx++ {
+						l.Set(x+dx, y-dy, ground)
+					}
+				}
+				g.PlaceForTest(p, "overworld", world.Pos{X: x, Y: y})
+				return
 			}
 		}
+		ww.t.Fatal("no open land")
 	})
+	return ww
+}
+
+func (ww *walkWorld) stop() {
+	client.RequestClose(ww.scr)
+	select {
+	case <-ww.done:
+	case <-time.After(5 * time.Second):
+	}
+}
+
+// TestWalkPipeline walks the hero over open land through the real server,
+// client and snapshots, animating at 60 frames a second: the hero must glide
+// at an even pace without stopping between cells.
+func TestWalkPipeline(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real-time test")
+	}
+	ww := startWalk(t, 16, 1)
+	r, sink, scr := ww.r, ww.sink, ww.scr
+	var pace float64
 	// frames at about 60 per second timed by the clock, as in the window
 	prev := time.Now()
 	var dts []float64
@@ -118,11 +148,7 @@ func TestWalkPipeline(t *testing.T) {
 		}
 		time.Sleep(time.Second / 60)
 	}
-	client.RequestClose(scr)
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-	}
+	ww.stop()
 	if len(xs) < 100 {
 		t.Fatalf("only %d frames", len(xs))
 	}

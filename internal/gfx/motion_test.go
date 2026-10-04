@@ -8,7 +8,13 @@ import (
 // TestSmoothWalk: a creature walking cell by cell with jittery server timing
 // moves without stops or jumps, rounds the corner and rests on its last cell.
 func TestSmoothWalk(t *testing.T) {
-	st := &entState{stepS: 0.16}
+	for _, you := range []bool{false, true} {
+		smoothWalk(t, you)
+	}
+}
+
+func smoothWalk(t *testing.T, you bool) {
+	st := &entState{stepS: 0.16, you: you}
 	st.seg.p1x, st.seg.p1y = 0, 0
 	path := [][2]int{{1, 0}, {2, 0}, {3, 0}, {3, 1}, {3, 2}, {3, 3}}
 	// the server steps every 160 ms but sends the world every 50 ms tick, and
@@ -40,7 +46,7 @@ func TestSmoothWalk(t *testing.T) {
 		maxOff = math.Max(maxOff, off)
 	}
 	pace := 1 / st.stepS
-	t.Logf("slowest %.2f of pace %.2f cells/s, biggest frame move %.3f, furthest from the path %.2f", minSpeed, pace, maxJump, maxOff)
+	t.Logf("own hero %v: slowest %.2f of pace %.2f cells/s, biggest frame move %.3f, furthest from the path %.2f", you, minSpeed, pace, maxJump, maxOff)
 	if minSpeed < 0.6*pace {
 		t.Errorf("the walk slows to %.2f cells/s (pace %.2f): it stutters between cells", minSpeed, pace)
 	}

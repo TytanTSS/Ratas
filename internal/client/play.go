@@ -152,14 +152,22 @@ func (p *play) run() {
 		select {
 		case m := <-p.inbox:
 			p.apply(m)
+			fresh := m.Snap != nil
 			// drain whatever else is queued before drawing
 			for drained := false; !drained; {
 				select {
 				case m := <-p.inbox:
 					p.apply(m)
+					fresh = fresh || m.Snap != nil
 				default:
 					drained = true
 				}
+			}
+			if fresh && !p.quit {
+				// a new state of the world is shown at once, not on the next
+				// frame: a step answers the keys sooner
+				p.draw()
+				frame.Reset(33 * time.Millisecond)
 			}
 		case err := <-p.dead:
 			if p.kick == "" {

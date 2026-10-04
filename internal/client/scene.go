@@ -16,6 +16,8 @@ type Scene struct {
 	Entities  []proto.EntityView
 	TimeOfDay float64
 	Paused    bool
+	// the keys move the hero: no window or text field is open
+	Walking bool
 	// the world map is open: the renderer draws it instead of the world
 	MapOpen bool
 	Places  []proto.Place // known places for the world map
@@ -66,6 +68,7 @@ func (p *play) publishScene(L layout) {
 		Entities:  append([]proto.EntityView(nil), p.snap.Entities...),
 		TimeOfDay: p.snap.TimeOfDay,
 		Paused:    p.paused,
+		Walking:   p.mode == modeGame,
 		MapOpen:   p.mode == modeMap,
 		Places:    p.places(),
 		MapX:      0, MapY: 1, MapW: L.mapW, MapH: L.mapH,
