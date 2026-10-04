@@ -187,10 +187,24 @@ func (g *Game) meleeAttack(a, d *Entity) {
 // attackFacing attacks the enemy in front or any adjacent enemy; with a bow
 // or crossbow it shoots the nearest enemy in sight.
 func (g *Game) attackFacing(e *Entity) {
+	aim := e.aimed()
+	if aim != nil && *aim != e.Pos {
+		e.Facing = world.DirTowards(e.Pos, *aim)
+	}
 	if e.stats.Gear.Ranged {
-		if t := g.autoTarget(e, &bowShot); t != nil {
+		t := g.autoTarget(e, &bowShot)
+		if aim != nil {
+			t = g.aimTarget(e, &bowShot, *aim)
+		}
+		if t != nil || (aim != nil && *aim != e.Pos) {
 			e.NextAttack = g.Now + e.stats.AttackMs*1.3
 			castProjectile(g, e, &bowShot, t)
+			return
+		}
+	}
+	if aim != nil {
+		if o := g.aimTarget(e, &meleeSwing, *aim); o != nil {
+			g.meleeAttack(e, o)
 			return
 		}
 	}
@@ -205,7 +219,52 @@ func (g *Game) attackFacing(e *Entity) {
 			return
 		}
 	}
+	if e.stats.Reach > 0 {
+		// a long reach: the enemy in front first, then the nearest one
+		var best *Entity
+		for _, o := range g.onLevel(e.Level) {
+			if !g.hostile(e, o) || !g.canSee(e, o) || !g.inReach(e, o) {
+				continue
+			}
+			if best == nil || e.Pos.Add(e.Facing.Delta()).DistSq(o.Pos) < e.Pos.Add(e.Facing.Delta()).DistSq(best.Pos) {
+				best = o
+			}
+		}
+		if best != nil {
+			g.meleeAttack(e, best)
+			return
+		}
+	}
 	e.NextAttack = g.Now + 200
+}
+
+// meleeSwing is the basic melee attack, for aiming.
+var meleeSwing = content.AbilityDef{Key: "melee", Kind: "strike"}
+
+// inReach: a melee attack from e reaches o. Next to it always; with a long
+// reach also diagonally and further along a straight line not blocked by walls.
+func (g *Game) inReach(e, o *Entity) bool {
+	dx, dy := iabs(o.Pos.X-e.Pos.X), iabs(o.Pos.Y-e.Pos.Y)
+	if dx+dy == 1 {
+		return true
+	}
+	r := e.stats.Reach
+	if r <= 0 || o.Level != e.Level {
+		return false
+	}
+	if dx == 1 && dy == 1 {
+		return true
+	}
+	if (dx != 0 && dy != 0) || dx+dy > 1+r {
+		return false
+	}
+	l := g.Levels[e.Level]
+	for _, p := range world.LinePoints(e.Pos, o.Pos, dx+dy-1) {
+		if !l.Transparent(p.X, p.Y) {
+			return false
+		}
+	}
+	return true
 }
 
 // bowShot is the basic attack with a bow or crossbow: weapon damage.
@@ -339,6 +398,15 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 		g.Log(c, "#ff8080", "Неизвестный тип умения: %s.", a.Kind)
 		return true
 	}
+	if aim := c.aimed(); target == nil && aim != nil {
+		if *aim != c.Pos {
+			c.Facing = world.DirTowards(c.Pos, *aim)
+		}
+		target = g.aimTarget(c, a, *aim)
+		if target == nil && a.Kind != "projectile" {
+			target = g.autoTarget(c, a)
+		}
+	}
 	if target == nil {
 		target = g.autoTarget(c, a)
 	}
@@ -360,6 +428,39 @@ func abilityRange(a *content.AbilityDef) int {
 	return 1
 }
 
+// aimed is the tile a player aims the current action at with the mouse.
+func (e *Entity) aimed() *world.Pos {
+	if e.Player == nil {
+		return nil
+	}
+	return e.Player.aim
+}
+
+// aimTarget finds the enemy at the aimed tile (or right next to it) that the
+// ability can reach.
+func (g *Game) aimTarget(c *Entity, a *content.AbilityDef, aim world.Pos) *Entity {
+	rng := abilityRange(a)
+	l := g.Levels[c.Level]
+	var best *Entity
+	bestD := math.MaxInt
+	for _, o := range g.onLevel(c.Level) {
+		if !g.hostile(c, o) || !g.canSee(c, o) || o.Pos.Dist(aim) > 1 {
+			continue
+		}
+		if rng <= 1 {
+			if !g.inReach(c, o) {
+				continue
+			}
+		} else if c.Pos.Dist(o.Pos) > rng || !world.LOS(l, c.Pos, o.Pos) {
+			continue
+		}
+		if d := o.Pos.DistSq(aim); d < bestD {
+			best, bestD = o, d
+		}
+	}
+	return best
+}
+
 // autoTarget finds the nearest visible enemy in range.
 func (g *Game) autoTarget(c *Entity, a *content.AbilityDef) *Entity {
 	if c.Monster != nil {
@@ -376,13 +477,14 @@ func (g *Game) autoTarget(c *Entity, a *content.AbilityDef) *Entity {
 			continue
 		}
 		d := c.Pos.DistSq(o.Pos)
-		if c.Pos.Dist(o.Pos) > rng || d >= bestD {
+		if d >= bestD {
 			continue
 		}
-		if rng > 1 && !world.LOS(l, c.Pos, o.Pos) {
-			continue
-		}
-		if rng <= 1 && c.Pos.Manhattan(o.Pos) != 1 {
+		if rng <= 1 {
+			if !g.inReach(c, o) {
+				continue
+			}
+		} else if c.Pos.Dist(o.Pos) > rng || !world.LOS(l, c.Pos, o.Pos) {
 			continue
 		}
 		best, bestD = o, d
@@ -413,6 +515,8 @@ func castProjectile(g *Game, c *Entity, a *content.AbilityDef, target *Entity) b
 	var aim world.Pos
 	if target != nil {
 		aim = target.Pos
+	} else if at := c.aimed(); at != nil {
+		aim = *at
 	} else {
 		d := c.Facing.Delta()
 		aim = world.Pos{X: c.Pos.X + d.X*rng, Y: c.Pos.Y + d.Y*rng}
@@ -568,7 +672,7 @@ func castCleave(g *Game, c *Entity, a *content.AbilityDef, _ *Entity) bool {
 }
 
 func castStrike(g *Game, c *Entity, a *content.AbilityDef, target *Entity) bool {
-	if target == nil || c.Pos.Manhattan(target.Pos) != 1 {
+	if target == nil || !g.inReach(c, target) {
 		g.Log(c, "#808080", "Нет врага рядом для «%s».", a.Name)
 		return false
 	}

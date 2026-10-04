@@ -180,6 +180,7 @@
 "Сила лечения %" = "Healing power %"
 "Урон из засады %" = "Ambush damage %"
 "Сила копий %" = "Copy power %"
+"Дальность удара" = "Attack reach"
 
 # equipment slots
 "Надето (%s): %s." = "Equipped (%s): %s."

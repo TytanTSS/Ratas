@@ -33,6 +33,12 @@ type Sink interface {
 	Effects(fx []proto.FX)
 }
 
+// Aimer is a Sink with a mouse: it reports the tile under the cursor, where
+// attacks and abilities are aimed.
+type Aimer interface {
+	Aim() (world.Pos, bool)
+}
+
 // updateVisibility recomputes the field of view and marks explored cells.
 func (p *play) updateVisibility() {
 	lv := p.level

@@ -24,6 +24,8 @@ type Intent struct {
 	Interact  bool
 	Ability   int
 	AbilityAt float64
+	Aimed     bool      // the attack or ability is aimed at a tile (mouse)
+	Aim       world.Pos // that tile
 }
 
 type Quest struct {
@@ -82,6 +84,7 @@ type PlayerState struct {
 	Copied    string             `json:"-"` // ability copied by a mimic
 	CopiedLvl int                `json:"-"`
 	CopiedEnd float64            `json:"-"`
+	aim       *world.Pos // the tile the current attack or ability is aimed at
 	region    int
 	lastHint  string
 	regenAcc  float64
@@ -197,6 +200,9 @@ func (g *Game) SetInput(e *Entity, in proto.Input) {
 		it.Move = world.Dir(in.Move)
 		it.MoveAt = g.Now
 	}
+	if in.Attack || in.Ability > 0 {
+		it.Aimed, it.Aim = in.Aim, world.Pos{X: int(in.AimX), Y: int(in.AimY)}
+	}
 	if in.Attack {
 		it.Attack = true
 		it.AttackAt = g.Now
@@ -260,12 +266,19 @@ func (g *Game) updatePlayer(e *Entity) {
 		it.Interact = false
 		g.interact(e)
 	}
+	if it.Aimed {
+		p.aim = &it.Aim
+	}
 	if it.Ability != 0 && g.useHotbar(e, it.Ability) {
 		it.Ability = 0
 	}
 	if it.Attack && g.Now >= e.NextAttack {
 		it.Attack = false
 		g.attackFacing(e)
+	}
+	p.aim = nil
+	if it.Ability == 0 && !it.Attack {
+		it.Aimed = false
 	}
 	if it.Move != 0 && g.Now >= e.NextMove {
 		d := it.Move

@@ -208,6 +208,7 @@ type Stats struct {
 	AmbushPct float64 // damage bonus from stealth or on a distracted target
 	HealPct   float64 // healing bonus
 	MimicPct  float64 // power of copied abilities
+	Reach     int     // melee attacks reach this many tiles further
 
 	Gear     Gear
 	OffDmg   [2]float64 // second weapon (dual wield)
@@ -406,6 +407,10 @@ func (e *Entity) Recalc() {
 	s.AmbushPct = mods["ambush_pct"]
 	s.HealPct = mods["heal_pct"]
 	s.MimicPct = mods["mimic_pct"]
+	s.Reach = 0
+	if e.Player != nil && s.Gear.Has("melee") {
+		s.Reach = int(mods["reach"])
+	}
 	baseMove, baseAttack := 160.0, 650.0
 	if e.Monster != nil {
 		baseMove, baseAttack = e.Monster.MoveMs, e.Monster.AttackMs
@@ -442,6 +447,7 @@ func (s *Stats) Map() map[string]float64 {
 		"gold_find": s.GoldFind, "dmg_min": s.WeaponDmg[0], "dmg_max": s.WeaponDmg[1],
 		"life_leech": s.LifeLeech, "thorns": s.Thorns, "block": s.Block, "fury": s.Fury,
 		"duel_pct": s.DuelPct, "ambush_pct": s.AmbushPct, "heal_pct": s.HealPct, "mimic_pct": s.MimicPct,
+		"reach": float64(s.Reach),
 	}
 	for _, t := range content.DamageTypes() {
 		m["res_"+t.Key] = s.Resist(t.Key)
@@ -465,6 +471,7 @@ var StatNames = map[string]string{
 	"gold_find": "Находка золота %", "life_leech": "Вампиризм %", "thorns": "Шипы",
 	"block": "Блок %", "fury": "Ярость раненого %", "duel_pct": "Урон один на один %",
 	"ambush_pct": "Урон из засады %", "heal_pct": "Сила лечения %", "mimic_pct": "Сила копий %",
+	"reach": "Дальность удара",
 }
 
 // StatName is the human-readable name of any stat key, including the

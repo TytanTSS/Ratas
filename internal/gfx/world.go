@@ -95,6 +95,8 @@ type worldRenderer struct {
 	vis    []bool
 	visKey [5]int
 	visLvl *world.Level
+
+	lastView *view // the last drawn view: maps the mouse cursor to tiles
 }
 
 func newWorldRenderer(f *fonts) *worldRenderer {
@@ -545,6 +547,7 @@ func (r *worldRenderer) draw(dst *ebiten.Image, sc *client.Scene, area image.Rec
 	focus := image.Pt((area.Min.X+area.Max.X)/2, (area.Min.Y+area.Max.Y)/2)
 	v := r.makeView(dst, l, r.camX, r.camY, focus, area)
 	v.vis, v.explored, v.tod = r.fov(sc), sc.Explored, sc.TimeOfDay
+	r.lastView = v
 	ts := float64(v.ts)
 
 	// entities grouped by row for depth sorting

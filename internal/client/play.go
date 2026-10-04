@@ -172,6 +172,8 @@ func (p *play) run() {
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				p.key(ev)
+			case *tcell.EventMouse:
+				p.mouse(ev)
 			case *tcell.EventResize:
 				p.a.scr.Sync()
 			case *tcell.EventInterrupt:
@@ -410,12 +412,12 @@ func (p *play) keyGame(ev *tcell.EventKey) {
 	}
 	r := ev.Rune()
 	if r >= '1' && r <= '6' {
-		p.send(proto.ClientMsg{Input: &proto.Input{Ability: int8(r - '0')}})
+		p.send(proto.ClientMsg{Input: p.aimed(proto.Input{Ability: int8(r - '0')})})
 		return
 	}
 	switch r {
 	case ' ':
-		p.send(proto.ClientMsg{Input: &proto.Input{Attack: true}})
+		p.send(proto.ClientMsg{Input: p.aimed(proto.Input{Attack: true})})
 		return
 	case '?':
 		p.mode = modeHelp
@@ -445,6 +447,31 @@ func (p *play) keyGame(ev *tcell.EventKey) {
 		p.chat.Set("")
 	case 'h':
 		p.mode = modeHelp
+	}
+}
+
+// aimed points an attack or ability at the tile under the mouse cursor
+// (graphics mode); without a mouse the server picks the nearest enemy.
+func (p *play) aimed(in proto.Input) *proto.Input {
+	if am, ok := p.a.gfx.(Aimer); ok {
+		if at, ok := am.Aim(); ok {
+			in.Aim, in.AimX, in.AimY = true, int32(at.X), int32(at.Y)
+		}
+	}
+	return &in
+}
+
+// mouse: on the map the left button attacks and the right button uses the
+// first ability, both aimed at the cursor.
+func (p *play) mouse(ev *tcell.EventMouse) {
+	if p.mode != modeGame || p.snap == nil || p.snap.Self.Dead {
+		return
+	}
+	switch {
+	case ev.Buttons()&tcell.Button1 != 0:
+		p.send(proto.ClientMsg{Input: p.aimed(proto.Input{Attack: true})})
+	case ev.Buttons()&tcell.Button2 != 0:
+		p.send(proto.ClientMsg{Input: p.aimed(proto.Input{Ability: 1})})
 	}
 }
 

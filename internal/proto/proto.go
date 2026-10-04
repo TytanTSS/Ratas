@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const Version = 3
+const Version = 4
 
 // ---- client -> server ----
 
@@ -30,6 +30,10 @@ type Input struct {
 	Attack   bool
 	Interact bool
 	Ability  int8 // hotbar slot 1..6, 0 = none
+	// Aim is the tile under the mouse cursor (graphics mode): attacks and
+	// abilities go there instead of the nearest enemy.
+	Aim        bool
+	AimX, AimY int32
 }
 
 // Command is a discrete, non-real-time action (menus, dialogue, chat...).
