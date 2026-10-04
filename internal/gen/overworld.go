@@ -20,9 +20,10 @@ func (r Rect) Overlaps(o Rect, gap int) bool {
 }
 
 type NPCSpawn struct {
-	Role string
-	Name string
-	Pos  world.Pos
+	Role  string
+	Name  string
+	Pos   world.Pos
+	Night world.Pos // where to go at night (cities); zero = stay
 }
 
 type Village struct {
@@ -31,6 +32,7 @@ type Village struct {
 	Area   Rect
 	Houses []Rect
 	NPCs   []NPCSpawn
+	City   bool // a big walled stone city
 }
 
 type Entrance struct {
@@ -232,7 +234,10 @@ func GenerateOverworld(seed int64, w, h int) *Overworld {
 	}
 
 	main := largestRegion(l)
-	ow.Villages = placeVillages(r, l, main)
+	names := map[string]bool{}
+	cities := placeCities(r, l, main, 1+r.IntN(2), names)
+	// villages first: the start is in the first one
+	ow.Villages = append(placeVillages(r, l, main, cities, names), cities...)
 	var start world.Pos
 	if len(ow.Villages) > 0 {
 		start = ow.Villages[0].Center
@@ -401,9 +406,8 @@ func isGround(t uint8) bool {
 	return false
 }
 
-func placeVillages(r *rand.Rand, l *world.Level, main []bool) []Village {
+func placeVillages(r *rand.Rand, l *world.Level, main []bool, cities []Village, used map[string]bool) []Village {
 	var vs []Village
-	used := map[string]bool{}
 	const vw, vh = 28, 14
 	want := 4 + r.IntN(2)
 	for attempt := 0; attempt < 4000 && len(vs) < want; attempt++ {
@@ -433,6 +437,11 @@ func placeVillages(r *rand.Rand, l *world.Level, main []bool) []Village {
 			if abs(v.Center.X-cx) < 55 && abs(v.Center.Y-cy) < 28 {
 				far = false
 				break
+			}
+		}
+		for _, c := range cities {
+			if c.Area.Overlaps(area, 12) {
+				far = false
 			}
 		}
 		if !far {
@@ -547,6 +556,13 @@ func buildVillage(r *rand.Rand, l *world.Level, area Rect, name string) Village 
 	return v
 }
 
+// builtUp are the tiles of settlements that roads go around.
+var builtUp = map[string]bool{
+	"well": true, "house_wall": true, "door": true, "house_floor": true, "city_wall": true, "stone_wall": true,
+	"stone_floor": true, "carpet": true, "fountain": true, "market_stall": true, "lamp_post": true, "statue": true,
+	"altar": true, "brazier": true, "crystal": true, "chest_open": true,
+}
+
 func buildRoads(l *world.Level, vs []Village) {
 	if len(vs) < 2 {
 		return
@@ -568,7 +584,9 @@ func buildRoads(l *world.Level, vs []Village) {
 			return -1
 		case def.Key == "mountain":
 			return 40
-		case def.Key == "well" || def.Key == "house_wall" || def.Key == "door" || def.Key == "house_floor":
+		case def.Key == "city_gate" || def.Key == "cobblestone":
+			return 0.3
+		case builtUp[def.Key]:
 			return -1
 		case !def.Walkable:
 			return 4
@@ -593,7 +611,7 @@ func buildRoads(l *world.Level, vs []Village) {
 			switch {
 			case t == water || t == deep:
 				l.Set(p.X, p.Y, bridge)
-			case key == "well" || key == "house_wall" || key == "door" || key == "house_floor":
+			case builtUp[key] || key == "city_gate" || key == "cobblestone" || key == "garden":
 			default:
 				l.Set(p.X, p.Y, road)
 			}

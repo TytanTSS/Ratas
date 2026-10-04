@@ -37,7 +37,8 @@ type skillRow struct {
 func (p *play) heroState() *game.PlayerState {
 	sh := p.sheet
 	ps := &game.PlayerState{Level: sh.Level, Skills: sh.Skills, SkillPoints: max(1, sh.SkillPoints),
-		Class: sh.Class, Subclasses: map[string]string{}, Unlocks: sh.Unlocks}
+		Class: sh.Class, Subclasses: map[string]string{}, Unlocks: sh.Unlocks, Deeds: sh.Deeds,
+		Found: make([]int, sh.Found)}
 	for _, c := range sh.Classes {
 		ps.Classes = append(ps.Classes, c.Key)
 		if c.Subclass != "" {
@@ -90,7 +91,7 @@ func branchSkills(branch string) []content.SkillDef {
 
 func classBranch(class, sub string) string {
 	for _, b := range content.Branches() {
-		if b.Class == class && b.Subclass == sub {
+		if b.Class == class && b.Subclass == sub && !b.Hidden {
 			return b.Key
 		}
 	}
@@ -122,6 +123,24 @@ func (p *play) skillRowsFor(t skillTab) []skillRow {
 			for _, sc := range content.SubclassesOf(t.class) {
 				rows = append(rows, skillRow{kind: "subclass", sub: sc})
 			}
+		}
+		var hidden []skillRow
+		for _, b := range content.Branches() {
+			if b.Class == t.class && b.Hidden {
+				for _, s := range branchSkills(b.Key) {
+					hidden = append(hidden, skillRow{kind: "skill", skill: s})
+				}
+			}
+		}
+		if len(hidden) > 0 {
+			opened := 0
+			for _, r := range hidden {
+				if p.sheet.Skills[r.skill.Key] > 0 {
+					opened++
+				}
+			}
+			rows = append(rows, skillRow{kind: "header", text: fmt.Sprintf("Скрытые навыки: открыто %d из %d", opened, len(hidden))})
+			rows = append(rows, hidden...)
 		}
 	case "branch":
 		for _, s := range branchSkills(t.class) {
@@ -217,9 +236,15 @@ func (p *play) drawSkills() {
 			if asciiUI {
 				mark = map[bool]string{true: "*", false: "o"}[rank > 0]
 			}
+			name := s.Name
+			if s.Deed != "" && rank == 0 {
+				// a hidden skill shows only its deed until it opens
+				done := game.DeedProgress(ps, &s)
+				name, fg = fmt.Sprintf("??? %d%%", min(99, done*100/max(1, s.DeedCount))), cDim
+			}
 			c.text(x+3, ry, fmt.Sprintf("T%d", s.Tier), cDim, bg)
 			c.text(x+6, ry, mark, fg, bg)
-			c.textClip(x+8, ry, listW-14, s.Name, fg, bg)
+			c.textClip(x+8, ry, listW-14, name, fg, bg)
 			c.text(x+listW-5, ry, fmt.Sprintf("%d/%d", rank, s.MaxRank), fg, bg)
 		case "subclass":
 			sc := r.sub
@@ -302,6 +327,16 @@ func (p *play) skillRowDetails(x, y, w int, r skillRow, ps *game.PlayerState) {
 	switch r.kind {
 	case "skill":
 		s := r.skill
+		if s.Deed != "" && p.sheet.Skills[s.Key] == 0 {
+			c.textClip(x, y, w, "Скрытый навык", col("#ff80ff"), cPanel)
+			for i, l := range wrap("Откроется сам, когда вы совершите деяние: "+game.DeedText(s.Deed, s.DeedCount)+".", w) {
+				c.textClip(x, y+2+i, w, l, cText, cPanel)
+			}
+			done := game.DeedProgress(ps, &s)
+			c.textClip(x, y+5, w, fmt.Sprintf("Прогресс: %d из %d", min(done, s.DeedCount), s.DeedCount), cGood, cPanel)
+			c.bar(x, y+6, min(w, 30), float64(done)/float64(max(1, s.DeedCount)), col("#ff80ff"), col("#302030"))
+			return
+		}
 		why := game.CanLearn(ps, &s)
 		p.skillDetails(x, y, w, &s, p.sheet.Skills[s.Key], why)
 	case "subclass":

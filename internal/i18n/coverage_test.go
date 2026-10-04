@@ -17,7 +17,7 @@ import (
 
 // Names of people and villages are transliterated, not translated; the
 // keyboard layout table is not text.
-var properNames = map[string]bool{"villageNames": true, "maleNames": true, "femaleNames": true, "moveLetters": true}
+var properNames = map[string]bool{"villageNames": true, "cityNames": true, "maleNames": true, "femaleNames": true, "moveLetters": true}
 
 // sourceTexts collects the Russian text of the game: string literals in Go
 // code (outside tests) and string values of the content and mod files.

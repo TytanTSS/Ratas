@@ -27,6 +27,10 @@ func ItemViewOf(st ItemStack) proto.ItemView {
 		return proto.ItemView{Key: st.Key, Name: st.Key, Glyph: '?', Qty: st.Qty}
 	}
 	var desc []string
+	rarity := st.ItemRarity()
+	if rarity > Common || slotFor(d) != "" {
+		desc = append(desc, RarityName(int(rarity)))
+	}
 	if d.Kind == "weapon" {
 		t := d.DmgType
 		if t == "" {
@@ -36,7 +40,8 @@ func ItemViewOf(st ItemStack) proto.ItemView {
 		if d.Hands >= 2 {
 			hands = "двуручное"
 		}
-		desc = append(desc, fmt.Sprintf("Урон %.0f-%.0f (%s), %s", d.Damage[0], d.Damage[1], DamageTypeName(t), hands))
+		k := st.statK()
+		desc = append(desc, fmt.Sprintf("Урон %.0f-%.0f (%s), %s", math.Round(d.Damage[0]*k), math.Round(d.Damage[1]*k), DamageTypeName(t), hands))
 	}
 	if d.Heal > 0 {
 		desc = append(desc, fmt.Sprintf("+%.0f здоровья", d.Heal))
@@ -44,7 +49,7 @@ func ItemViewOf(st ItemStack) proto.ItemView {
 	if d.Mana > 0 {
 		desc = append(desc, fmt.Sprintf("+%.0f маны", d.Mana))
 	}
-	desc = append(desc, statLines(d.Stats)...)
+	desc = append(desc, statLines(scaled(d.Stats, st.statK()))...)
 	desc = append(desc, statLines(st.Bonus)...)
 	if d.OnHit != nil {
 		desc = append(desc, fmt.Sprintf("При ударе %.0f%%: %s", d.OnHitPct, BuffDesc(d.OnHit)))
@@ -58,7 +63,24 @@ func ItemViewOf(st ItemStack) proto.ItemView {
 	return proto.ItemView{
 		Key: st.Key, Name: st.Name(), Glyph: firstRune(d.Glyph), Color: d.Color, Kind: d.Kind,
 		Qty: max(1, st.Qty), Value: st.Value(), Desc: strings.Join(desc, ", "), Hands: d.Hands,
+		Rarity: int8(rarity),
 	}
+}
+
+// scaled multiplies stats (a rarer copy of an item is stronger).
+func scaled(m map[string]float64, k float64) map[string]float64 {
+	if k == 1 {
+		return m
+	}
+	out := make(map[string]float64, len(m))
+	for key, v := range m {
+		if math.Abs(v) >= 3 {
+			out[key] = math.Round(v * k)
+		} else {
+			out[key] = math.Round(v*k*10) / 10
+		}
+	}
+	return out
 }
 
 // BuffDesc describes an effect: "Горение (огонь 3/с, 3 с)".
@@ -308,6 +330,10 @@ func (g *Game) Snapshot(e *Entity) *proto.Snapshot {
 			v.Gear = gearOf(o)
 		case o.Item != nil:
 			v.Def = o.Item.Key
+			v.Rarity = uint8(o.Item.ItemRarity())
+			if v.Rarity >= uint8(Rare) {
+				v.Color = RarityColor(int(v.Rarity)) // rare loot stands out on the map
+			}
 		case o.Proj != nil:
 			v.Def = o.Proj.Ability
 		}
@@ -345,7 +371,11 @@ func (g *Game) places(e *Entity) []proto.Place {
 	bs := e.Player.Explored["overworld"]
 	seen := func(p world.Pos) bool { return ow != nil && bs.Get(p.Y*ow.W+p.X) }
 	for _, v := range g.Villages {
-		out = append(out, proto.Place{Name: v.Name, Kind: "village", X: v.Center.X, Y: v.Center.Y})
+		kind := "village"
+		if v.City {
+			kind = "city"
+		}
+		out = append(out, proto.Place{Name: v.Name, Kind: kind, X: v.Center.X, Y: v.Center.Y})
 	}
 	for _, en := range g.Entrances {
 		if seen(en.Pos) {
@@ -466,6 +496,11 @@ func (g *Game) Sheet(e *Entity) *proto.PlayerSheet {
 	}
 	sh.Unlocks = append([]string(nil), p.Unlocks...)
 	sh.Places = g.places(e)
+	sh.Deeds = map[string]int{}
+	for k, v := range p.Deeds {
+		sh.Deeds[k] = v
+	}
+	sh.Found = len(p.Found)
 	return sh
 }
 

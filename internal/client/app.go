@@ -73,16 +73,20 @@ func RunWith(scr tcell.Screen, sink Sink, cfg *config.Config, mods []string, opt
 	scr.SetStyle(tcell.StyleDefault.Background(cBlack).Foreground(cText))
 	scr.HideCursor()
 	i18n.SetLang(cfg.Language)
+	scr.EnablePaste()
 	asciiUI = cfg.ASCIIOnly && sink == nil
 	a := &App{scr: scr, cv: &canvas{s: scr}, cfg: cfg, events: make(chan tcell.Event, 256), mods: mods, gfx: sink}
 	go func() {
+		var pf pasteFilter
 		for {
 			ev := scr.PollEvent()
 			if ev == nil {
 				close(a.events)
 				return
 			}
-			a.events <- ev
+			if pf.keep(ev) {
+				a.events <- ev
+			}
 		}
 	}()
 	if opts.Name != "" {
@@ -521,6 +525,7 @@ var LocalServerHook func(*server.Server)
 
 func (a *App) runLocal(g *game.Game, slot string, host bool, name, class string) {
 	srv := server.New(g)
+	srv.AdminHost = a.cfg.Admin
 	srv.SavePath = filepath.Join(config.SavesDir(), slot+".sav")
 	go srv.Run()
 	if LocalServerHook != nil {

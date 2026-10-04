@@ -35,7 +35,7 @@ var specialKeys = []struct {
 	{ebiten.KeyArrowLeft, tcell.KeyLeft}, {ebiten.KeyArrowRight, tcell.KeyRight},
 	{ebiten.KeyEnter, tcell.KeyEnter}, {ebiten.KeyNumpadEnter, tcell.KeyEnter},
 	{ebiten.KeyEscape, tcell.KeyEscape}, {ebiten.KeyBackspace, tcell.KeyBackspace2},
-	{ebiten.KeyTab, tcell.KeyTab}, {ebiten.KeyF1, tcell.KeyF1}, {ebiten.KeyF5, tcell.KeyF5},
+	{ebiten.KeyTab, tcell.KeyTab}, {ebiten.KeyF1, tcell.KeyF1}, {ebiten.KeyF5, tcell.KeyF5}, {ebiten.KeyF9, tcell.KeyF9},
 	{ebiten.KeyDelete, tcell.KeyDelete}, {ebiten.KeyHome, tcell.KeyHome}, {ebiten.KeyEnd, tcell.KeyEnd},
 }
 
@@ -102,6 +102,12 @@ func (in *inputState) update(scr tcell.SimulationScreen, kb keyboard, now time.T
 		mod |= tcell.ModShift
 	}
 
+	// paste: Ctrl+V (Cmd+V on macOS), Shift+Insert
+	ctrl := kb.pressed(ebiten.KeyControl) || kb.pressed(ebiten.KeyMeta)
+	if (ctrl && kb.justPressed(ebiten.KeyV)) || (mod&tcell.ModShift != 0 && kb.justPressed(ebiten.KeyInsert)) {
+		scr.InjectKey(tcell.KeyCtrlV, 0, tcell.ModCtrl)
+		chars = nil // the OS may also type a "v"
+	}
 	for _, sk := range specialKeys {
 		if !kb.justPressed(sk.k) {
 			continue

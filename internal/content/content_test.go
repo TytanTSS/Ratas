@@ -90,3 +90,60 @@ resit = { fire = 10 }
 		t.Fatalf("json mod not loaded: %v", mods)
 	}
 }
+
+// Built-in files must not reuse keys: a later file would silently replace
+// an entry of an earlier one (that is only meant for mods).
+func TestBuiltinKeysUnique(t *testing.T) {
+	entries, err := builtin.ReadDir("data")
+	if err != nil {
+		t.Fatal(err)
+	}
+	where := map[string]string{}
+	for _, e := range entries {
+		data, _ := builtin.ReadFile("data/" + e.Name())
+		b, err := decodeTOML(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		check := func(kind, key string) {
+			id := kind + " " + key
+			if f, ok := where[id]; ok {
+				t.Errorf("%s is defined in both %s and %s", id, f, e.Name())
+			}
+			where[id] = e.Name()
+		}
+		for _, x := range b.Items {
+			check("item", x.Key)
+		}
+		for _, x := range b.Skills {
+			check("skill", x.Key)
+		}
+		for _, x := range b.Abilities {
+			check("ability", x.Key)
+		}
+		for _, x := range b.Monsters {
+			check("monster", x.Key)
+		}
+		for _, x := range b.Classes {
+			check("class", x.Key)
+		}
+		for _, x := range b.Subclasses {
+			check("subclass", x.Key)
+		}
+		for _, x := range b.Branches {
+			check("branch", x.Key)
+		}
+		for _, x := range b.Uniques {
+			check("unique", x.Key)
+		}
+		for _, x := range b.NPCs {
+			check("npc", x.Key)
+		}
+		for _, x := range b.Tiles {
+			check("tile", x.Key)
+		}
+		for _, x := range b.Squads {
+			check("squad", x.Key)
+		}
+	}
+}

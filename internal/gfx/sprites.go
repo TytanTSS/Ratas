@@ -356,6 +356,39 @@ func groundArt(key string, fg, bg color.RGBA, v, frame int) *pc {
 		p.noise(0.16)
 		p.speckle(mul(fg, 0.8), 0.06)
 		p.speckle(mul(fg, 0.4), 0.05)
+	case "cobblestone", "city_gate":
+		// rounded cobbles in staggered rows
+		p.fill(mul(fg, 0.38))
+		for row := 0; row < 4; row++ {
+			off := (row % 2) * 2
+			for col := -1; col < 4; col++ {
+				cx := float64(col*4+off) + 1.5
+				cy := float64(row*4) + 1.5
+				sh := 0.7 + p.r.Float64()*0.3
+				p.ball(cx, cy, 1.7, mul(fg, sh), 0.15)
+			}
+		}
+		if key == "city_gate" {
+			// iron-shod planks of the open gate
+			for x := 0; x < spx; x++ {
+				p.set(x, 0, mul(bg, 1.6))
+				p.set(x, spx-1, mul(bg, 1.6))
+			}
+			p.rect(0, 0, 2, spx, mul(fg, 0.5))
+			p.rect(spx-2, 0, 2, spx, mul(fg, 0.5))
+		}
+	case "garden":
+		grassBase(p, hex("#5a9a3a"), 4)
+		flowers := []color.RGBA{hex("#ff7a9a"), hex("#ffe070"), hex("#b080ff"), hex("#ffffff")}
+		for i := 0; i < 7; i++ {
+			x, y := 1+p.r.IntN(14), 1+p.r.IntN(14)
+			p.set(x, y, flowers[(i+v)%len(flowers)])
+			p.set(x, y+1, hex("#3a7a2a"))
+		}
+		for i := 0; i < spx; i++ {
+			p.set(i, 0, hex("#8a6a4a"))
+			p.set(i, spx-1, hex("#8a6a4a"))
+		}
 	case "bridge":
 		planks(p, fg, false)
 		p.rect(0, 0, spx, 1, mul(fg, 0.45))
@@ -645,6 +678,59 @@ func objectArt(key string, fg, bg color.RGBA, v int) (*pc, bool, bool) {
 			p.line(9, peak+8, 11, peak+15, color.RGBA{255, 100, 30, 255})
 		}
 		return p, true, false
+	case "fountain":
+		p := newPC(spx, spx, key+strconv.Itoa(v))
+		p.circle(8, 9, 7.5, mul(hex("#b0a898"), 0.85))
+		p.circle(8, 9, 6, hex("#c8c0b0"))
+		p.circle(8, 9, 5, hex("#2a5a8a"))
+		p.circle(7, 8, 3.5, hex("#3a7ab0"))
+		p.rect(7, 3, 2, 7, hex("#d8d0c0"))
+		p.circle(8, 3, 1.6, alpha(hex("#c0e8ff"), 220))
+		for i := 0; i < 4; i++ {
+			p.set(4+i*2+v%2, 6+i%2, alpha(white, 200))
+		}
+		return p, false, false
+	case "market_stall":
+		p := newPC(spx, 24, key+strconv.Itoa(v))
+		awn := []color.RGBA{hex("#c03a2a"), hex("#2a6ac0"), hex("#3a9a3a")}[v%3]
+		p.circle(8, 22, 6, alpha(black, 70))
+		p.rect(2, 6, 1, 16, bark)
+		p.rect(13, 6, 1, 16, bark)
+		for x := 0; x < spx; x++ {
+			c := awn
+			if (x/2)%2 == 1 {
+				c = hex("#f0e8d8")
+			}
+			p.rect(x, 2, 1, 5, c)
+		}
+		p.rect(1, 15, 14, 5, mul(bark, 1.2))
+		p.rect(1, 15, 14, 1, mul(bark, 1.5))
+		goods := []color.RGBA{hex("#e0402a"), hex("#ffd040"), hex("#80c040"), hex("#c08040")}
+		for i := 0; i < 5; i++ {
+			p.ball(float64(3+i*2+p.r.IntN(2)), 13.5, 1.2, goods[(i+v)%len(goods)], 0.1)
+		}
+		return p, true, false
+	case "lamp_post":
+		p := newPC(spx, 24, key)
+		p.circle(8, 22, 3, alpha(black, 80))
+		p.rect(7, 6, 2, 17, hex("#2a2a30"))
+		p.rect(6, 21, 4, 2, hex("#3a3a40"))
+		p.rect(5, 2, 6, 5, hex("#3a3a40"))
+		p.rect(6, 3, 4, 3, hex("#ffe0a0"))
+		p.set(7, 4, white)
+		return p, true, false
+	case "statue":
+		p := newPC(spx, 24, key+strconv.Itoa(v))
+		stoneC := hex("#d0d0c8")
+		p.circle(8, 22, 6, alpha(black, 80))
+		p.rect(3, 17, 10, 6, mul(stoneC, 0.7))
+		p.rect(3, 17, 10, 1, mul(stoneC, 0.9))
+		p.rect(6, 7, 4, 10, stoneC)
+		p.circle(8, 5, 2.5, stoneC)
+		p.rect(4, 8, 2, 6, mul(stoneC, 0.85))
+		p.line(11, 3, 11, 15, mul(stoneC, 0.8))
+		p.rect(10, 8, 2, 2, mul(stoneC, 0.85))
+		return p, true, false
 	case "well":
 		p := newPC(spx, spx, key)
 		p.circle(8, 9, 6.5, mul(stone, 0.75))
@@ -702,7 +788,7 @@ func objectArt(key string, fg, bg color.RGBA, v int) (*pc, bool, bool) {
 		p.rect(3, 2, 10, 3, mul(fg, 1.0))
 		p.rect(3, 20, 10, 3, mul(fg, 0.75))
 		return p, true, false
-	case "stone_wall", "cave_wall", "house_wall", "door", "ice_wall", "basalt_wall", "sandstone_wall", "dark_wall", "ruin_wall":
+	case "stone_wall", "cave_wall", "house_wall", "door", "ice_wall", "basalt_wall", "sandstone_wall", "dark_wall", "ruin_wall", "city_wall":
 		return wallArt(key, fg, bg, v), true, true
 	case "snow_pine":
 		p, _, _ := objectArt("pine", fg, bg, v)
@@ -917,7 +1003,7 @@ func wallArt(key string, fg, bg color.RGBA, v int) *pc {
 	default:
 		top, front = mul(fg, 0.62), mul(fg, 0.42)
 	}
-	brick := key == "stone_wall" || key == "sandstone_wall" || key == "dark_wall" || key == "ruin_wall"
+	brick := key == "stone_wall" || key == "sandstone_wall" || key == "dark_wall" || key == "ruin_wall" || key == "city_wall"
 	// top face
 	p.rect(0, 0, spx, 16, top)
 	p.noise(0.12)
@@ -986,6 +1072,13 @@ func wallArt(key string, fg, bg color.RGBA, v int) *pc {
 	for x := 0; x < spx; x++ {
 		p.set(x, 16, mul(front, 1.3))
 		p.set(x, 23, mul(front, 0.5))
+	}
+	if key == "city_wall" {
+		// battlements on the top face
+		for x := 0; x < spx; x += 4 {
+			p.rect(x, 0, 2, 3, mul(top, 1.25))
+			p.rect(x, 3, 2, 1, mul(top, 0.7))
+		}
 	}
 	if key == "ruin_wall" {
 		// broken top: knock out a corner
@@ -1082,6 +1175,7 @@ var knownGround = map[string]bool{
 	"desert_sand": true, "dunes": true, "snow_ground": true, "snowdrift": true, "ice": true, "ash": true,
 	"magma_crack": true, "blight_grass": true, "mushrooms": true, "web": true, "ice_floor": true,
 	"basalt_floor": true, "sandstone_floor": true, "dark_floor": true, "carpet": true,
+	"cobblestone": true, "city_gate": true, "garden": true,
 }
 
 func isKnownGround(k string) bool { return knownGround[k] }

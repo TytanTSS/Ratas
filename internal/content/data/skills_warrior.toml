@@ -271,6 +271,18 @@ grants = "rally"
 desc = "Боевой порядок: вы и союзники рядом бьёте сильнее и крепче держитесь."
 
 [[skills]]
+key = "long_reach"
+name = "Длинная рука"
+branch = "knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["weapon_discipline"]
+equip = "melee"
+desc = "Выучка древкового боя: с оружием ближнего боя вы достаёте врага на клетку дальше — через клетку по прямой и по диагонали. Действует на обычные атаки и удары-умения."
+stats = { reach = 1, melee_pct = 3 }
+
+[[skills]]
 key = "knight_veteran"
 name = "Ветеран турниров"
 branch = "knight"

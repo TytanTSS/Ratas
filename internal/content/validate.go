@@ -12,11 +12,14 @@ var BaseStats = []string{
 	"str", "dex", "int", "vit", "max_hp", "max_mp", "hp_regen", "mp_regen",
 	"armor", "dodge", "crit", "crit_mult", "melee_pct", "spell_pct", "ranged_pct",
 	"attack_speed", "move_speed", "sight", "gold_find", "life_leech", "thorns",
-	"block", "fury", "duel_pct", "ambush_pct", "heal_pct", "mimic_pct",
+	"block", "fury", "duel_pct", "ambush_pct", "heal_pct", "mimic_pct", "reach",
 }
 
 // ItemKinds are the valid item kinds; equipment kinds are also slot names.
 var ItemKinds = []string{"weapon", "shield", "offhand", "head", "chest", "belt", "legs", "back", "ring", "consumable", "quest", "gold"}
+
+// Rarities are the item rarities from the most common.
+var Rarities = []string{"common", "uncommon", "rare", "epic", "legendary"}
 
 // EquipNeeds are the gear requirements of skills and abilities.
 var EquipNeeds = []string{"", "weapon", "melee", "shield", "twohand_dual", "bow"}

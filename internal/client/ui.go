@@ -228,6 +228,10 @@ type textInput struct {
 
 // handle processes a key; it returns true if the key was consumed.
 func (t *textInput) handle(ev *tcell.EventKey) bool {
+	if isPasteKey(ev) {
+		t.paste(readClipboard())
+		return true
+	}
 	switch ev.Key() {
 	case tcell.KeyBackspace, tcell.KeyBackspace2:
 		if len(t.value) > 0 {

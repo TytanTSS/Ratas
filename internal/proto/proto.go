@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const Version = 3
+const Version = 4
 
 // ---- client -> server ----
 
@@ -31,6 +31,10 @@ type Input struct {
 	Attack   bool
 	Interact bool
 	Ability  int8 // hotbar slot 1..6, 0 = none
+	// Aim is the tile under the mouse cursor (graphics mode): attacks and
+	// abilities go there instead of the nearest enemy.
+	Aim        bool
+	AimX, AimY int32
 }
 
 // Command is a discrete, non-real-time action (menus, dialogue, chat...).
@@ -58,6 +62,7 @@ type Welcome struct {
 	Seed      int64
 	AI        bool
 	Host      bool
+	Admin     bool // admin commands are allowed (testing mode)
 }
 
 type LevelData struct {
@@ -95,6 +100,7 @@ type EntityView struct {
 	Gear    []string // heroes: right hand, left hand, head, chest, back
 	Step    uint16   // milliseconds one step takes at the current pace (smooth movement)
 	Swing   uint8    // grows with every attack (swing animation)
+	Rarity  uint8    // items on the ground: 0 common .. 4 legendary
 }
 
 // Status bits of an entity (visual effects).
@@ -200,15 +206,16 @@ type SelfView struct {
 }
 
 type ItemView struct {
-	Key   string
-	Name  string
-	Glyph rune
-	Color string
-	Kind  string
-	Qty   int
-	Value int
-	Desc  string
-	Hands int
+	Key    string
+	Name   string
+	Glyph  rune
+	Color  string
+	Kind   string
+	Qty    int
+	Value  int
+	Desc   string
+	Hands  int
+	Rarity int8 // 0 common .. 4 legendary
 }
 
 type QuestView struct {
@@ -241,6 +248,8 @@ type PlayerSheet struct {
 	Classes     []ClassView
 	Unlocks     []string
 	Places      []Place
+	Deeds       map[string]int // deed counters (hidden skills)
+	Found       int            // landmarks found
 }
 
 type Snapshot struct {

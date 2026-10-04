@@ -17,7 +17,7 @@ func ClassLevel(p *PlayerState, class string) int {
 	n := 0
 	for key, r := range p.Skills {
 		if sd := content.Skill(key); sd != nil {
-			if b := content.Branch(sd.Branch); b != nil && b.Class == class {
+			if b := content.Branch(sd.Branch); b != nil && b.Class == class && !b.Hidden {
 				n += r
 			}
 		}
@@ -44,6 +44,9 @@ func CanLearn(p *PlayerState, sd *content.SkillDef) string {
 		return "максимальный ранг"
 	}
 	if b := content.Branch(sd.Branch); b != nil {
+		if sd.Deed != "" {
+			return "открывается деянием: " + lower(DeedText(sd.Deed, sd.DeedCount))
+		}
 		if b.Secret {
 			return "этому учат лишь уникальные мастера мира"
 		}

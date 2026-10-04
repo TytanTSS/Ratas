@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/anthropics/anthropic-sdk-go v1.78.0
+	github.com/atotto/clipboard v0.1.4
 	github.com/gdamore/tcell/v2 v2.13.10
 	github.com/hajimehoshi/ebiten/v2 v2.10.4
 	golang.org/x/image v0.46.0

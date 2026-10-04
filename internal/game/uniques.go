@@ -12,7 +12,7 @@ import (
 )
 
 // MaxUniques is how many unique characters a world gets.
-const MaxUniques = 11
+const MaxUniques = 40
 
 // placeUniques settles unique characters in the wild. Those who teach secret
 // classes and subclasses come first, the rest are picked at random.
@@ -34,23 +34,36 @@ func (g *Game) placeUniques(r *rand.Rand) {
 			break
 		}
 		u := &all[i]
-		p, ok := g.uniqueSpot(r, l, u.Biomes, placed)
+		// their own lands far from the others first; closer and anywhere
+		// when the world is crowded
+		var p world.Pos
+		ok := false
+		for _, gap := range []int{25, 16, 10} {
+			if p, ok = g.uniqueSpot(r, l, u.Biomes, placed, gap); ok {
+				break
+			}
+		}
 		if !ok {
-			p, ok = g.uniqueSpot(r, l, nil, placed)
+			p, ok = g.uniqueSpot(r, l, nil, placed, 10)
 		}
 		if !ok {
 			continue
 		}
 		placed = append(placed, p)
-		g.Spawn(&Entity{
-			Kind: KNPC, Name: u.Name + ", " + lower(u.Title), Glyph: "@", Color: u.Color, Level: "overworld", Pos: p,
-			Faction: FNeutral, HP: 100, MaxHP: 100, Facing: world.DirDown,
-			NPC: &NPCState{Role: "unique", PName: u.Name, Home: p, Unique: u.Key, Gold: 40 + r.IntN(60)},
-		})
+		g.spawnUnique(u, p, 40+r.IntN(60))
 	}
 }
 
-func (g *Game) uniqueSpot(r *rand.Rand, l *world.Level, biomes []string, taken []world.Pos) (world.Pos, bool) {
+// spawnUnique puts a unique character on the overworld.
+func (g *Game) spawnUnique(u *content.UniqueDef, p world.Pos, gold int) *Entity {
+	return g.Spawn(&Entity{
+		Kind: KNPC, Name: u.Name + ", " + lower(u.Title), Glyph: "@", Color: u.Color, Level: "overworld", Pos: p,
+		Faction: FNeutral, HP: 100, MaxHP: 100, Facing: world.DirDown,
+		NPC: &NPCState{Role: "unique", PName: u.Name, Home: p, Unique: u.Key, Gold: gold},
+	})
+}
+
+func (g *Game) uniqueSpot(r *rand.Rand, l *world.Level, biomes []string, taken []world.Pos, gap int) (world.Pos, bool) {
 	for tries := 0; tries < 4000; tries++ {
 		p := world.Pos{X: 4 + r.IntN(l.W-8), Y: 3 + r.IntN(l.H-6)}
 		def := l.Def(p.X, p.Y)
@@ -62,7 +75,7 @@ func (g *Game) uniqueSpot(r *rand.Rand, l *world.Level, biomes []string, taken [
 		}
 		ok := true
 		for _, o := range taken {
-			if o.Dist(p) < 25 {
+			if o.Dist(p) < gap {
 				ok = false
 				break
 			}
@@ -280,6 +293,7 @@ func (g *Game) finishUniqueQuest(p *Entity, u *content.UniqueDef) string {
 	}
 	pl.Quests = slices.DeleteFunc(pl.Quests, func(x Quest) bool { return x.Unique == u.Key })
 	pl.Unlocks = append(pl.Unlocks, "quest:"+u.Key)
+	g.deed(p, "uniques", 1)
 	pl.Gold += q.Gold
 	g.GiveXP(p, q.XP)
 	what := g.unlock(p, u.Reward)

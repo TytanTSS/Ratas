@@ -32,6 +32,9 @@ glyph = "@"
 color = "#ffd24a"
 count = [1, 1]
 wander = 2
+city_count = [2, 2]
+stock = 3
+stock_kinds = ["head", "chest", "legs", "belt", "back"]
 trader = true
 goods = [
   "potion_health",
@@ -79,6 +82,11 @@ glyph = "@"
 color = "#ff9a5a"
 count = [0, 1]
 wander = 2
+city_count = [1, 1]
+building = "smithy"
+stock = 5
+stock_kinds = ["weapon"]
+services = ["upgrade"]
 trader = true
 goods = [
   "short_sword",
@@ -112,6 +120,8 @@ glyph = "@"
 color = "#a0ffa0"
 count = [0, 1]
 wander = 2
+city_count = [1, 1]
+building = "temple"
 trader = true
 goods = [
   "potion_health",
@@ -141,6 +151,9 @@ glyph = "@"
 color = "#fff0b0"
 count = [0, 1]
 wander = 2
+city_count = [1, 1]
+building = "temple"
+services = ["bless"]
 trader = true
 goods = [
   "holy_water",
@@ -172,6 +185,7 @@ glyph = "@"
 color = "#a0c0ff"
 count = [1, 2]
 wander = 6
+city_count = [5, 6]
 greetings = ["Стой! А, это ты. Проходи.", "Смотри в оба, путник."]
 lines = ["Ночью на дорогах шалят разбойники.", "Я бы и сам пошёл в подземелье, да пост не бросишь."]
 persona = "Деревенский стражник, служака, немного ворчлив, но честен и храбр."
@@ -189,6 +203,7 @@ glyph = "@"
 color = "#d0d0d0"
 count = [2, 3]
 wander = 8
+city_count = [7, 9]
 greetings = ["Добрый день!", "Здравствуй, путник.", "Ох, не до тебя сейчас..."]
 lines = [
   "Урожай в этом году скудный.",

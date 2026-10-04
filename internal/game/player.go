@@ -24,6 +24,8 @@ type Intent struct {
 	Interact  bool
 	Ability   int
 	AbilityAt float64
+	Aimed     bool      // the attack or ability is aimed at a tile (mouse)
+	Aim       world.Pos // that tile
 }
 
 type Quest struct {
@@ -69,6 +71,7 @@ type PlayerState struct {
 	Subclasses  map[string]string       `json:"subclasses,omitempty"` // class -> chosen subclass
 	Unlocks     []string                `json:"unlocks,omitempty"`    // secret classes and subclasses opened by quests
 	Bosses      []string                `json:"bosses,omitempty"`     // bosses slain (for conversations)
+	Deeds       map[string]int          `json:"deeds,omitempty"`      // what the hero has done (see deeds.go)
 
 	Intent    Intent             `json:"-"`
 	Dirty     bool               `json:"-"`
@@ -83,6 +86,11 @@ type PlayerState struct {
 	Copied    string             `json:"-"` // ability copied by a mimic
 	CopiedLvl int                `json:"-"`
 	CopiedEnd float64            `json:"-"`
+	God       bool               `json:"-"` // admin: takes no damage
+	NoCD      bool               `json:"-"` // admin: abilities cost nothing and have no cooldown
+	Resync    bool               `json:"-"` // send the level again (the explored map changed)
+	aim       *world.Pos         // the tile the current attack or ability is aimed at
+	deedCheck bool               // a deed counter changed: look for hidden skills
 	region    int
 	lastHint  string
 	regenAcc  float64
@@ -198,6 +206,9 @@ func (g *Game) SetInput(e *Entity, in proto.Input) {
 		it.Move = world.Dir(in.Move)
 		it.MoveAt = g.Now
 	}
+	if in.Attack || in.Ability > 0 {
+		it.Aimed, it.Aim = in.Aim, world.Pos{X: int(in.AimX), Y: int(in.AimY)}
+	}
 	if in.Attack {
 		it.Attack = true
 		it.AttackAt = g.Now
@@ -241,6 +252,9 @@ func (g *Game) updatePlayer(e *Entity) {
 	if g.TickN%10 == 0 {
 		g.updateExplored(e)
 		g.checkSurroundings(e)
+		if p.deedCheck {
+			g.checkDeeds(e)
+		}
 	}
 	if e.stats.Stunned {
 		p.Intent = Intent{}
@@ -261,12 +275,19 @@ func (g *Game) updatePlayer(e *Entity) {
 		it.Interact = false
 		g.interact(e)
 	}
+	if it.Aimed {
+		p.aim = &it.Aim
+	}
 	if it.Ability != 0 && g.useHotbar(e, it.Ability) {
 		it.Ability = 0
 	}
 	if it.Attack && g.Now >= e.NextAttack {
 		it.Attack = false
 		g.attackFacing(e)
+	}
+	p.aim = nil
+	if it.Ability == 0 && !it.Attack {
+		it.Aimed = false
 	}
 	if it.Move != 0 && g.Now >= e.NextMove {
 		d := it.Move
@@ -320,6 +341,7 @@ func (g *Game) playerStep(e *Entity, d world.Dir) {
 		return
 	}
 	g.moveEntity(e, to)
+	g.deed(e, "steps", 1)
 	e.NextMove = g.Now + e.stats.MoveMs*def.MoveCost
 	g.afterPlayerMove(e)
 }
@@ -452,6 +474,7 @@ func (g *Game) changeLevel(e *Entity, target *world.Level, near world.Pos) {
 	e.NextMove = g.Now + 300
 	e.Player.lastHint = tileKey(target, e.Pos)
 	g.updateExplored(e)
+	g.deedMax(e, "depth", target.Depth)
 	g.Log(e, "#c0a0ff", "Вы входите: %s.", target.Name)
 	if target.Depth > 0 && target.Down.X < 0 {
 		g.Log(e, "#ff6a6a", "Здесь обитает нечто могущественное...")
@@ -507,6 +530,7 @@ func (g *Game) respawn(e *Entity) {
 const ReviveWindowMs = 60000
 
 func (g *Game) killPlayer(e *Entity, killer *Entity) {
+	g.deed(e, "deaths", 1)
 	e.Dead = true
 	e.HP = 0
 	if l := g.Levels[e.Level]; l != nil {
@@ -665,6 +689,7 @@ func (g *Game) pickup(e *Entity) {
 		if st.Key == "gold" {
 			e.Player.Gold += st.Qty
 			e.Player.Dirty = true
+			g.deed(e, "gold", st.Qty)
 			g.Log(e, "#ffd700", "+%d золота.", st.Qty)
 			g.Remove(o)
 			continue
@@ -673,9 +698,15 @@ func (g *Game) pickup(e *Entity) {
 			if d := st.Def(); d != nil && d.Kind == "quest" {
 				defer g.updateRelics(e)
 			}
-			if st.Qty > 1 {
+			switch r := st.ItemRarity(); {
+			case st.Qty > 1:
 				g.Log(e, "#c0c0ff", "Подобрано: %s ×%d.", st.Name(), st.Qty)
-			} else {
+			case r > Common && slotFor(st.Def()) != "":
+				g.Log(e, RarityColor(int(r)), "Подобрано: %s (%s).", st.Name(), lower(RarityName(int(r))))
+				if r >= Epic {
+					g.FX(e.Level, e.Pos, RarityName(int(r))+"!", 0, RarityColor(int(r)), 1500)
+				}
+			default:
 				g.Log(e, "#c0c0ff", "Подобрано: %s.", st.Name())
 			}
 			g.Remove(o)
@@ -702,6 +733,9 @@ func (g *Game) useItem(e *Entity, idx int) {
 	if d.Kind == "consumable" {
 		if d.Effect == "return" && !g.canReturn(e) {
 			return
+		}
+		if d.Heal > 0 || d.Mana > 0 {
+			g.deed(e, "potions", 1)
 		}
 		if d.Heal > 0 {
 			e.HP = math.Min(e.MaxHP, e.HP+d.Heal)
@@ -838,7 +872,7 @@ func (g *Game) Command(e *Entity, c proto.Command) {
 	case "talk_close":
 		g.closeDialogue(e, false)
 	case "buy":
-		g.buy(e, c.Key)
+		g.buy(e, c.Key, c.Index)
 	case "sell":
 		g.sell(e, c.Index)
 	case "chat":

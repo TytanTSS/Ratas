@@ -28,6 +28,7 @@ import (
 	"ratas/internal/config"
 	"ratas/internal/i18n"
 	"ratas/internal/proto"
+	"ratas/internal/world"
 )
 
 // cell is one captured character of the text interface.
@@ -40,6 +41,8 @@ type cell struct {
 // shared is the state exchanged between the client goroutine and the window.
 type shared struct {
 	mu    sync.Mutex
+	aim   world.Pos // tile under the mouse cursor
+	aimOK bool
 	scene *client.Scene
 	fx    []proto.FX
 	grid  []cell
@@ -51,6 +54,14 @@ func (s *shared) Publish(sc *client.Scene) {
 	s.mu.Lock()
 	s.scene = sc
 	s.mu.Unlock()
+}
+
+// Aim is the tile under the mouse cursor; the client aims attacks and
+// abilities there.
+func (s *shared) Aim() (world.Pos, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.aim, s.aimOK
 }
 
 func (s *shared) Effects(fx []proto.FX) {
@@ -151,6 +162,9 @@ type Game struct {
 	cols, rows   int
 
 	input   *inputState
+	mouseAt map[ebiten.MouseButton]time.Time
+	aimOK   bool
+	aimTile world.Pos
 	world   *worldRenderer
 	menu    *menuBackdrop
 	last    time.Time
@@ -266,6 +280,7 @@ func (g *Game) Update() error {
 	} else {
 		g.menu.update(dt)
 	}
+	g.updateMouse()
 	return nil
 }
 
@@ -277,6 +292,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.world.drawWorldMap(screen, g.scene, image.Rect(0, 0, g.w, g.h-int(g.cellH)))
 	case g.scene != nil:
 		g.world.draw(screen, g.scene, g.mapRect(g.scene), g.scale)
+		g.drawAim(screen)
 	default:
 		g.menu.draw(screen, g.scale)
 	}

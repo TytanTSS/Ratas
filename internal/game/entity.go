@@ -37,6 +37,7 @@ type ItemStack struct {
 	Qty    int                `json:"qty,omitempty"`
 	Bonus  map[string]float64 `json:"bonus,omitempty"`
 	Suffix string             `json:"suffix,omitempty"`
+	Rarity int                `json:"rarity,omitempty"` // rolled rarity (see rarity.go)
 }
 
 func (s ItemStack) Def() *content.ItemDef { return content.Item(s.Key) }
@@ -57,7 +58,11 @@ func (s ItemStack) Value() int {
 	if d == nil {
 		return 0
 	}
-	return d.Value + len(s.Bonus)*d.Value/2 + 10*len(s.Bonus)
+	v := float64(d.Value + len(s.Bonus)*d.Value/2 + 10*len(s.Bonus))
+	if s.Rarity == 0 && len(s.Bonus) > 0 {
+		return int(v) // a magic item of an old save
+	}
+	return int(v * rarityValue[clampRarity(int(s.ItemRarity()))] / rarityValue[clampRarity(int(defRarity(d)))])
 }
 
 type Buff struct {
@@ -160,6 +165,9 @@ type NPCState struct {
 	Said        map[string]bool    `json:"-"`                // lines already told (avoid repeating)
 	Travel      world.Pos          `json:"travel,omitempty"`
 	TravelUntil float64            `json:"-"`
+	Night       world.Pos          `json:"night,omitempty"`     // citizens: where to spend the night
+	Stock       []ItemStack        `json:"stock,omitempty"`     // city traders: today's rare goods
+	StockDay    int                `json:"stock_day,omitempty"` // the day the stock was laid out
 }
 
 type ProjState struct {
@@ -209,6 +217,7 @@ type Stats struct {
 	AmbushPct float64 // damage bonus from stealth or on a distracted target
 	HealPct   float64 // healing bonus
 	MimicPct  float64 // power of copied abilities
+	Reach     int     // melee attacks reach this many tiles further
 
 	Gear     Gear
 	OffDmg   [2]float64 // second weapon (dual wield)
@@ -318,11 +327,12 @@ func (e *Entity) Recalc() {
 				continue
 			}
 			s.Gear.HasItems = true
-			addMods(mods, d.Stats, 1)
+			k := it.statK()
+			addMods(mods, d.Stats, k)
 			addMods(mods, it.Bonus, 1)
 			switch {
 			case slot == SlotMain && d.Kind == "weapon":
-				s.WeaponDmg = d.Damage
+				s.WeaponDmg = [2]float64{math.Round(d.Damage[0] * k), math.Round(d.Damage[1] * k)}
 				if d.DmgType != "" {
 					s.WeaponType = d.DmgType
 				}
@@ -334,7 +344,7 @@ func (e *Entity) Recalc() {
 				s.Gear.TwoHand = d.Hands >= 2
 				s.Gear.Ranged = d.Weapon == "bow" || d.Weapon == "crossbow"
 			case slot == SlotOff && d.Kind == "weapon":
-				s.OffDmg, s.OffType = d.Damage, d.DmgType
+				s.OffDmg, s.OffType = [2]float64{math.Round(d.Damage[0] * k), math.Round(d.Damage[1] * k)}, d.DmgType
 				if s.OffType == "" {
 					s.OffType = "blunt"
 				}
@@ -407,6 +417,10 @@ func (e *Entity) Recalc() {
 	s.AmbushPct = mods["ambush_pct"]
 	s.HealPct = mods["heal_pct"]
 	s.MimicPct = mods["mimic_pct"]
+	s.Reach = 0
+	if e.Player != nil && s.Gear.Has("melee") {
+		s.Reach = int(mods["reach"])
+	}
 	baseMove, baseAttack := 160.0, 650.0
 	if e.Monster != nil {
 		baseMove, baseAttack = e.Monster.MoveMs, e.Monster.AttackMs
@@ -443,6 +457,7 @@ func (s *Stats) Map() map[string]float64 {
 		"gold_find": s.GoldFind, "dmg_min": s.WeaponDmg[0], "dmg_max": s.WeaponDmg[1],
 		"life_leech": s.LifeLeech, "thorns": s.Thorns, "block": s.Block, "fury": s.Fury,
 		"duel_pct": s.DuelPct, "ambush_pct": s.AmbushPct, "heal_pct": s.HealPct, "mimic_pct": s.MimicPct,
+		"reach": float64(s.Reach),
 	}
 	for _, t := range content.DamageTypes() {
 		m["res_"+t.Key] = s.Resist(t.Key)
@@ -466,6 +481,7 @@ var StatNames = map[string]string{
 	"gold_find": "Находка золота %", "life_leech": "Вампиризм %", "thorns": "Шипы",
 	"block": "Блок %", "fury": "Ярость раненого %", "duel_pct": "Урон один на один %",
 	"ambush_pct": "Урон из засады %", "heal_pct": "Сила лечения %", "mimic_pct": "Сила копий %",
+	"reach": "Дальность удара",
 }
 
 // StatName is the human-readable name of any stat key, including the

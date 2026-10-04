@@ -2,6 +2,7 @@ package client
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,9 +64,11 @@ func TestDialogueVisual(t *testing.T) {
 	s.dump("dialog elder quest")
 	s.key(tcell.KeyEscape)
 	talk("merchant")
-	s.waitFor("Покажи товары", 3*time.Second)
-	s.key(tcell.KeyDown)
-	s.key(tcell.KeyEnter)
+	txt := s.waitFor("Покажи товары", 3*time.Second)
+	// pick the option by its number: the list differs between NPCs
+	if i := strings.Index(txt, ". Покажи товары"); i > 0 {
+		s.rune(rune(txt[i-1]))
+	}
 	s.waitFor("Товары (купить)", 3*time.Second)
 	s.key(tcell.KeyEnter) // buy the first item
 	time.Sleep(300 * time.Millisecond)

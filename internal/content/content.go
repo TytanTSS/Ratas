@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -156,6 +157,7 @@ type ItemDef struct {
 	Hands    int                `json:"hands,omitempty" toml:"hands,omitempty"`       // 2: two-handed weapon
 	Look     string             `json:"look,omitempty" toml:"look,omitempty"`         // how worn gear looks in graphics mode
 	Unique   bool               `json:"unique,omitempty" toml:"unique,omitempty"`     // a named artifact
+	Rarity   string             `json:"rarity,omitempty" toml:"rarity,omitempty"`     // common, uncommon, rare, epic, legendary (artifacts default to legendary)
 	DmgType  string             `json:"dmg_type,omitempty" toml:"dmg_type,omitempty"` // weapon damage type
 	OnHit    *BuffDef           `json:"on_hit,omitempty" toml:"on_hit,omitempty"`     // weapon: applied to targets hit
 	OnHitPct float64            `json:"on_hit_pct,omitempty" toml:"on_hit_pct,omitempty"`
@@ -168,6 +170,10 @@ type ItemDef struct {
 	Depth    int                `json:"depth" toml:"depth"`   // minimal dungeon depth to drop
 	Weight   int                `json:"weight" toml:"weight"` // drop weight, 0 = never random
 	Desc     string             `json:"desc,omitempty" toml:"desc,omitempty"`
+	// DropFrom lists monsters (usually bosses) that drop this item with
+	// DropChance percent (35 by default).
+	DropFrom   []string `json:"drop_from,omitempty" toml:"drop_from,omitempty"`
+	DropChance float64  `json:"drop_chance,omitempty" toml:"drop_chance,omitempty"`
 }
 
 type BranchDef struct {
@@ -178,6 +184,7 @@ type BranchDef struct {
 	Class    string `json:"class,omitempty" toml:"class,omitempty"`       // the class tree this branch belongs to ("" = common)
 	Subclass string `json:"subclass,omitempty" toml:"subclass,omitempty"` // the subclass this branch belongs to
 	Secret   bool   `json:"secret,omitempty" toml:"secret,omitempty"`     // skills are only granted by unique quests
+	Hidden   bool   `json:"hidden,omitempty" toml:"hidden,omitempty"`     // hidden skills of a class, opened by deeds
 }
 
 // SubclassDef is a specialisation chosen inside a class once its class
@@ -204,6 +211,10 @@ type SkillDef struct {
 	Stats    map[string]float64 `json:"stats,omitempty" toml:"stats,omitempty"`       // per rank
 	Grants   string             `json:"grants,omitempty" toml:"grants,omitempty"`     // ability unlocked at rank 1
 	Equip    string             `json:"equip,omitempty" toml:"equip,omitempty"`       // the stats work only with this gear
+	// A hidden skill opens by itself when its deed is done DeedCount times
+	// (see game/deeds.go); its branch is hidden.
+	Deed      string `json:"deed,omitempty" toml:"deed,omitempty"`
+	DeedCount int    `json:"deed_count,omitempty" toml:"deed_count,omitempty"`
 }
 
 type ClassDef struct {
@@ -235,6 +246,16 @@ type NPCRoleDef struct {
 	Combat     string   `json:"combat,omitempty" toml:"combat,omitempty"`   // ally monster definition: the NPC fights monsters
 	World      bool     `json:"world,omitempty" toml:"world,omitempty"`     // wanders the open world instead of living in a village
 	Stories    []string `json:"stories,omitempty" toml:"stories,omitempty"` // "tell me about yourself"
+	// Cities: how many live in a city, the building they work in (temple,
+	// townhall, tavern, armory, smithy, magic, alchemy, jewelry, barracks).
+	CityCount [2]int `json:"city_count,omitempty" toml:"city_count,omitempty"`
+	Building  string `json:"building,omitempty" toml:"building,omitempty"`
+	// Stock is how many random items of StockKinds (item kinds or weapon
+	// types) a trader also sells, rolled with rarities and renewed every day.
+	Stock      int      `json:"stock,omitempty" toml:"stock,omitempty"`
+	StockKinds []string `json:"stock_kinds,omitempty" toml:"stock_kinds,omitempty"`
+	// Services offered in conversation: rest, upgrade, song, bless.
+	Services []string `json:"services,omitempty" toml:"services,omitempty"`
 }
 
 // SquadDef is a mixed group of monsters that fight together: the frontline
@@ -571,6 +592,16 @@ func Index(b Bundle) (*DB, error) {
 			if _, ok := d.items[it]; !ok {
 				problems = append(problems, fmt.Sprintf("monster %q: unknown drop %q", m.Key, it))
 			}
+		}
+	}
+	for _, it := range d.Items {
+		for _, m := range it.DropFrom {
+			if _, ok := d.monsters[m]; !ok {
+				problems = append(problems, fmt.Sprintf("item %q: unknown monster in drop_from %q", it.Key, m))
+			}
+		}
+		if it.Rarity != "" && !slices.Contains(Rarities, it.Rarity) {
+			problems = append(problems, fmt.Sprintf("item %q: unknown rarity %q", it.Key, it.Rarity))
 		}
 	}
 	for _, n := range d.NPCs {

@@ -109,8 +109,18 @@ func (g *Game) killMonster(m *Entity, killer *Entity) {
 		for _, key := range def.Drops {
 			g.dropItem(m.Level, m.Pos, ItemStack{Key: key, Qty: 1})
 		}
+		for _, it := range content.Items() {
+			chance := it.DropChance
+			if chance <= 0 {
+				chance = 35
+			}
+			if slices.Contains(it.DropFrom, def.Key) && g.chance(chance) {
+				g.dropItem(m.Level, m.Pos, ItemStack{Key: it.Key, Qty: 1})
+				g.FX(m.Level, m.Pos, it.Name+"!", 0, RarityColor(int(defRarity(&it))), 2000)
+			}
+		}
 		if isBoss {
-			if st, ok := g.randomItem(depth+2, 100); ok {
+			if st, ok := g.randomItemAtLeast(depth+2, 100, Rare); ok {
 				g.dropItem(m.Level, m.Pos, st)
 			}
 		}
@@ -124,6 +134,7 @@ func (g *Game) killMonster(m *Entity, killer *Entity) {
 		heroes = append(heroes, p.Name)
 		g.GiveXP(p, ms.XP)
 		p.Player.Kills++
+		g.killDeeds(p, m, def, p == kc)
 		if p == killer {
 			g.Log(p, "#e0e0e0", "Вы убили: %s (+%d опыта).", m.Name, ms.XP)
 		} else {
@@ -188,12 +199,26 @@ func (g *Game) meleeAttack(a, d *Entity) {
 // attackFacing attacks the enemy in front or any adjacent enemy; with a bow
 // or crossbow it shoots the nearest enemy in sight.
 func (g *Game) attackFacing(e *Entity) {
+	aim := e.aimed()
+	if aim != nil && *aim != e.Pos {
+		e.Facing = world.DirTowards(e.Pos, *aim)
+	}
 	if e.stats.Gear.Ranged {
-		if t := g.autoTarget(e, &bowShot); t != nil {
+		t := g.autoTarget(e, &bowShot)
+		if aim != nil {
+			t = g.aimTarget(e, &bowShot, *aim)
+		}
+		if t != nil || (aim != nil && *aim != e.Pos) {
 			e.NextAttack = g.Now + e.stats.AttackMs*1.3
 			e.Facing = world.DirTowards(e.Pos, t.Pos)
 			e.Swings++
 			castProjectile(g, e, &bowShot, t)
+			return
+		}
+	}
+	if aim != nil {
+		if o := g.aimTarget(e, &meleeSwing, *aim); o != nil {
+			g.meleeAttack(e, o)
 			return
 		}
 	}
@@ -208,7 +233,52 @@ func (g *Game) attackFacing(e *Entity) {
 			return
 		}
 	}
+	if e.stats.Reach > 0 {
+		// a long reach: the enemy in front first, then the nearest one
+		var best *Entity
+		for _, o := range g.onLevel(e.Level) {
+			if !g.hostile(e, o) || !g.canSee(e, o) || !g.inReach(e, o) {
+				continue
+			}
+			if best == nil || e.Pos.Add(e.Facing.Delta()).DistSq(o.Pos) < e.Pos.Add(e.Facing.Delta()).DistSq(best.Pos) {
+				best = o
+			}
+		}
+		if best != nil {
+			g.meleeAttack(e, best)
+			return
+		}
+	}
 	e.NextAttack = g.Now + 200
+}
+
+// meleeSwing is the basic melee attack, for aiming.
+var meleeSwing = content.AbilityDef{Key: "melee", Kind: "strike"}
+
+// inReach: a melee attack from e reaches o. Next to it always; with a long
+// reach also diagonally and further along a straight line not blocked by walls.
+func (g *Game) inReach(e, o *Entity) bool {
+	dx, dy := iabs(o.Pos.X-e.Pos.X), iabs(o.Pos.Y-e.Pos.Y)
+	if dx+dy == 1 {
+		return true
+	}
+	r := e.stats.Reach
+	if r <= 0 || o.Level != e.Level {
+		return false
+	}
+	if dx == 1 && dy == 1 {
+		return true
+	}
+	if (dx != 0 && dy != 0) || dx+dy > 1+r {
+		return false
+	}
+	l := g.Levels[e.Level]
+	for _, p := range world.LinePoints(e.Pos, o.Pos, dx+dy-1) {
+		if !l.Transparent(p.X, p.Y) {
+			return false
+		}
+	}
+	return true
 }
 
 // bowShot is the basic attack with a bow or crossbow: weapon damage.
@@ -263,9 +333,14 @@ var affixes = []affix{
 	{"add_lightning", "грома", 1.5}, {"add_poison", "яда", 1.5}, {"holy_pct", "праведника", 6}, {"shadow_pct", "тьмы", 6},
 }
 
-// randomItem picks a weighted random item for a depth; equipment may get a
-// random magic bonus with magicChance percent.
+// randomItem picks a weighted random item for a depth; equipment is better
+// than common with magicChance percent (see rollRarityTier).
 func (g *Game) randomItem(depth int, magicChance float64) (ItemStack, bool) {
+	return g.randomItemAtLeast(depth, magicChance, Common)
+}
+
+// randomItemAtLeast is randomItem with a lowest rarity for equipment.
+func (g *Game) randomItemAtLeast(depth int, magicChance float64, least Rarity) (ItemStack, bool) {
 	total := 0
 	for _, it := range content.Items() {
 		if it.Weight > 0 && it.Depth <= depth {
@@ -285,16 +360,8 @@ func (g *Game) randomItem(depth int, magicChance float64) (ItemStack, bool) {
 			continue
 		}
 		st := ItemStack{Key: it.Key, Qty: 1}
-		if slotFor(&it) != "" && g.chance(magicChance) {
-			af := affixes[g.rng.IntN(len(affixes))]
-			v := af.base * (1 + float64(depth)*0.4) * g.roll(0.8, 1.2)
-			if v >= 3 {
-				v = math.Round(v)
-			} else {
-				v = math.Round(v*10) / 10
-			}
-			st.Bonus = map[string]float64{af.stat: v}
-			st.Suffix = af.suffix
+		if slotFor(&it) != "" && !it.Unique {
+			st = g.rollRarity(st, g.rollRarityTier(depth, magicChance, least), depth)
 		}
 		return st, true
 	}
@@ -322,10 +389,11 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 	if a == nil || !c.Alive() {
 		return true
 	}
-	if g.Now < c.Cooldowns[key] {
+	free := c.Player != nil && c.Player.NoCD
+	if g.Now < c.Cooldowns[key] && !free {
 		return false
 	}
-	if c.MP < a.Mana {
+	if c.MP < a.Mana && !free {
 		g.Log(c, "#6090ff", "Недостаточно маны для «%s».", a.Name)
 		return true
 	}
@@ -342,14 +410,29 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 		g.Log(c, "#ff8080", "Неизвестный тип умения: %s.", a.Kind)
 		return true
 	}
+	if aim := c.aimed(); target == nil && aim != nil {
+		if *aim != c.Pos {
+			c.Facing = world.DirTowards(c.Pos, *aim)
+		}
+		target = g.aimTarget(c, a, *aim)
+		if target == nil && a.Kind != "projectile" {
+			target = g.autoTarget(c, a)
+		}
+	}
 	if target == nil {
 		target = g.autoTarget(c, a)
 	}
 	if !fn(g, c, a, target) {
 		return true
 	}
-	c.MP -= a.Mana
-	c.Cooldowns[key] = g.Now + float64(a.CooldownMs)
+	if !free {
+		c.MP -= a.Mana
+		c.Cooldowns[key] = g.Now + float64(a.CooldownMs)
+	}
+	g.deed(c, "casts", 1)
+	if a.Kind == "summon" {
+		g.deed(c, "summons", 1)
+	}
 	return true
 }
 
@@ -361,6 +444,39 @@ func abilityRange(a *content.AbilityDef) int {
 		return 8
 	}
 	return 1
+}
+
+// aimed is the tile a player aims the current action at with the mouse.
+func (e *Entity) aimed() *world.Pos {
+	if e.Player == nil {
+		return nil
+	}
+	return e.Player.aim
+}
+
+// aimTarget finds the enemy at the aimed tile (or right next to it) that the
+// ability can reach.
+func (g *Game) aimTarget(c *Entity, a *content.AbilityDef, aim world.Pos) *Entity {
+	rng := abilityRange(a)
+	l := g.Levels[c.Level]
+	var best *Entity
+	bestD := math.MaxInt
+	for _, o := range g.onLevel(c.Level) {
+		if !g.hostile(c, o) || !g.canSee(c, o) || o.Pos.Dist(aim) > 1 {
+			continue
+		}
+		if rng <= 1 {
+			if !g.inReach(c, o) {
+				continue
+			}
+		} else if c.Pos.Dist(o.Pos) > rng || !world.LOS(l, c.Pos, o.Pos) {
+			continue
+		}
+		if d := o.Pos.DistSq(aim); d < bestD {
+			best, bestD = o, d
+		}
+	}
+	return best
 }
 
 // autoTarget finds the nearest visible enemy in range.
@@ -379,13 +495,14 @@ func (g *Game) autoTarget(c *Entity, a *content.AbilityDef) *Entity {
 			continue
 		}
 		d := c.Pos.DistSq(o.Pos)
-		if c.Pos.Dist(o.Pos) > rng || d >= bestD {
+		if d >= bestD {
 			continue
 		}
-		if rng > 1 && !world.LOS(l, c.Pos, o.Pos) {
-			continue
-		}
-		if rng <= 1 && c.Pos.Manhattan(o.Pos) != 1 {
+		if rng <= 1 {
+			if !g.inReach(c, o) {
+				continue
+			}
+		} else if c.Pos.Dist(o.Pos) > rng || !world.LOS(l, c.Pos, o.Pos) {
 			continue
 		}
 		best, bestD = o, d
@@ -416,6 +533,8 @@ func castProjectile(g *Game, c *Entity, a *content.AbilityDef, target *Entity) b
 	var aim world.Pos
 	if target != nil {
 		aim = target.Pos
+	} else if at := c.aimed(); at != nil {
+		aim = *at
 	} else {
 		d := c.Facing.Delta()
 		aim = world.Pos{X: c.Pos.X + d.X*rng, Y: c.Pos.Y + d.Y*rng}
@@ -571,7 +690,7 @@ func castCleave(g *Game, c *Entity, a *content.AbilityDef, _ *Entity) bool {
 }
 
 func castStrike(g *Game, c *Entity, a *content.AbilityDef, target *Entity) bool {
-	if target == nil || c.Pos.Manhattan(target.Pos) != 1 {
+	if target == nil || !g.inReach(c, target) {
 		g.Log(c, "#808080", "Нет врага рядом для «%s».", a.Name)
 		return false
 	}
@@ -600,10 +719,12 @@ func castStrike(g *Game, c *Entity, a *content.AbilityDef, target *Entity) bool 
 
 func castHeal(g *Game, c *Entity, a *content.AbilityDef, _ *Entity) bool {
 	amount := g.abilityPower(c, a) * (1 + c.stats.HealPct/100)
+	g.deed(c, "heal", int(math.Min(amount, c.MaxHP-c.HP)))
 	g.heal(c, amount)
 	if a.Radius > 0 {
 		for _, o := range g.onLevel(c.Level) {
 			if o != c && o.Alive() && o.Blocks() && g.friendly(c, o) && c.Pos.Dist(o.Pos) <= a.Radius {
+				g.deed(c, "heal", int(math.Min(amount*0.7, o.MaxHP-o.HP)))
 				g.heal(o, amount*0.7)
 			}
 		}
