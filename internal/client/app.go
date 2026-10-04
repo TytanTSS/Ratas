@@ -519,6 +519,7 @@ var LocalServerHook func(*server.Server)
 
 func (a *App) runLocal(g *game.Game, slot string, host bool, name, class string) {
 	srv := server.New(g)
+	srv.AdminHost = a.cfg.Admin
 	srv.SavePath = filepath.Join(config.SavesDir(), slot+".sav")
 	go srv.Run()
 	if LocalServerHook != nil {

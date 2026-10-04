@@ -191,6 +191,10 @@ func (g *Game) damage(src, dst *Entity, d Damage) float64 {
 	if !dst.Alive() || g.Entities[dst.ID] != dst || len(d.Parts) == 0 {
 		return 0
 	}
+	if dst.Player != nil && dst.Player.God {
+		g.provoke(src, dst)
+		return 0
+	}
 	if !d.DoT && src != nil && dst.stats.Dodge > 0 && g.chance(dst.stats.Dodge) {
 		g.FX(dst.Level, dst.Pos, "уклон", 0, "#a0a0ff", 600)
 		return 0

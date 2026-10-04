@@ -42,12 +42,17 @@ func (g *Game) placeUniques(r *rand.Rand) {
 			continue
 		}
 		placed = append(placed, p)
-		g.Spawn(&Entity{
-			Kind: KNPC, Name: u.Name + ", " + lower(u.Title), Glyph: "@", Color: u.Color, Level: "overworld", Pos: p,
-			Faction: FNeutral, HP: 100, MaxHP: 100, Facing: world.DirDown,
-			NPC: &NPCState{Role: "unique", PName: u.Name, Home: p, Unique: u.Key, Gold: 40 + r.IntN(60)},
-		})
+		g.spawnUnique(u, p, 40+r.IntN(60))
 	}
+}
+
+// spawnUnique puts a unique character on the overworld.
+func (g *Game) spawnUnique(u *content.UniqueDef, p world.Pos, gold int) *Entity {
+	return g.Spawn(&Entity{
+		Kind: KNPC, Name: u.Name + ", " + lower(u.Title), Glyph: "@", Color: u.Color, Level: "overworld", Pos: p,
+		Faction: FNeutral, HP: 100, MaxHP: 100, Facing: world.DirDown,
+		NPC: &NPCState{Role: "unique", PName: u.Name, Home: p, Unique: u.Key, Gold: gold},
+	})
 }
 
 func (g *Game) uniqueSpot(r *rand.Rand, l *world.Level, biomes []string, taken []world.Pos) (world.Pos, bool) {

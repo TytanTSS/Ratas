@@ -18,6 +18,9 @@ var BaseStats = []string{
 // ItemKinds are the valid item kinds; equipment kinds are also slot names.
 var ItemKinds = []string{"weapon", "shield", "offhand", "head", "chest", "belt", "legs", "back", "ring", "consumable", "quest", "gold"}
 
+// Rarities are the item rarities from the most common.
+var Rarities = []string{"common", "uncommon", "rare", "epic", "legendary"}
+
 // EquipNeeds are the gear requirements of skills and abilities.
 var EquipNeeds = []string{"", "weapon", "melee", "shield", "twohand_dual", "bow"}
 

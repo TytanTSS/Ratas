@@ -1,0 +1,286 @@
+# Именные артефакты. Редкость задаётся полем rarity (common, uncommon, rare, epic, legendary);
+# артефакты (unique = true) без него считаются легендарными.
+#
+# Как их найти:
+#   drop_from — монстры (обычно боссы), с которых артефакт падает с шансом drop_chance процентов (по умолчанию 35);
+#   weight > 0 — изредка попадается среди обычной добычи начиная с глубины depth;
+#   награды уникальных персонажей — см. uniques.toml.
+
+# ---- Добыча боссов ----
+
+[[items]]
+key = "horde_cleaver"
+name = "Тесак Кровавой Орды"
+glyph = "P"
+color = "#d04a3a"
+kind = "weapon"
+weapon = "axe"
+hands = 2
+unique = true
+damage = [15, 23]
+dmg_type = "slash"
+stats = { str = 5, fury = 30, life_leech = 3, attack_speed = -10 }
+value = 1100
+depth = 99
+weight = 0
+drop_from = ["orc_warlord"]
+desc = "Им вождь орков рубил головы вождям поменьше."
+
+[[items]]
+key = "queens_sting"
+name = "Жало Королевы"
+glyph = "-"
+color = "#a0e060"
+kind = "weapon"
+weapon = "dagger"
+unique = true
+damage = [6, 10]
+dmg_type = "pierce"
+stats = { dex = 4, crit = 8, poison_pct = 25, add_poison = 5 }
+on_hit_pct = 30
+value = 1000
+depth = 99
+weight = 0
+drop_from = ["cave_spider_queen"]
+desc = "Яд на нём не высыхает никогда."
+[items.on_hit]
+key = "queens_venom"
+name = "Яд королевы"
+duration_ms = 5000
+dot_per_sec = 6
+dmg_type = "poison"
+color = "#a0e060"
+
+[[items]]
+key = "morwen_phylactery"
+name = "Филактерия Морвен"
+glyph = "o"
+color = "#9a7aff"
+kind = "offhand"
+look = "orb"
+unique = true
+stats = { int = 5, spell_pct = 18, shadow_pct = 20, max_mp = 30, res_shadow = 15 }
+value = 1100
+depth = 99
+weight = 0
+drop_from = ["lich"]
+desc = "В склянке бьётся то, что осталось от души лича."
+
+[[items]]
+key = "frostbeard_helm"
+name = "Шлем Ледоборода"
+glyph = "^"
+color = "#b8e0ff"
+kind = "head"
+look = "horned"
+unique = true
+stats = { str = 4, vit = 4, armor = 7, res_cold = 30, cold_pct = 15 }
+value = 1000
+depth = 99
+weight = 0
+drop_from = ["frost_jarl"]
+desc = "Иней на рогах не тает даже у кузнечного горна."
+
+[[items]]
+key = "magma_heart"
+name = "Сердце Магмы"
+glyph = "="
+color = "#ff6a2a"
+kind = "ring"
+unique = true
+stats = { fire_pct = 25, add_fire = 5, res_fire = 25, max_hp = 20 }
+value = 1100
+depth = 99
+weight = 0
+drop_from = ["magma_lord"]
+desc = "Перстень тёплый, как живое сердце, и так же стучит."
+
+[[items]]
+key = "ankh_nemes"
+name = "Немес Анх-Тамуна"
+glyph = "^"
+color = "#e8c04a"
+kind = "head"
+look = "nemes"
+unique = true
+stats = { int = 5, spell_pct = 15, res_poison = 25, res_holy = 15, gold_find = 30 }
+value = 1100
+depth = 99
+weight = 0
+drop_from = ["pharaoh"]
+desc = "Золото фараона. Песок в складках пахнет вечностью."
+
+[[items]]
+key = "abyss_edge"
+name = "Клинок Бездны"
+glyph = "|"
+color = "#b05aff"
+kind = "weapon"
+weapon = "sword"
+unique = true
+damage = [11, 17]
+dmg_type = "slash"
+stats = { shadow_pct = 25, add_shadow = 7, life_leech = 4, crit = 5 }
+value = 1300
+depth = 99
+weight = 0
+drop_from = ["demon_lord"]
+desc = "Меч Азгарота. Лезвие пьёт свет вокруг себя."
+
+# ---- Редкие находки ----
+
+[[items]]
+key = "dawnguard_spear"
+name = "Копьё Рассветного стража"
+glyph = "/"
+color = "#ffd27a"
+kind = "weapon"
+weapon = "spear"
+hands = 2
+unique = true
+damage = [12, 18]
+dmg_type = "pierce"
+stats = { reach = 1, melee_pct = 15, holy_pct = 15, add_holy = 4 }
+value = 1200
+depth = 5
+weight = 1
+desc = "Древко длиннее любого копья: им достают врага через клетку."
+
+[[items]]
+key = "first_thunder_staff"
+name = "Посох Первого Грома"
+glyph = "|"
+color = "#fff06a"
+kind = "weapon"
+weapon = "staff"
+hands = 2
+unique = true
+damage = [5, 9]
+dmg_type = "lightning"
+stats = { int = 6, lightning_pct = 30, add_lightning = 6, spell_pct = 10 }
+value = 1200
+depth = 5
+weight = 1
+desc = "Говорят, в него ударила самая первая молния мира."
+
+[[items]]
+key = "mountain_anvil"
+name = "Молот Горной Наковальни"
+glyph = "T"
+color = "#c0a080"
+kind = "weapon"
+weapon = "hammer"
+hands = 2
+unique = true
+damage = [16, 24]
+dmg_type = "blunt"
+stats = { str = 8, crit_mult = 0.5, armor = 4, attack_speed = -15 }
+on_hit_pct = 15
+value = 1200
+depth = 6
+weight = 1
+desc = "Им ковали горы, пока горы были мягкими."
+[items.on_hit]
+key = "anvil_daze"
+name = "Оглушение"
+duration_ms = 1200
+stun = true
+color = "#c0a080"
+
+[[items]]
+key = "dawn_cuirass"
+name = "Кираса Рассвета"
+glyph = "["
+color = "#ffe0a0"
+kind = "chest"
+look = "plate"
+unique = true
+stats = { armor = 14, vit = 4, res_shadow = 25, holy_pct = 15, max_hp = 30 }
+value = 1200
+depth = 6
+weight = 1
+desc = "Её полировали солнечным светом сто лет."
+
+[[items]]
+key = "wanderer_boots"
+name = "Сапоги Странника"
+glyph = "]"
+color = "#a08060"
+kind = "legs"
+rarity = "epic"
+stats = { move_speed = 15, dodge = 6, vit = 2 }
+value = 500
+depth = 3
+weight = 1
+desc = "Им всё равно, куда идти. Лишь бы идти."
+
+[[items]]
+key = "seven_winds_ring"
+name = "Кольцо Семи Ветров"
+glyph = "="
+color = "#a0ffe0"
+kind = "ring"
+rarity = "epic"
+stats = { attack_speed = 10, move_speed = 8, res_lightning = 15, dex = 3 }
+value = 500
+depth = 3
+weight = 1
+desc = "Внутри кольца свистит ветер."
+
+[[items]]
+key = "alchemist_belt"
+name = "Пояс Алхимика"
+glyph = "-"
+color = "#80d0a0"
+kind = "belt"
+rarity = "epic"
+stats = { heal_pct = 25, hp_regen = 1.5, res_poison = 20, max_mp = 15 }
+value = 500
+depth = 3
+weight = 1
+desc = "В кармашках позвякивают пустые склянки."
+
+[[items]]
+key = "ash_mantle"
+name = "Плащ Пепла"
+glyph = "("
+color = "#7a6a6a"
+kind = "back"
+look = "cape"
+rarity = "epic"
+stats = { res_fire = 25, fire_pct = 12, add_fire = 3 }
+value = 500
+depth = 4
+weight = 1
+desc = "Края плаща тлеют, но не сгорают."
+
+[[items]]
+key = "thousand_faces_mask"
+name = "Маска Тысячи Лиц"
+glyph = "^"
+color = "#ff8ad8"
+kind = "head"
+look = "hood"
+rarity = "epic"
+stats = { dodge = 8, ambush_pct = 20, mimic_pct = 20, dex = 3 }
+value = 550
+depth = 4
+weight = 1
+desc = "Каждый раз, когда её снимаешь, под ней чужое лицо."
+
+[[items]]
+key = "hunter_crossbow"
+name = "Арбалет Ловчего"
+glyph = "}"
+color = "#c09a6a"
+kind = "weapon"
+weapon = "crossbow"
+hands = 2
+rarity = "epic"
+damage = [10, 16]
+dmg_type = "pierce"
+stats = { ranged_pct = 25, crit = 6, sight = 1 }
+value = 550
+depth = 4
+weight = 1
+desc = "Болты сами находят щель в доспехе."

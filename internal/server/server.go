@@ -40,6 +40,8 @@ type Server struct {
 	SavePath      string // autosave target ("" = none)
 	AutosaveEvery time.Duration
 	Logf          func(format string, args ...any)
+	AdminHost     bool // the host's own player may use admin commands
+	AdminAll      bool // every player may use admin commands (a test server)
 
 	inbox    chan event
 	sessions map[*session]bool
@@ -273,8 +275,21 @@ func (s *Server) handle(ev event) {
 			}
 			return
 		}
+		if c := m.Cmd; c.Kind == "admin" || (c.Kind == "chat" && strings.HasPrefix(c.Text, "/")) {
+			if s.isAdmin(sess) {
+				s.Game.Log(sess.entity, "#a0a0a0", "> %s", c.Text)
+				s.Game.Admin(sess.entity, c.Text)
+			} else {
+				s.Game.Log(sess.entity, "#ff8080", "Команды доступны только в режиме администратора (запуск с флагом -admin).")
+			}
+			return
+		}
 		s.Game.Command(sess.entity, *m.Cmd)
 	}
+}
+
+func (s *Server) isAdmin(sess *session) bool {
+	return s.AdminAll || (sess.host && s.AdminHost)
 }
 
 func validName(n string) string {
@@ -308,7 +323,7 @@ func (s *Server) join(sess *session, class string) {
 		s.drop(sess)
 		return
 	}
-	w := &proto.Welcome{Content: s.content, WorldName: s.Game.WorldName, Seed: s.Game.Seed, AI: s.Game.Brain.Enabled(), Host: sess.host}
+	w := &proto.Welcome{Content: s.content, WorldName: s.Game.WorldName, Seed: s.Game.Seed, AI: s.Game.Brain.Enabled(), Host: sess.host, Admin: s.isAdmin(sess)}
 	if needClass {
 		sess.pending = true
 		w.NeedClass = true
@@ -333,9 +348,10 @@ func (s *Server) tick() {
 			continue
 		}
 		m := &proto.ServerMsg{}
-		if sess.level != e.Level {
+		if sess.level != e.Level || e.Player.Resync {
 			m.Level = g.LevelData(e)
 			sess.level = e.Level
+			e.Player.Resync = false
 		} else {
 			_, m.Tiles = g.FrameFX(e.Level)
 		}

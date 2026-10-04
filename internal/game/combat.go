@@ -109,8 +109,18 @@ func (g *Game) killMonster(m *Entity, killer *Entity) {
 		for _, key := range def.Drops {
 			g.dropItem(m.Level, m.Pos, ItemStack{Key: key, Qty: 1})
 		}
+		for _, it := range content.Items() {
+			chance := it.DropChance
+			if chance <= 0 {
+				chance = 35
+			}
+			if slices.Contains(it.DropFrom, def.Key) && g.chance(chance) {
+				g.dropItem(m.Level, m.Pos, ItemStack{Key: it.Key, Qty: 1})
+				g.FX(m.Level, m.Pos, it.Name+"!", 0, RarityColor(int(defRarity(&it))), 2000)
+			}
+		}
 		if isBoss {
-			if st, ok := g.randomItem(depth+2, 100); ok {
+			if st, ok := g.randomItemAtLeast(depth+2, 100, Rare); ok {
 				g.dropItem(m.Level, m.Pos, st)
 			}
 		}
@@ -319,9 +329,14 @@ var affixes = []affix{
 	{"add_lightning", "грома", 1.5}, {"add_poison", "яда", 1.5}, {"holy_pct", "праведника", 6}, {"shadow_pct", "тьмы", 6},
 }
 
-// randomItem picks a weighted random item for a depth; equipment may get a
-// random magic bonus with magicChance percent.
+// randomItem picks a weighted random item for a depth; equipment is better
+// than common with magicChance percent (see rollRarityTier).
 func (g *Game) randomItem(depth int, magicChance float64) (ItemStack, bool) {
+	return g.randomItemAtLeast(depth, magicChance, Common)
+}
+
+// randomItemAtLeast is randomItem with a lowest rarity for equipment.
+func (g *Game) randomItemAtLeast(depth int, magicChance float64, least Rarity) (ItemStack, bool) {
 	total := 0
 	for _, it := range content.Items() {
 		if it.Weight > 0 && it.Depth <= depth {
@@ -341,16 +356,8 @@ func (g *Game) randomItem(depth int, magicChance float64) (ItemStack, bool) {
 			continue
 		}
 		st := ItemStack{Key: it.Key, Qty: 1}
-		if slotFor(&it) != "" && g.chance(magicChance) {
-			af := affixes[g.rng.IntN(len(affixes))]
-			v := af.base * (1 + float64(depth)*0.4) * g.roll(0.8, 1.2)
-			if v >= 3 {
-				v = math.Round(v)
-			} else {
-				v = math.Round(v*10) / 10
-			}
-			st.Bonus = map[string]float64{af.stat: v}
-			st.Suffix = af.suffix
+		if slotFor(&it) != "" && !it.Unique {
+			st = g.rollRarity(st, g.rollRarityTier(depth, magicChance, least), depth)
 		}
 		return st, true
 	}
@@ -378,10 +385,11 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 	if a == nil || !c.Alive() {
 		return true
 	}
-	if g.Now < c.Cooldowns[key] {
+	free := c.Player != nil && c.Player.NoCD
+	if g.Now < c.Cooldowns[key] && !free {
 		return false
 	}
-	if c.MP < a.Mana {
+	if c.MP < a.Mana && !free {
 		g.Log(c, "#6090ff", "Недостаточно маны для «%s».", a.Name)
 		return true
 	}
@@ -413,8 +421,10 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 	if !fn(g, c, a, target) {
 		return true
 	}
-	c.MP -= a.Mana
-	c.Cooldowns[key] = g.Now + float64(a.CooldownMs)
+	if !free {
+		c.MP -= a.Mana
+		c.Cooldowns[key] = g.Now + float64(a.CooldownMs)
+	}
 	return true
 }
 

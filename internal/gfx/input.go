@@ -21,7 +21,7 @@ var specialKeys = map[ebiten.Key]tcell.Key{
 	ebiten.KeyArrowLeft: tcell.KeyLeft, ebiten.KeyArrowRight: tcell.KeyRight,
 	ebiten.KeyEnter: tcell.KeyEnter, ebiten.KeyNumpadEnter: tcell.KeyEnter,
 	ebiten.KeyEscape: tcell.KeyEscape, ebiten.KeyBackspace: tcell.KeyBackspace2,
-	ebiten.KeyTab: tcell.KeyTab, ebiten.KeyF1: tcell.KeyF1, ebiten.KeyF5: tcell.KeyF5,
+	ebiten.KeyTab: tcell.KeyTab, ebiten.KeyF1: tcell.KeyF1, ebiten.KeyF5: tcell.KeyF5, ebiten.KeyF9: tcell.KeyF9,
 	ebiten.KeyDelete: tcell.KeyDelete, ebiten.KeyHome: tcell.KeyHome, ebiten.KeyEnd: tcell.KeyEnd,
 }
 

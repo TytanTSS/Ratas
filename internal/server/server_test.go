@@ -179,3 +179,54 @@ func TestMultiplayer(t *testing.T) {
 		t.Fatal("guest character should be kept offline for rejoining")
 	}
 }
+
+// Only the host of a world started with -admin may use admin commands.
+func TestAdminRights(t *testing.T) {
+	db, _, err := content.LoadDefault("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content.Use(db)
+	g := game.New(5, nil)
+	srv := New(g)
+	srv.AdminHost = true
+	go srv.Run()
+	defer srv.Stop()
+	if err := srv.Listen("127.0.0.1:0"); err != nil {
+		t.Fatal(err)
+	}
+	host := newTestClient(t, srv.ConnectLocal())
+	host.send(proto.ClientMsg{Hello: &proto.Hello{Name: "Хозяин", Class: "warrior", Version: proto.Version}})
+	w := host.until("host welcome", func(m *proto.ServerMsg) bool { return m.Welcome != nil && m.Level != nil })
+	if !w.Welcome.Admin {
+		t.Fatal("the host is not an admin")
+	}
+	raw, err := net.Dial("tcp", srv.Listening())
+	if err != nil {
+		t.Fatal(err)
+	}
+	guest := newTestClient(t, proto.NewConn(raw))
+	guest.send(proto.ClientMsg{Hello: &proto.Hello{Name: "Гость", Class: "rogue", Version: proto.Version}})
+	w = guest.until("guest welcome", func(m *proto.ServerMsg) bool { return m.Welcome != nil && m.Level != nil })
+	if w.Welcome.Admin {
+		t.Fatal("a guest is an admin")
+	}
+
+	guest.send(proto.ClientMsg{Cmd: &proto.Command{Kind: "chat", Text: "/gold 500"}})
+	guest.until("refusal", func(m *proto.ServerMsg) bool {
+		for _, l := range m.Logs {
+			if strings.Contains(l.Text, "-admin") {
+				return true
+			}
+		}
+		return false
+	})
+	host.send(proto.ClientMsg{Cmd: &proto.Command{Kind: "chat", Text: "/gold 500"}})
+	host.until("gold", func(m *proto.ServerMsg) bool { return m.Snap != nil && m.Snap.Self.Gold >= 500 })
+	guest.drain()
+	if guest.snap.Self.Gold >= 500 {
+		t.Fatal("the guest got the gold")
+	}
+	host.send(proto.ClientMsg{Cmd: &proto.Command{Kind: "admin", Text: "/reveal"}})
+	host.until("level resent", func(m *proto.ServerMsg) bool { return m.Level != nil })
+}

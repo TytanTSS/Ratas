@@ -112,6 +112,8 @@ func (p *play) draw() {
 		p.drawClass()
 	case modeParty:
 		p.drawParty()
+	case modeAdmin:
+		p.drawAdmin()
 	case modeChat:
 		y := L.logY - 1
 		c.fill(0, y, L.mapW, 1, ' ', cText, cPanel)
@@ -328,6 +330,9 @@ func (p *play) drawTop(L layout) {
 	}
 	if p.welcome.AI {
 		right += " • ИИ вкл"
+	}
+	if p.admin() {
+		right = "АДМИН (F9) • " + right
 	}
 	if p.isHost() {
 		if a := p.srv.Listening(); a != "" {

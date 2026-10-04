@@ -37,6 +37,7 @@ type ItemStack struct {
 	Qty    int                `json:"qty,omitempty"`
 	Bonus  map[string]float64 `json:"bonus,omitempty"`
 	Suffix string             `json:"suffix,omitempty"`
+	Rarity int                `json:"rarity,omitempty"` // rolled rarity (see rarity.go)
 }
 
 func (s ItemStack) Def() *content.ItemDef { return content.Item(s.Key) }
@@ -57,7 +58,11 @@ func (s ItemStack) Value() int {
 	if d == nil {
 		return 0
 	}
-	return d.Value + len(s.Bonus)*d.Value/2 + 10*len(s.Bonus)
+	v := float64(d.Value + len(s.Bonus)*d.Value/2 + 10*len(s.Bonus))
+	if s.Rarity == 0 && len(s.Bonus) > 0 {
+		return int(v) // a magic item of an old save
+	}
+	return int(v * rarityValue[clampRarity(int(s.ItemRarity()))] / rarityValue[clampRarity(int(defRarity(d)))])
 }
 
 type Buff struct {
@@ -318,11 +323,12 @@ func (e *Entity) Recalc() {
 				continue
 			}
 			s.Gear.HasItems = true
-			addMods(mods, d.Stats, 1)
+			k := it.statK()
+			addMods(mods, d.Stats, k)
 			addMods(mods, it.Bonus, 1)
 			switch {
 			case slot == SlotMain && d.Kind == "weapon":
-				s.WeaponDmg = d.Damage
+				s.WeaponDmg = [2]float64{math.Round(d.Damage[0] * k), math.Round(d.Damage[1] * k)}
 				if d.DmgType != "" {
 					s.WeaponType = d.DmgType
 				}
@@ -334,7 +340,7 @@ func (e *Entity) Recalc() {
 				s.Gear.TwoHand = d.Hands >= 2
 				s.Gear.Ranged = d.Weapon == "bow" || d.Weapon == "crossbow"
 			case slot == SlotOff && d.Kind == "weapon":
-				s.OffDmg, s.OffType = d.Damage, d.DmgType
+				s.OffDmg, s.OffType = [2]float64{math.Round(d.Damage[0] * k), math.Round(d.Damage[1] * k)}, d.DmgType
 				if s.OffType == "" {
 					s.OffType = "blunt"
 				}

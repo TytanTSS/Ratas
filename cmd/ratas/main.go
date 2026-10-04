@@ -38,6 +38,7 @@ func main() {
 		port      = flag.Int("port", 0, "порт сервера (по умолчанию из настроек, 7777)")
 		mods      = flag.String("mods", "", "каталог модов (по умолчанию ~/.ratas/mods)")
 		showVer   = flag.Bool("version", false, "показать версию и выйти")
+		admin     = flag.Bool("admin", false, "режим администратора для тестирования: команды /god, /give, /tp... (окно команд — F9)")
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Ратас — ASCII RPG в терминале.\n\nИспользование:\n  ratas                 главное меню в терминале\n  ratas -gfx            графический режим в отдельном окне\n  ratas -new -host      новый мир, открытый для друзей\n  ratas -join IP:7777   присоединиться к другу\n  ratas -server -seed 1 выделенный сервер\n\nФлаги:\n")
@@ -53,6 +54,7 @@ func main() {
 	}
 
 	cfg := config.Load()
+	cfg.Admin = *admin
 	if *port != 0 {
 		cfg.Port = *port
 	}
@@ -68,7 +70,7 @@ func main() {
 	content.Use(db)
 
 	if *dedicated {
-		runDedicated(cfg, *seed, *load, loaded, *noPvP)
+		runDedicated(cfg, *seed, *load, loaded, *noPvP, *admin)
 		return
 	}
 	opts := client.StartOptions{Join: *join, Host: *host, Load: *load, New: *newGame, Seed: *seed, Name: *name, Class: *class, NoPvP: *noPvP}
@@ -85,7 +87,7 @@ func main() {
 	}
 }
 
-func runDedicated(cfg *config.Config, seed int64, slot string, mods []string, noPvP bool) {
+func runDedicated(cfg *config.Config, seed int64, slot string, mods []string, noPvP, admin bool) {
 	log.SetFlags(log.Ltime)
 	if len(mods) > 0 {
 		log.Printf("моды: %s", strings.Join(mods, ", "))
@@ -116,6 +118,10 @@ func runDedicated(cfg *config.Config, seed int64, slot string, mods []string, no
 	}
 	srv := server.New(g)
 	srv.Logf = log.Printf
+	if admin {
+		srv.AdminAll = true
+		log.Printf("режим администратора: команды доступны всем игрокам")
+	}
 	srv.SavePath = filepath.Join(config.SavesDir(), slot+".sav")
 	go srv.Run()
 	if err := srv.Listen(fmt.Sprintf(":%d", cfg.Port)); err != nil {

@@ -30,6 +30,7 @@ const (
 	modeTrade
 	modeClass
 	modeParty
+	modeAdmin
 )
 
 type logEntry struct {
@@ -371,6 +372,8 @@ func (p *play) key(ev *tcell.EventKey) {
 		p.keyChar(ev)
 	case modeParty:
 		p.keyParty(ev)
+	case modeAdmin:
+		p.keyAdmin(ev)
 	default: // help, map, journal
 		if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyEnter || ev.Key() == tcell.KeyRune {
 			p.mode = modeGame
@@ -402,6 +405,11 @@ func (p *play) keyGame(ev *tcell.EventKey) {
 		return
 	case tcell.KeyF5:
 		p.quickSave()
+		return
+	case tcell.KeyF9:
+		if p.admin() {
+			p.mode, p.sel = modeAdmin, 0
+		}
 		return
 	case tcell.KeyTab:
 		p.mode = modeMap

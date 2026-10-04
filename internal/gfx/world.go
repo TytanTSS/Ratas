@@ -624,6 +624,21 @@ func (r *worldRenderer) drawEntity(dst *ebiten.Image, v *view, sc *client.Scene,
 		bob := math.Sin(r.t*3+float64(e.ID)) * ts * 0.05
 		r.shadow(dst, cx, cy+ts*0.3, ts*0.5, ts*0.18, 0.35)
 		r.glow(dst, cx, cy+bob, ts*0.42, c, 0.3)
+		if e.Rarity >= uint8(game.Uncommon) {
+			// rare loot shines in its rarity color; legendary with a beam of light
+			rc := hex(game.RarityColor(int(e.Rarity)))
+			pulse := 0.75 + 0.25*math.Sin(r.t*3+float64(e.ID))
+			r.glow(dst, cx, cy+bob, ts*(0.45+0.12*float64(e.Rarity)), rc, (0.18+0.1*float64(e.Rarity))*pulse)
+			if e.Rarity >= uint8(game.Epic) {
+				for i := 1; i <= 4; i++ {
+					r.glow(dst, cx, cy-ts*0.35*float64(i), ts*0.3, rc, 0.16*pulse/float64(i))
+				}
+			}
+			c = hex(game.RarityColor(0))
+			if d := content.Item(e.Def); d != nil {
+				c = hex(d.Color)
+			}
+		}
 		icon := r.icon(e.Glyph, c, e.Def)
 		k := ts / spx * 0.85
 		op := &ebiten.DrawImageOptions{}

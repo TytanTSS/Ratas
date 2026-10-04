@@ -84,6 +84,9 @@ type PlayerState struct {
 	Copied    string             `json:"-"` // ability copied by a mimic
 	CopiedLvl int                `json:"-"`
 	CopiedEnd float64            `json:"-"`
+	God       bool               `json:"-"` // admin: takes no damage
+	NoCD      bool               `json:"-"` // admin: abilities cost nothing and have no cooldown
+	Resync    bool               `json:"-"` // send the level again (the explored map changed)
 	aim       *world.Pos         // the tile the current attack or ability is aimed at
 	region    int
 	lastHint  string
@@ -685,9 +688,15 @@ func (g *Game) pickup(e *Entity) {
 			if d := st.Def(); d != nil && d.Kind == "quest" {
 				defer g.updateRelics(e)
 			}
-			if st.Qty > 1 {
+			switch r := st.ItemRarity(); {
+			case st.Qty > 1:
 				g.Log(e, "#c0c0ff", "Подобрано: %s ×%d.", st.Name(), st.Qty)
-			} else {
+			case r > Common && slotFor(st.Def()) != "":
+				g.Log(e, RarityColor(int(r)), "Подобрано: %s (%s).", st.Name(), lower(RarityName(int(r))))
+				if r >= Epic {
+					g.FX(e.Level, e.Pos, RarityName(int(r))+"!", 0, RarityColor(int(r)), 1500)
+				}
+			default:
 				g.Log(e, "#c0c0ff", "Подобрано: %s.", st.Name())
 			}
 			g.Remove(o)

@@ -61,6 +61,7 @@ type Welcome struct {
 	Seed      int64
 	AI        bool
 	Host      bool
+	Admin     bool // admin commands are allowed (testing mode)
 }
 
 type LevelData struct {
@@ -96,6 +97,7 @@ type EntityView struct {
 	Dead    bool     // a fallen hero
 	Ally    bool     // a party member or one of your summons
 	Gear    []string // heroes: right hand, left hand, head, chest, back
+	Rarity  uint8    // items on the ground: 0 common .. 4 legendary
 }
 
 // Status bits of an entity (visual effects).
@@ -201,15 +203,16 @@ type SelfView struct {
 }
 
 type ItemView struct {
-	Key   string
-	Name  string
-	Glyph rune
-	Color string
-	Kind  string
-	Qty   int
-	Value int
-	Desc  string
-	Hands int
+	Key    string
+	Name   string
+	Glyph  rune
+	Color  string
+	Kind   string
+	Qty    int
+	Value  int
+	Desc   string
+	Hands  int
+	Rarity int8 // 0 common .. 4 legendary
 }
 
 type QuestView struct {

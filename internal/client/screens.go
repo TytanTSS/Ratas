@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gdamore/tcell/v2"
+
 	"ratas/internal/content"
 	"ratas/internal/game"
 	"ratas/internal/proto"
@@ -27,6 +29,14 @@ func (p *play) footer(x, y, w int, text string) {
 var kindNames = map[string]string{
 	"weapon": "оружие", "shield": "щит, левая рука", "offhand": "левая рука", "head": "голова", "chest": "грудь",
 	"belt": "пояс", "legs": "ноги", "back": "спина", "ring": "кольцо", "consumable": "расходуемое", "quest": "предмет задания",
+}
+
+// rarityCol colors item names by rarity; common items stay plain.
+func rarityCol(it *proto.ItemView) tcell.Color {
+	if it.Rarity <= 0 {
+		return cText
+	}
+	return col(game.RarityColor(int(it.Rarity)))
 }
 
 func (p *play) drawInventory() {
@@ -55,7 +65,7 @@ func (p *play) drawInventory() {
 		if it.Qty > 1 {
 			name += fmt.Sprintf(" ×%d", it.Qty)
 		}
-		c.textClip(x+4+runeLen(label), ry, listW-4-runeLen(label), name, cText, bg)
+		c.textClip(x+4+runeLen(label), ry, listW-4-runeLen(label), name, rarityCol(it), bg)
 	}
 	cy := y + 2
 	c.text(x+2, cy-1, "Надето", cAccent, cPanel)
@@ -92,7 +102,7 @@ func (p *play) drawInventory() {
 	dw := w - listW - 5
 	if selected != nil {
 		c.put(dx, y+2, selected.Glyph, col(selected.Color), cPanel)
-		c.textClip(dx+2, y+2, dw-2, selected.Name, col(selected.Color), cPanel)
+		c.textClip(dx+2, y+2, dw-2, selected.Name, rarityCol(selected), cPanel)
 		kind := kindNames[selected.Kind]
 		if selected.Kind == "weapon" {
 			kind = "одноручное оружие"
@@ -628,7 +638,7 @@ func (p *play) drawTrade() {
 			detail, price = &it, t.Price
 		}
 		c.put(x+2, ry, t.Item.Glyph, col(t.Item.Color), bg)
-		c.textClip(x+4, ry, colW-11, t.Item.Name, cText, bg)
+		c.textClip(x+4, ry, colW-11, t.Item.Name, rarityCol(&t.Item), bg)
 		pc := col("#ffd700")
 		if t.Price > p.snap.Self.Gold {
 			pc = cBad
@@ -654,12 +664,13 @@ func (p *play) drawTrade() {
 		if it.Qty > 1 {
 			name += fmt.Sprintf(" ×%d", it.Qty)
 		}
-		c.textClip(rx+3, ry, colW-10, name, cText, bg)
+		c.textClip(rx+3, ry, colW-10, name, rarityCol(&it), bg)
 		c.text(rx+colW-6, ry, fmt.Sprintf("%5d", pr), col("#ffd700"), bg)
 	}
 	if detail != nil {
 		dy := y + h - 5
-		c.textClip(x+2, dy, w-4, detail.Name+" — "+detail.Desc, cText, cPanel)
+		n := c.text(x+2, dy, detail.Name, rarityCol(detail), cPanel)
+		c.textClip(n, dy, w-2-n+x, " — "+detail.Desc, cText, cPanel)
 		verb := "Купить"
 		if p.tradeCol == 1 {
 			verb = "Продать"

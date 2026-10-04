@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -154,6 +155,7 @@ type ItemDef struct {
 	Hands    int                `json:"hands,omitempty" toml:"hands,omitempty"`       // 2: two-handed weapon
 	Look     string             `json:"look,omitempty" toml:"look,omitempty"`         // how worn gear looks in graphics mode
 	Unique   bool               `json:"unique,omitempty" toml:"unique,omitempty"`     // a named artifact
+	Rarity   string             `json:"rarity,omitempty" toml:"rarity,omitempty"`     // common, uncommon, rare, epic, legendary (artifacts default to legendary)
 	DmgType  string             `json:"dmg_type,omitempty" toml:"dmg_type,omitempty"` // weapon damage type
 	OnHit    *BuffDef           `json:"on_hit,omitempty" toml:"on_hit,omitempty"`     // weapon: applied to targets hit
 	OnHitPct float64            `json:"on_hit_pct,omitempty" toml:"on_hit_pct,omitempty"`
@@ -166,6 +168,10 @@ type ItemDef struct {
 	Depth    int                `json:"depth" toml:"depth"`   // minimal dungeon depth to drop
 	Weight   int                `json:"weight" toml:"weight"` // drop weight, 0 = never random
 	Desc     string             `json:"desc,omitempty" toml:"desc,omitempty"`
+	// DropFrom lists monsters (usually bosses) that drop this item with
+	// DropChance percent (35 by default).
+	DropFrom   []string `json:"drop_from,omitempty" toml:"drop_from,omitempty"`
+	DropChance float64  `json:"drop_chance,omitempty" toml:"drop_chance,omitempty"`
 }
 
 type BranchDef struct {
@@ -551,6 +557,16 @@ func Index(b Bundle) (*DB, error) {
 			if _, ok := d.items[it]; !ok {
 				problems = append(problems, fmt.Sprintf("monster %q: unknown drop %q", m.Key, it))
 			}
+		}
+	}
+	for _, it := range d.Items {
+		for _, m := range it.DropFrom {
+			if _, ok := d.monsters[m]; !ok {
+				problems = append(problems, fmt.Sprintf("item %q: unknown monster in drop_from %q", it.Key, m))
+			}
+		}
+		if it.Rarity != "" && !slices.Contains(Rarities, it.Rarity) {
+			problems = append(problems, fmt.Sprintf("item %q: unknown rarity %q", it.Key, it.Rarity))
 		}
 	}
 	for _, n := range d.NPCs {
