@@ -1,0 +1,163 @@
+# Пример мода: новая ветка навыков, класс, предмет и монстр.
+# Положите файл в ~/.ratas/mods/ — записи с новым key добавятся, с существующим заменят встроенные.
+
+# ---- Ветка ----
+
+[[branches]]
+key = "necromancy"
+name = "Некромантия"
+color = "#b070ff"
+desc = "Запретное искусство смерти и костей."
+class = "necromancer"
+
+# ---- Умения ----
+
+[[abilities]]
+key = "bone_spear"
+name = "Костяное копьё"
+kind = "projectile"
+mana = 5
+cooldown_ms = 1200
+dmg_type = "pierce"
+damage = [6, 10]
+scale = "int"
+scale_k = 1.1
+range = 10
+speed_ms = 30
+glyph = "dir"
+color = "#f0f0d0"
+desc = "Пронзающий осколок кости."
+
+[[abilities]]
+key = "plague"
+name = "Чума"
+kind = "nova"
+mana = 14
+cooldown_ms = 9000
+radius = 4
+dmg_type = "poison"
+damage = [2, 4]
+scale = "int"
+scale_k = 0.5
+glyph = "%"
+color = "#8ad04a"
+desc = "Облако болезни: долго травит всех врагов вокруг."
+[abilities.on_hit]
+key = "plague"
+name = "Чума"
+duration_ms = 6000
+dot_per_sec = 4
+dmg_type = "poison"
+stats = { res_poison = -20 }
+color = "#8ad04a"
+
+[[abilities]]
+key = "dark_pact"
+name = "Тёмный договор"
+kind = "buff"
+mana = 0
+cooldown_ms = 30000
+color = "#b070ff"
+desc = "Сила заклинаний растёт, но жизнь утекает."
+[abilities.buff]
+key = "dark_pact"
+name = "Договор"
+duration_ms = 10000
+stats = { spell_pct = 50, hp_regen = -2 }
+color = "#b070ff"
+
+# ---- Навыки ----
+
+[[skills]]
+key = "grave_lore"
+name = "Знание могил"
+branch = "necromancy"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Магия смерти крепнет."
+stats = { spell_pct = 5, max_mp = 5 }
+
+[[skills]]
+key = "bone_spear"
+name = "Костяное копьё"
+branch = "necromancy"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["grave_lore"]
+grants = "bone_spear"
+desc = "Открывает костяное копьё."
+stats = { spell_pct = 4 }
+
+[[skills]]
+key = "plague"
+name = "Чума"
+branch = "necromancy"
+tier = 3
+max_rank = 1
+level = 6
+requires = ["bone_spear"]
+grants = "plague"
+desc = "Открывает чумное облако."
+
+[[skills]]
+key = "dark_pact"
+name = "Тёмный договор"
+branch = "necromancy"
+tier = 4
+max_rank = 1
+level = 9
+requires = ["plague"]
+grants = "dark_pact"
+desc = "Сила в обмен на жизнь."
+
+# ---- Класс ----
+
+[[classes]]
+key = "necromancer"
+name = "Некромант"
+color = "#b070ff"
+model = "necromancer"
+desc = "Повелевает костью и болезнью. Хрупок, но опасен."
+attrs = { str = 2, dex = 4, int = 10, vit = 5 }
+abilities = ["bone_spear"]
+items = ["staff", "robe", "potion_mana", "potion_mana"]
+
+# ---- Предметы ----
+
+[[items]]
+key = "tome_of_bones"
+name = "Костяной фолиант"
+glyph = "?"
+color = "#e0e0b0"
+kind = "offhand"
+look = "book"
+stats = { int = 4, spell_pct = 15, shadow_pct = 10 }
+value = 150
+depth = 3
+weight = 2
+
+# ---- Монстры ----
+
+[[monsters]]
+key = "bone_golem"
+name = "Костяной голем"
+glyph = "G"
+color = "#e8e8c0"
+hp = 80
+damage = [7, 12]
+armor = 6
+move_ms = 280
+attack_ms = 1300
+xp = 50
+sight = 7
+behavior = "melee"
+depth = [3, 9]
+dmg_type = "blunt"
+model = "golem"
+resist = { pierce = 50, poison = 100, blunt = -40, holy = -40 }
+themes = ["crypt"]
+gold = [5, 15]
+weight = 3
+group = [1, 1]

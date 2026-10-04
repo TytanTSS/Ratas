@@ -1,0 +1,1664 @@
+# Предметы. kind — слот или вид предмета:
+#   weapon (правая рука; hands = 2 — двуручное, занимает и левую), shield и offhand (левая рука),
+#   head, chest, belt, legs, back, ring (4 слота), consumable, quest (предметы заданий), gold.
+# Одноручное оружие можно взять и в левую руку — получится бой с двумя оружиями.
+# weapon — тип оружия, look — как вещь выглядит на герое в графическом режиме.
+# depth — с какой глубины подземелья предмет выпадает, weight — частота (0 = только из особых мест).
+
+# ---- Золото ----
+
+[[items]]
+key = "gold"
+name = "Золото"
+glyph = "$"
+color = "#ffd700"
+kind = "gold"
+value = 1
+depth = 0
+weight = 0
+
+# ---- Расходуемое ----
+
+[[items]]
+key = "potion_health"
+name = "Зелье здоровья"
+glyph = "!"
+color = "#ff4a4a"
+kind = "consumable"
+heal = 35
+value = 15
+depth = 0
+weight = 12
+desc = "Восстанавливает 35 здоровья."
+
+[[items]]
+key = "potion_health_big"
+name = "Большое зелье здоровья"
+glyph = "!"
+color = "#ff1a6a"
+kind = "consumable"
+heal = 90
+value = 45
+depth = 3
+weight = 5
+desc = "Восстанавливает 90 здоровья."
+
+[[items]]
+key = "potion_mana"
+name = "Зелье маны"
+glyph = "!"
+color = "#4a8aff"
+kind = "consumable"
+mana = 30
+value = 15
+depth = 0
+weight = 9
+desc = "Восстанавливает 30 маны."
+
+[[items]]
+key = "bread"
+name = "Хлеб"
+glyph = "%"
+color = "#d0a060"
+kind = "consumable"
+heal = 12
+value = 4
+depth = 0
+weight = 6
+desc = "Простая еда. +12 здоровья."
+
+[[items]]
+key = "meat"
+name = "Жареное мясо"
+glyph = "%"
+color = "#c8643a"
+kind = "consumable"
+heal = 25
+value = 8
+depth = 0
+weight = 5
+desc = "Сытно. +25 здоровья."
+
+[[items]]
+key = "potion_fire_res"
+name = "Зелье огнестойкости"
+glyph = "!"
+color = "#ff8a3a"
+kind = "consumable"
+value = 30
+depth = 1
+weight = 4
+desc = "+50% сопротивления огню на минуту."
+[items.buff]
+key = "fire_ward"
+name = "Огнестойкость"
+duration_ms = 60000
+stats = { res_fire = 50 }
+color = "#ff8a3a"
+
+[[items]]
+key = "potion_frost_res"
+name = "Согревающее зелье"
+glyph = "!"
+color = "#8ad8ff"
+kind = "consumable"
+value = 30
+depth = 1
+weight = 4
+desc = "+50% сопротивления холоду на минуту."
+[items.buff]
+key = "frost_ward"
+name = "Тепло"
+duration_ms = 60000
+stats = { res_cold = 50 }
+color = "#8ad8ff"
+
+[[items]]
+key = "antidote"
+name = "Противоядие"
+glyph = "!"
+color = "#9ae04a"
+kind = "consumable"
+value = 20
+depth = 0
+weight = 5
+effect = "cleanse"
+desc = "Снимает яды, проклятия и прочие недуги; +50% сопротивления яду на 30 с."
+[items.buff]
+key = "antidote"
+name = "Противоядие"
+duration_ms = 30000
+stats = { res_poison = 50 }
+color = "#9ae04a"
+
+[[items]]
+key = "elixir_strength"
+name = "Эликсир силы"
+glyph = "!"
+color = "#ff6a4a"
+kind = "consumable"
+value = 40
+depth = 2
+weight = 3
+desc = "+5 силы и +15% урона в ближнем бою на 90 с."
+[items.buff]
+key = "elixir_str"
+name = "Сила быка"
+duration_ms = 90000
+stats = { str = 5, melee_pct = 15 }
+color = "#ff6a4a"
+
+[[items]]
+key = "elixir_wits"
+name = "Эликсир разума"
+glyph = "!"
+color = "#6aa8ff"
+kind = "consumable"
+value = 40
+depth = 2
+weight = 3
+desc = "+5 интеллекта и +15% силы магии на 90 с."
+[items.buff]
+key = "elixir_int"
+name = "Ясный разум"
+duration_ms = 90000
+stats = { int = 5, spell_pct = 15 }
+color = "#6aa8ff"
+
+[[items]]
+key = "elixir_swift"
+name = "Эликсир проворства"
+glyph = "!"
+color = "#7ad94a"
+kind = "consumable"
+value = 40
+depth = 2
+weight = 3
+desc = "+5 ловкости и +15% скорости бега на 90 с."
+[items.buff]
+key = "elixir_dex"
+name = "Проворство"
+duration_ms = 90000
+stats = { dex = 5, move_speed = 15 }
+color = "#7ad94a"
+
+[[items]]
+key = "holy_water"
+name = "Святая вода"
+glyph = "!"
+color = "#fff0b0"
+kind = "consumable"
+heal = 20
+value = 35
+depth = 1
+weight = 3
+desc = "+20 здоровья; минуту оружие бьёт светом, тьма ранит слабее."
+[items.buff]
+key = "blessed"
+name = "Благословение"
+duration_ms = 60000
+stats = { res_shadow = 40, add_holy = 4 }
+color = "#fff0b0"
+
+[[items]]
+key = "fire_oil"
+name = "Огненное масло"
+glyph = "!"
+color = "#ff5a1a"
+kind = "consumable"
+value = 40
+depth = 2
+weight = 3
+desc = "Две минуты ваше оружие пылает: +6 урона огнём."
+[items.buff]
+key = "fire_oil"
+name = "Пылающее оружие"
+duration_ms = 120000
+stats = { add_fire = 6 }
+color = "#ff5a1a"
+
+[[items]]
+key = "poison_vial"
+name = "Флакон яда"
+glyph = "!"
+color = "#6ad03a"
+kind = "consumable"
+value = 35
+depth = 1
+weight = 3
+desc = "Две минуты ваше оружие отравлено: +5 урона ядом."
+[items.buff]
+key = "poison_coat"
+name = "Отравленное оружие"
+duration_ms = 120000
+stats = { add_poison = 5 }
+color = "#6ad03a"
+
+[[items]]
+key = "scroll_return"
+name = "Свиток возвращения"
+glyph = "?"
+color = "#e0d0a0"
+kind = "consumable"
+value = 30
+depth = 0
+weight = 4
+effect = "return"
+desc = "Мгновенно переносит к колодцу первой деревни."
+
+[[items]]
+key = "ancient_tome"
+name = "Древний фолиант"
+glyph = "?"
+color = "#e0b0ff"
+kind = "consumable"
+value = 90
+depth = 2
+weight = 2
+effect = "xp"
+amount = 40
+desc = "Даёт 40% опыта, нужного для текущего уровня."
+
+[[items]]
+key = "tome_oblivion"
+name = "Зелье забвения"
+glyph = "!"
+color = "#c0c0ff"
+kind = "consumable"
+value = 150
+depth = 3
+weight = 1
+effect = "respec"
+desc = "Сбрасывает навыки, подклассы и характеристики: все очки возвращаются."
+
+# ---- Предметы заданий ----
+
+[[items]]
+key = "sun_shard"
+name = "Осколок солнца"
+glyph = "*"
+color = "#ffc040"
+kind = "quest"
+value = 0
+depth = 99
+weight = 0
+desc = "Тёплый осколок, светящийся изнутри. Нужен отшельнику-солнцепоклоннику."
+
+[[items]]
+key = "mirror_shard"
+name = "Осколок зеркала"
+glyph = "*"
+color = "#ff8ad8"
+kind = "quest"
+value = 0
+depth = 99
+weight = 0
+desc = "В нём отражается не вы. Нужен Безликой."
+
+[[items]]
+key = "seal_rune"
+name = "Руна печати"
+glyph = "*"
+color = "#e0c8ff"
+kind = "quest"
+value = 0
+depth = 99
+weight = 0
+desc = "Камень с древней руной. Нужен хранителю печатей."
+
+[[items]]
+key = "titan_bone"
+name = "Кость титана"
+glyph = "*"
+color = "#e8e0c8"
+kind = "quest"
+value = 0
+depth = 99
+weight = 0
+desc = "Огромная окаменевшая кость. Нужна костоправу великанов."
+
+# ---- Оружие: одноручное ----
+
+[[items]]
+key = "dagger"
+name = "Кинжал"
+glyph = "|"
+color = "#c0c0d0"
+kind = "weapon"
+weapon = "dagger"
+damage = [2, 5]
+dmg_type = "pierce"
+stats = { crit = 4, attack_speed = 10 }
+value = 20
+depth = 0
+weight = 5
+
+[[items]]
+key = "short_sword"
+name = "Короткий меч"
+glyph = "|"
+color = "#d0d0e0"
+kind = "weapon"
+weapon = "sword"
+damage = [3, 6]
+dmg_type = "slash"
+value = 25
+depth = 0
+weight = 5
+
+[[items]]
+key = "mace"
+name = "Булава"
+glyph = "T"
+color = "#b8b8c8"
+kind = "weapon"
+weapon = "mace"
+damage = [4, 7]
+dmg_type = "blunt"
+value = 30
+depth = 0
+weight = 4
+
+[[items]]
+key = "axe"
+name = "Боевой топор"
+glyph = "P"
+color = "#d0b0a0"
+kind = "weapon"
+weapon = "axe"
+damage = [5, 9]
+dmg_type = "slash"
+stats = { attack_speed = -10 }
+value = 45
+depth = 1
+weight = 4
+
+[[items]]
+key = "long_sword"
+name = "Длинный меч"
+glyph = "|"
+color = "#f0f0ff"
+kind = "weapon"
+weapon = "sword"
+damage = [5, 9]
+dmg_type = "slash"
+value = 60
+depth = 2
+weight = 4
+
+[[items]]
+key = "holy_mace"
+name = "Освящённая булава"
+glyph = "T"
+color = "#fff0b0"
+kind = "weapon"
+weapon = "mace"
+damage = [5, 9]
+dmg_type = "blunt"
+stats = { add_holy = 5, holy_pct = 15 }
+value = 170
+depth = 3
+weight = 2
+
+[[items]]
+key = "flame_sword"
+name = "Пылающий меч"
+glyph = "|"
+color = "#ff8a3a"
+kind = "weapon"
+weapon = "sword"
+damage = [5, 9]
+dmg_type = "slash"
+stats = { add_fire = 4 }
+on_hit_pct = 20
+value = 180
+depth = 3
+weight = 2
+[items.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 3
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[items]]
+key = "venom_dagger"
+name = "Ядовитый кинжал"
+glyph = "|"
+color = "#9ae04a"
+kind = "weapon"
+weapon = "dagger"
+damage = [3, 6]
+dmg_type = "pierce"
+stats = { crit = 5, attack_speed = 10 }
+on_hit_pct = 30
+value = 150
+depth = 2
+weight = 2
+[items.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 4000
+dot_per_sec = 3
+dmg_type = "poison"
+stats = { res_poison = -10 }
+color = "#9ae04a"
+
+[[items]]
+key = "vampire_blade"
+name = "Вампирский клинок"
+glyph = "|"
+color = "#d03a5a"
+kind = "weapon"
+weapon = "sword"
+damage = [5, 9]
+dmg_type = "slash"
+stats = { life_leech = 6 }
+value = 220
+depth = 4
+weight = 1
+
+[[items]]
+key = "elven_blade"
+name = "Эльфийский клинок"
+glyph = "|"
+color = "#a0ffd0"
+kind = "weapon"
+weapon = "sword"
+damage = [6, 10]
+dmg_type = "slash"
+stats = { dex = 3, crit = 5, attack_speed = 10 }
+value = 140
+depth = 4
+weight = 2
+
+[[items]]
+key = "crystal_wand"
+name = "Хрустальный жезл"
+glyph = "/"
+color = "#a0e8ff"
+kind = "weapon"
+weapon = "wand"
+damage = [2, 4]
+dmg_type = "blunt"
+stats = { spell_pct = 10, cold_pct = 20, max_mp = 15 }
+value = 130
+depth = 2
+weight = 2
+
+[[items]]
+key = "bone_wand"
+name = "Костяной жезл"
+glyph = "/"
+color = "#e0e0c0"
+kind = "weapon"
+weapon = "wand"
+damage = [2, 4]
+dmg_type = "blunt"
+stats = { shadow_pct = 20, spell_pct = 8, life_leech = 2 }
+value = 130
+depth = 2
+weight = 2
+
+[[items]]
+key = "sun_blade"
+name = "Клинок Рассвета"
+glyph = "|"
+color = "#ffe08a"
+kind = "weapon"
+weapon = "sword"
+damage = [8, 13]
+dmg_type = "slash"
+stats = { add_holy = 8, holy_pct = 15, res_shadow = 20 }
+value = 600
+depth = 99
+weight = 0
+
+# ---- Оружие: двуручное ----
+
+[[items]]
+key = "staff"
+name = "Посох ученика"
+glyph = "/"
+color = "#b08a5a"
+kind = "weapon"
+weapon = "staff"
+hands = 2
+damage = [2, 4]
+dmg_type = "blunt"
+stats = { spell_pct = 10, max_mp = 10 }
+value = 25
+depth = 0
+weight = 4
+
+[[items]]
+key = "rune_staff"
+name = "Рунический посох"
+glyph = "/"
+color = "#c080ff"
+kind = "weapon"
+weapon = "staff"
+hands = 2
+damage = [3, 6]
+dmg_type = "blunt"
+stats = { spell_pct = 25, int = 3, max_mp = 20, arcane_pct = 15 }
+value = 140
+depth = 3
+weight = 2
+
+[[items]]
+key = "ember_staff"
+name = "Посох углей"
+glyph = "/"
+color = "#ff7a3a"
+kind = "weapon"
+weapon = "staff"
+hands = 2
+damage = [3, 5]
+dmg_type = "blunt"
+stats = { fire_pct = 25, spell_pct = 10, int = 2 }
+value = 160
+depth = 3
+weight = 2
+
+[[items]]
+key = "totem_staff"
+name = "Тотемный посох"
+glyph = "/"
+color = "#7ad0ff"
+kind = "weapon"
+weapon = "staff"
+hands = 2
+damage = [3, 5]
+dmg_type = "blunt"
+stats = { lightning_pct = 20, spell_pct = 8, mp_regen = 0.4 }
+value = 120
+depth = 2
+weight = 2
+
+[[items]]
+key = "spear"
+name = "Копьё"
+glyph = "/"
+color = "#c8c0a0"
+kind = "weapon"
+weapon = "spear"
+hands = 2
+damage = [6, 10]
+dmg_type = "pierce"
+stats = { crit = 3 }
+value = 40
+depth = 1
+weight = 4
+
+[[items]]
+key = "greatsword"
+name = "Двуручный меч"
+glyph = "|"
+color = "#e8e8f8"
+kind = "weapon"
+weapon = "sword"
+hands = 2
+damage = [9, 15]
+dmg_type = "slash"
+stats = { attack_speed = -10 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "great_axe"
+name = "Секира"
+glyph = "P"
+color = "#d8b8a0"
+kind = "weapon"
+weapon = "axe"
+hands = 2
+damage = [11, 17]
+dmg_type = "slash"
+stats = { attack_speed = -15, crit = 3 }
+value = 110
+depth = 3
+weight = 3
+
+[[items]]
+key = "war_hammer"
+name = "Боевой молот"
+glyph = "T"
+color = "#a0a0b0"
+kind = "weapon"
+weapon = "hammer"
+hands = 2
+damage = [10, 16]
+dmg_type = "blunt"
+stats = { attack_speed = -20, str = 2 }
+on_hit_pct = 10
+value = 100
+depth = 3
+weight = 3
+[items.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 800
+stun = true
+color = "#ffe080"
+
+[[items]]
+key = "frost_axe"
+name = "Ледяной топор"
+glyph = "P"
+color = "#8ad8ff"
+kind = "weapon"
+weapon = "axe"
+hands = 2
+damage = [9, 14]
+dmg_type = "slash"
+stats = { add_cold = 5, attack_speed = -10 }
+on_hit_pct = 25
+value = 200
+depth = 4
+weight = 2
+[items.on_hit]
+key = "chill"
+name = "Холод"
+duration_ms = 2500
+stats = { move_speed = -40, attack_speed = -20 }
+color = "#a0e0ff"
+
+[[items]]
+key = "storm_hammer"
+name = "Громовой молот"
+glyph = "T"
+color = "#fff06a"
+kind = "weapon"
+weapon = "hammer"
+hands = 2
+damage = [11, 17]
+dmg_type = "blunt"
+stats = { add_lightning = 6, str = 2, attack_speed = -20 }
+on_hit_pct = 15
+value = 260
+depth = 5
+weight = 1
+[items.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 1000
+stun = true
+color = "#ffe080"
+
+[[items]]
+key = "reaper_scythe"
+name = "Коса жнеца"
+glyph = "/"
+color = "#9a7aff"
+kind = "weapon"
+weapon = "scythe"
+hands = 2
+damage = [9, 15]
+dmg_type = "slash"
+stats = { add_shadow = 6, shadow_pct = 20, attack_speed = -10 }
+value = 280
+depth = 5
+weight = 1
+
+[[items]]
+key = "hunting_bow"
+name = "Охотничий лук"
+glyph = ")"
+color = "#c0a070"
+kind = "weapon"
+weapon = "bow"
+hands = 2
+damage = [3, 6]
+dmg_type = "pierce"
+stats = { ranged_pct = 20, dex = 2 }
+value = 60
+depth = 1
+weight = 3
+
+[[items]]
+key = "longbow"
+name = "Длинный лук"
+glyph = ")"
+color = "#d8b880"
+kind = "weapon"
+weapon = "bow"
+hands = 2
+damage = [4, 8]
+dmg_type = "pierce"
+stats = { ranged_pct = 30, dex = 3, pierce_pct = 10 }
+value = 140
+depth = 3
+weight = 2
+
+[[items]]
+key = "crossbow"
+name = "Арбалет"
+glyph = "}"
+color = "#b09070"
+kind = "weapon"
+weapon = "crossbow"
+hands = 2
+damage = [7, 11]
+dmg_type = "pierce"
+stats = { ranged_pct = 15, attack_speed = -25, crit = 4 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "heavy_crossbow"
+name = "Тяжёлый арбалет"
+glyph = "}"
+color = "#8a8a9a"
+kind = "weapon"
+weapon = "crossbow"
+hands = 2
+damage = [11, 17]
+dmg_type = "pierce"
+stats = { ranged_pct = 25, attack_speed = -35, crit = 6 }
+value = 190
+depth = 4
+weight = 2
+
+# ---- Левая рука: щиты и предметы магов ----
+
+[[items]]
+key = "wooden_shield"
+name = "Деревянный щит"
+glyph = "0"
+color = "#a0784a"
+kind = "shield"
+look = "round"
+stats = { armor = 2, block = 8 }
+value = 15
+depth = 0
+weight = 5
+
+[[items]]
+key = "round_shield"
+name = "Круглый щит"
+glyph = "0"
+color = "#a8b0c0"
+kind = "shield"
+look = "round"
+stats = { armor = 3, block = 12 }
+value = 45
+depth = 1
+weight = 4
+
+[[items]]
+key = "kite_shield"
+name = "Каплевидный щит"
+glyph = "0"
+color = "#4a6aaa"
+kind = "shield"
+look = "kite"
+stats = { armor = 5, block = 15, res_physical = 3 }
+value = 110
+depth = 3
+weight = 3
+
+[[items]]
+key = "tower_shield"
+name = "Башенный щит"
+glyph = "0"
+color = "#8a8a9a"
+kind = "shield"
+look = "tower"
+stats = { armor = 8, block = 20, move_speed = -5 }
+value = 170
+depth = 4
+weight = 2
+
+[[items]]
+key = "holy_symbol"
+name = "Священный символ"
+glyph = "+"
+color = "#ffe08a"
+kind = "offhand"
+look = "symbol"
+stats = { heal_pct = 10, holy_pct = 5 }
+value = 25
+depth = 0
+weight = 4
+
+[[items]]
+key = "grimoire"
+name = "Гримуар"
+glyph = "?"
+color = "#8a4aaa"
+kind = "offhand"
+look = "book"
+stats = { spell_pct = 8, shadow_pct = 8 }
+value = 60
+depth = 1
+weight = 3
+
+[[items]]
+key = "magic_orb"
+name = "Магическая сфера"
+glyph = "o"
+color = "#7ab0ff"
+kind = "offhand"
+look = "orb"
+stats = { spell_pct = 10, max_mp = 15 }
+value = 70
+depth = 1
+weight = 3
+
+# ---- Голова ----
+
+[[items]]
+key = "leather_cap"
+name = "Кожаная шапка"
+glyph = "^"
+color = "#8a6040"
+kind = "head"
+look = "cap"
+stats = { armor = 1 }
+value = 10
+depth = 0
+weight = 5
+
+[[items]]
+key = "rogue_hood"
+name = "Капюшон плута"
+glyph = "^"
+color = "#3c3c4a"
+kind = "head"
+look = "hood"
+stats = { dodge = 3, crit = 2 }
+value = 25
+depth = 0
+weight = 4
+
+[[items]]
+key = "wizard_hat"
+name = "Шляпа мага"
+glyph = "^"
+color = "#3a56b0"
+kind = "head"
+look = "wizard"
+stats = { max_mp = 10, spell_pct = 5 }
+value = 25
+depth = 0
+weight = 4
+
+[[items]]
+key = "priest_mitre"
+name = "Митра"
+glyph = "^"
+color = "#f0e8d0"
+kind = "head"
+look = "mitre"
+stats = { heal_pct = 8, max_mp = 8 }
+value = 40
+depth = 1
+weight = 3
+
+[[items]]
+key = "iron_helmet"
+name = "Железный шлем"
+glyph = "^"
+color = "#a8b0c0"
+kind = "head"
+look = "helmet"
+stats = { armor = 3 }
+value = 35
+depth = 1
+weight = 4
+
+[[items]]
+key = "horned_helm"
+name = "Рогатый шлем"
+glyph = "^"
+color = "#8a8a98"
+kind = "head"
+look = "horned"
+stats = { armor = 4, melee_pct = 5 }
+value = 80
+depth = 2
+weight = 3
+
+[[items]]
+key = "knight_helm"
+name = "Рыцарский шлем"
+glyph = "^"
+color = "#d0d8e8"
+kind = "head"
+look = "helmet"
+stats = { armor = 5, res_slash = 5 }
+value = 120
+depth = 3
+weight = 2
+
+[[items]]
+key = "fur_hat"
+name = "Меховая шапка"
+glyph = "^"
+color = "#c8a880"
+kind = "head"
+look = "fur_hat"
+stats = { armor = 1, res_cold = 15 }
+value = 25
+depth = 0
+weight = 3
+
+[[items]]
+key = "desert_turban"
+name = "Тюрбан кочевника"
+glyph = "^"
+color = "#f0e4c8"
+kind = "head"
+look = "turban"
+stats = { res_fire = 15 }
+value = 25
+depth = 1
+weight = 3
+
+[[items]]
+key = "circlet_focus"
+name = "Обруч сосредоточения"
+glyph = "^"
+color = "#c8d0ff"
+kind = "head"
+look = "circlet"
+stats = { int = 2, mp_regen = 0.4 }
+value = 90
+depth = 2
+weight = 2
+
+[[items]]
+key = "crown_of_morwen"
+name = "Корона Морвен"
+glyph = "^"
+color = "#ff4aff"
+kind = "head"
+look = "crown"
+stats = { int = 6, spell_pct = 30, max_mp = 30, res_cold = 20 }
+value = 500
+depth = 99
+weight = 0
+
+[[items]]
+key = "pharaoh_mask"
+name = "Маска фараона"
+glyph = "^"
+color = "#ffd060"
+kind = "head"
+look = "nemes"
+stats = { int = 5, res_all = 10, spell_pct = 20 }
+value = 500
+depth = 99
+weight = 0
+
+[[items]]
+key = "demon_horn"
+name = "Рогатый венец демона"
+glyph = "^"
+color = "#ff2a5a"
+kind = "head"
+look = "horned"
+stats = { fire_pct = 25, shadow_pct = 25, res_fire = 25 }
+value = 500
+depth = 99
+weight = 0
+
+# ---- Грудь ----
+
+[[items]]
+key = "robe"
+name = "Мантия"
+glyph = "["
+color = "#6a6aff"
+kind = "chest"
+look = "robe"
+stats = { armor = 1, max_mp = 15, mp_regen = 0.3 }
+value = 20
+depth = 0
+weight = 4
+
+[[items]]
+key = "priest_robe"
+name = "Ряса жреца"
+glyph = "["
+color = "#ece8dc"
+kind = "chest"
+look = "robe"
+stats = { armor = 2, max_mp = 10, heal_pct = 5 }
+value = 25
+depth = 0
+weight = 3
+
+[[items]]
+key = "leather_armor"
+name = "Кожаная броня"
+glyph = "["
+color = "#a0703a"
+kind = "chest"
+look = "leather"
+stats = { armor = 3 }
+value = 25
+depth = 0
+weight = 5
+
+[[items]]
+key = "desert_robes"
+name = "Одеяния кочевника"
+glyph = "["
+color = "#e0c080"
+kind = "chest"
+look = "robe"
+stats = { armor = 2, res_fire = 20, move_speed = 5 }
+value = 60
+depth = 1
+weight = 3
+
+[[items]]
+key = "chain_mail"
+name = "Кольчуга"
+glyph = "["
+color = "#c0c0c0"
+kind = "chest"
+look = "chain"
+stats = { armor = 6, res_slash = 10, move_speed = -5 }
+value = 70
+depth = 2
+weight = 4
+
+[[items]]
+key = "plate_armor"
+name = "Латы"
+glyph = "["
+color = "#e0e0f0"
+kind = "chest"
+look = "plate"
+stats = { armor = 11, res_slash = 15, res_pierce = 10, move_speed = -10 }
+value = 160
+depth = 4
+weight = 2
+
+[[items]]
+key = "spiked_armor"
+name = "Шипастый доспех"
+glyph = "["
+color = "#a8a8b8"
+kind = "chest"
+look = "plate"
+stats = { armor = 7, thorns = 6, move_speed = -5 }
+value = 150
+depth = 3
+weight = 2
+
+[[items]]
+key = "shadow_leather"
+name = "Доспех теней"
+glyph = "["
+color = "#6a5a8a"
+kind = "chest"
+look = "leather"
+stats = { armor = 4, dodge = 8, crit = 3, res_shadow = 15 }
+value = 150
+depth = 3
+weight = 2
+
+[[items]]
+key = "bone_armor"
+name = "Костяной доспех"
+glyph = "["
+color = "#e0e0c8"
+kind = "chest"
+look = "plate"
+stats = { armor = 6, res_poison = 30, res_shadow = 15 }
+value = 140
+depth = 3
+weight = 2
+
+[[items]]
+key = "archmage_robe"
+name = "Мантия архимага"
+glyph = "["
+color = "#9a6aff"
+kind = "chest"
+look = "robe"
+stats = { armor = 2, max_mp = 30, spell_pct = 15, res_magic = 20 }
+value = 220
+depth = 4
+weight = 1
+
+[[items]]
+key = "holy_plate"
+name = "Освящённые латы"
+glyph = "["
+color = "#fff0c0"
+kind = "chest"
+look = "plate"
+stats = { armor = 10, res_shadow = 30, res_magic = 10, hp_regen = 0.5, move_speed = -8 }
+value = 300
+depth = 5
+weight = 1
+
+[[items]]
+key = "dragonscale"
+name = "Драконья чешуя"
+glyph = "["
+color = "#ff6a3a"
+kind = "chest"
+look = "plate"
+stats = { armor = 9, res_fire = 50, res_elemental = 10 }
+value = 450
+depth = 99
+weight = 0
+
+# ---- Ноги ----
+
+[[items]]
+key = "cloth_pants"
+name = "Холщовые штаны"
+glyph = "]"
+color = "#7a6a5a"
+kind = "legs"
+look = "cloth"
+stats = { max_mp = 5 }
+value = 8
+depth = 0
+weight = 5
+
+[[items]]
+key = "leather_pants"
+name = "Кожаные штаны"
+glyph = "]"
+color = "#7a5232"
+kind = "legs"
+look = "leather"
+stats = { armor = 1, dodge = 2 }
+value = 18
+depth = 0
+weight = 5
+
+[[items]]
+key = "silent_leggings"
+name = "Бесшумные поножи"
+glyph = "]"
+color = "#4a4a5a"
+kind = "legs"
+look = "leather"
+stats = { move_speed = 6, dodge = 3 }
+value = 70
+depth = 2
+weight = 3
+
+[[items]]
+key = "enchanted_trousers"
+name = "Зачарованные шаровары"
+glyph = "]"
+color = "#6a5ab0"
+kind = "legs"
+look = "cloth"
+stats = { spell_pct = 6, max_mp = 10 }
+value = 70
+depth = 2
+weight = 3
+
+[[items]]
+key = "chain_leggings"
+name = "Кольчужные поножи"
+glyph = "]"
+color = "#b0b0b8"
+kind = "legs"
+look = "chain"
+stats = { armor = 3 }
+value = 50
+depth = 2
+weight = 3
+
+[[items]]
+key = "plate_greaves"
+name = "Латные поножи"
+glyph = "]"
+color = "#d8d8e8"
+kind = "legs"
+look = "plate"
+stats = { armor = 5, res_pierce = 5, move_speed = -3 }
+value = 120
+depth = 4
+weight = 2
+
+# ---- Пояс ----
+
+[[items]]
+key = "leather_belt"
+name = "Кожаный пояс"
+glyph = "-"
+color = "#8a5a32"
+kind = "belt"
+stats = { max_hp = 10 }
+value = 12
+depth = 0
+weight = 5
+
+[[items]]
+key = "alchemist_belt"
+name = "Пояс алхимика"
+glyph = "-"
+color = "#8ad04a"
+kind = "belt"
+stats = { hp_regen = 0.4, mp_regen = 0.4, res_poison = 10 }
+value = 60
+depth = 1
+weight = 3
+
+[[items]]
+key = "sash_wisdom"
+name = "Кушак мудрости"
+glyph = "-"
+color = "#6a8aff"
+kind = "belt"
+stats = { int = 2, max_mp = 15 }
+value = 70
+depth = 2
+weight = 3
+
+[[items]]
+key = "amulet_fury"
+name = "Пояс ярости"
+glyph = "-"
+color = "#ff6040"
+kind = "belt"
+stats = { melee_pct = 15, crit = 3 }
+value = 120
+depth = 3
+weight = 2
+
+[[items]]
+key = "amulet_elements"
+name = "Пояс стихий"
+glyph = "-"
+color = "#ff80ff"
+kind = "belt"
+stats = { res_elemental = 15 }
+value = 140
+depth = 3
+weight = 2
+
+[[items]]
+key = "titan_girdle"
+name = "Ремень великана"
+glyph = "-"
+color = "#c8a070"
+kind = "belt"
+stats = { str = 3, max_hp = 25 }
+value = 150
+depth = 4
+weight = 2
+
+[[items]]
+key = "grom_tusk"
+name = "Пояс Грома"
+glyph = "-"
+color = "#ff4a2a"
+kind = "belt"
+stats = { str = 6, melee_pct = 25, max_hp = 30 }
+value = 500
+depth = 99
+weight = 0
+
+# ---- Спина ----
+
+[[items]]
+key = "travel_cloak"
+name = "Дорожный плащ"
+glyph = "("
+color = "#7a6a50"
+kind = "back"
+look = "cape"
+stats = { move_speed = 4, res_cold = 5 }
+value = 15
+depth = 0
+weight = 5
+
+[[items]]
+key = "fur_cloak"
+name = "Меховой плащ"
+glyph = "("
+color = "#c8a880"
+kind = "back"
+look = "cape"
+stats = { armor = 2, res_cold = 25 }
+value = 40
+depth = 0
+weight = 4
+
+[[items]]
+key = "ranger_cloak"
+name = "Плащ следопыта"
+glyph = "("
+color = "#5a9a4a"
+kind = "back"
+look = "cape"
+stats = { dodge = 6, move_speed = 6, res_poison = 10 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "amulet_wind"
+name = "Плащ ветров"
+glyph = "("
+color = "#a0ffff"
+kind = "back"
+look = "cape"
+stats = { move_speed = 12, dodge = 4 }
+value = 120
+depth = 2
+weight = 2
+
+[[items]]
+key = "shadow_cloak"
+name = "Плащ теней"
+glyph = "("
+color = "#3a3048"
+kind = "back"
+look = "cape"
+stats = { dodge = 6, crit = 3, ambush_pct = 10 }
+value = 130
+depth = 3
+weight = 2
+
+[[items]]
+key = "mantle_light"
+name = "Мантия света"
+glyph = "("
+color = "#fff0b0"
+kind = "back"
+look = "cape"
+stats = { res_shadow = 20, holy_pct = 8, heal_pct = 5 }
+value = 130
+depth = 3
+weight = 2
+
+[[items]]
+key = "champion_cape"
+name = "Плащ чемпиона"
+glyph = "("
+color = "#c02a2a"
+kind = "back"
+look = "cape"
+stats = { melee_pct = 10, max_hp = 15 }
+value = 160
+depth = 4
+weight = 2
+
+# ---- Кольца ----
+
+[[items]]
+key = "ring_vigor"
+name = "Кольцо бодрости"
+glyph = "="
+color = "#ff8080"
+kind = "ring"
+stats = { max_hp = 20, hp_regen = 0.3 }
+value = 80
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_mind"
+name = "Кольцо разума"
+glyph = "="
+color = "#8080ff"
+kind = "ring"
+stats = { int = 3, mp_regen = 0.5 }
+value = 80
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_strength"
+name = "Кольцо силы"
+glyph = "="
+color = "#ff6a4a"
+kind = "ring"
+stats = { str = 3 }
+value = 70
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_agility"
+name = "Кольцо ловкости"
+glyph = "="
+color = "#7ad94a"
+kind = "ring"
+stats = { dex = 3 }
+value = 70
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_protection"
+name = "Кольцо защиты"
+glyph = "="
+color = "#c0c8e0"
+kind = "ring"
+stats = { armor = 2, res_all = 3 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "ring_precision"
+name = "Кольцо точности"
+glyph = "="
+color = "#ffff8a"
+kind = "ring"
+stats = { crit = 3, crit_mult = 0.1 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "ring_fire"
+name = "Кольцо саламандры"
+glyph = "="
+color = "#ff8a3a"
+kind = "ring"
+stats = { res_fire = 25 }
+value = 70
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_frost"
+name = "Кольцо инея"
+glyph = "="
+color = "#8ad8ff"
+kind = "ring"
+stats = { res_cold = 25 }
+value = 70
+depth = 1
+weight = 3
+
+[[items]]
+key = "ring_storm"
+name = "Кольцо бури"
+glyph = "="
+color = "#fff06a"
+kind = "ring"
+stats = { res_lightning = 25, lightning_pct = 10 }
+value = 90
+depth = 2
+weight = 3
+
+[[items]]
+key = "amulet_bezoar"
+name = "Перстень-безоар"
+glyph = "="
+color = "#9ae04a"
+kind = "ring"
+stats = { res_poison = 40, hp_regen = 0.2 }
+value = 80
+depth = 1
+weight = 3
+
+[[items]]
+key = "talisman_light"
+name = "Перстень света"
+glyph = "="
+color = "#fff0b0"
+kind = "ring"
+stats = { res_shadow = 25, holy_pct = 10 }
+value = 100
+depth = 2
+weight = 2
+
+[[items]]
+key = "ring_vampire"
+name = "Кольцо вампира"
+glyph = "="
+color = "#d03a5a"
+kind = "ring"
+stats = { life_leech = 4, res_holy = -15 }
+value = 150
+depth = 3
+weight = 2
+desc = "Проклято: свет жжёт сильнее."
+
+[[items]]
+key = "thorn_ring"
+name = "Терновое кольцо"
+glyph = "="
+color = "#6a9a3a"
+kind = "ring"
+stats = { thorns = 5, armor = 2 }
+value = 90
+depth = 2
+weight = 2
+
+[[items]]
+key = "frost_heart"
+name = "Перстень Ледяного сердца"
+glyph = "="
+color = "#a8f0ff"
+kind = "ring"
+stats = { res_cold = 50, cold_pct = 25, max_hp = 30 }
+value = 500
+depth = 99
+weight = 0
+
+[[items]]
+key = "eye_of_storm"
+name = "Око бури"
+glyph = "="
+color = "#fff06a"
+kind = "ring"
+stats = { lightning_pct = 30, int = 4, mp_regen = 1 }
+value = 500
+depth = 99
+weight = 0
+
+# ---- Артефакты (награды уникальных персонажей) ----
+
+[[items]]
+key = "sunfire_aegis"
+name = "Солнечная Эгида"
+glyph = "0"
+color = "#ffc040"
+kind = "shield"
+look = "kite"
+unique = true
+stats = { armor = 9, block = 20, res_fire = 20, res_shadow = 20, add_holy = 4 }
+value = 900
+depth = 99
+weight = 0
+desc = "Щит, выкованный в лучах первого рассвета."
+
+[[items]]
+key = "starking_crown"
+name = "Корона Звёздного короля"
+glyph = "^"
+color = "#a0c8ff"
+kind = "head"
+look = "crown"
+unique = true
+stats = { int = 5, spell_pct = 20, max_mp = 30, res_magic = 15 }
+value = 900
+depth = 99
+weight = 0
+desc = "Над ней мерцают звёзды даже днём."
+
+[[items]]
+key = "titans_belt"
+name = "Пояс Титана"
+glyph = "-"
+color = "#e0c890"
+kind = "belt"
+unique = true
+stats = { str = 6, max_hp = 50, res_physical = 10 }
+value = 900
+depth = 99
+weight = 0
+desc = "Пряжка размером с ладонь великана."
+
+[[items]]
+key = "nightless_cloak"
+name = "Плащ Безлунной ночи"
+glyph = "("
+color = "#2a2a48"
+kind = "back"
+look = "cape"
+unique = true
+stats = { dodge = 12, move_speed = 12, ambush_pct = 25, res_shadow = 15 }
+value = 900
+depth = 99
+weight = 0
+desc = "Тот, кто его носит, сам становится тенью."
+
+[[items]]
+key = "eternity_ring"
+name = "Перстень Вечности"
+glyph = "="
+color = "#ffffff"
+kind = "ring"
+unique = true
+stats = { hp_regen = 2, mp_regen = 1.5, res_all = 8 }
+value = 900
+depth = 99
+weight = 0
+desc = "Камень в нём никогда не тускнеет."
+
+[[items]]
+key = "thousand_reflections"
+name = "Клинок Тысячи Отражений"
+glyph = "|"
+color = "#ff9ae8"
+kind = "weapon"
+weapon = "sword"
+unique = true
+damage = [9, 14]
+dmg_type = "slash"
+stats = { crit = 8, attack_speed = 15, add_arcane = 6, mimic_pct = 15 }
+value = 900
+depth = 99
+weight = 0
+desc = "В его лезвии отражается каждый противник, которого он сразил."
+
+[[items]]
+key = "dragonbone_bow"
+name = "Лук из кости дракона"
+glyph = ")"
+color = "#ff8a4a"
+kind = "weapon"
+weapon = "bow"
+hands = 2
+unique = true
+damage = [7, 12]
+dmg_type = "pierce"
+stats = { ranged_pct = 40, dex = 4, add_fire = 5 }
+value = 900
+depth = 99
+weight = 0
+desc = "Тетива из жил дракона гудит, как пламя."

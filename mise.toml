@@ -1,0 +1,65 @@
+# Сборка и запуск через mise: https://mise.jdx.dev
+#   mise install          — поставить Go нужной версии
+#   mise run build        — собрать ./ratas
+#   mise tasks            — список всех задач
+
+[tools]
+go = "1.26"
+
+[tasks.build]
+description = "Собрать игру: терминал и графическое окно"
+run = "go build -o ratas ./cmd/ratas"
+
+[tasks.build-server]
+description = "Собрать выделенный сервер без графики (не нужны cgo и X11/OpenGL)"
+run = "go build -tags nogfx -o ratas-server ./cmd/ratas"
+
+[tasks.play]
+description = "Играть в терминале; флаги после --, например: mise run play -- -new -seed 42"
+depends = ["build"]
+run = "./ratas"
+
+[tasks.gfx]
+description = "Играть в отдельном окне с графикой"
+depends = ["build"]
+run = "./ratas -gfx"
+
+[tasks.server]
+description = "Запустить выделенный сервер; флаги после --, например: mise run server -- -seed 7"
+depends = ["build-server"]
+run = "./ratas-server -server"
+
+[tasks.test]
+description = "Все тесты"
+run = "go test ./..."
+
+[tasks.lint]
+description = "go vet с графикой и без неё"
+run = ["go vet ./...", "go vet -tags nogfx ./..."]
+
+[tasks.check]
+description = "Проверки перед коммитом: форматирование, vet, тесты"
+depends = ["lint", "test"]
+run = 'test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; echo "нужен gofmt -w"; exit 1; }'
+
+[tasks.dist]
+description = "Релизные сборки в dist/: macOS, Windows и сервер для Linux"
+run = [
+  "mkdir -p dist",
+  "CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o dist/ratas-macos-arm64 ./cmd/ratas",
+  "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/ratas-macos-amd64 ./cmd/ratas",
+  "CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/ratas-windows-amd64.exe ./cmd/ratas",
+  "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -tags nogfx -o dist/ratas-server-linux-amd64 ./cmd/ratas",
+]
+
+[tasks.shots]
+description = "Сценарий со скриншотами графического режима (нужен экран); папка — SHOTS_DIR"
+run = 'mkdir -p "${SHOTS_DIR:-/tmp/ratas-shots}" && RATAS_GFX_SHOTS="${SHOTS_DIR:-/tmp/ratas-shots}" go test ./internal/gfx'
+
+[tasks.sheets]
+description = "Листы со всеми моделями существ и тайлами (PNG); папка — SHEETS_DIR"
+run = 'mkdir -p "${SHEETS_DIR:-/tmp/ratas-sheets}" && RATAS_MODEL_SHEET="${SHEETS_DIR:-/tmp/ratas-sheets}" go test ./internal/gfx -run Sheet -count=1 && echo "готово: ${SHEETS_DIR:-/tmp/ratas-sheets}"'
+
+[tasks.clean]
+description = "Удалить собранные файлы"
+run = "rm -rf ratas ratas-server dist"

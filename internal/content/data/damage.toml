@@ -1,0 +1,103 @@
+# Типы урона.
+# У каждого типа есть сопротивление res_<key>, бонус к урону <key>_pct и добавка к удару оружием add_<key>.
+# Группы для сопротивлений: res_physical, res_elemental, res_magic и res_all.
+
+[[damage_types]]
+key = "slash"
+name = "Рубящий"
+short = "руб"
+group = "physical"
+color = "#e8e8f0"
+res_name = "Сопр. рубящему урону"
+pct_name = "Рубящий урон %"
+add_name = "Рубящий урон"
+
+[[damage_types]]
+key = "pierce"
+name = "Колющий"
+short = "кол"
+group = "physical"
+color = "#dce4ff"
+res_name = "Сопр. колющему урону"
+pct_name = "Колющий урон %"
+add_name = "Колющий урон"
+
+[[damage_types]]
+key = "blunt"
+name = "Дробящий"
+short = "дроб"
+group = "physical"
+color = "#f0dcc0"
+res_name = "Сопр. дробящему урону"
+pct_name = "Дробящий урон %"
+add_name = "Дробящий урон"
+
+[[damage_types]]
+key = "fire"
+name = "Огонь"
+short = "огонь"
+group = "elemental"
+color = "#ff8a3a"
+res_name = "Сопр. огню"
+pct_name = "Урон огнём %"
+add_name = "Урон огнём"
+
+[[damage_types]]
+key = "cold"
+name = "Холод"
+short = "холод"
+group = "elemental"
+color = "#8ad8ff"
+res_name = "Сопр. холоду"
+pct_name = "Урон холодом %"
+add_name = "Урон холодом"
+
+[[damage_types]]
+key = "lightning"
+name = "Молния"
+short = "молн"
+group = "elemental"
+color = "#fff06a"
+res_name = "Сопр. молнии"
+pct_name = "Урон молнией %"
+add_name = "Урон молнией"
+
+[[damage_types]]
+key = "poison"
+name = "Яд"
+short = "яд"
+group = "elemental"
+color = "#9ae04a"
+res_name = "Сопр. яду"
+pct_name = "Урон ядом %"
+add_name = "Урон ядом"
+
+[[damage_types]]
+key = "arcane"
+name = "Тайная магия"
+short = "тайн"
+group = "magic"
+color = "#d08aff"
+res_name = "Сопр. тайной магии"
+pct_name = "Урон тайной магией %"
+add_name = "Урон тайной магией"
+
+[[damage_types]]
+key = "holy"
+name = "Свет"
+short = "свет"
+group = "magic"
+color = "#fff0b0"
+res_name = "Сопр. свету"
+pct_name = "Урон светом %"
+add_name = "Урон светом"
+
+[[damage_types]]
+key = "shadow"
+name = "Тьма"
+short = "тьма"
+group = "magic"
+color = "#a07aff"
+res_name = "Сопр. тьме"
+pct_name = "Урон тьмой %"
+add_name = "Урон тьмой"

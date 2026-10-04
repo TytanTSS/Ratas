@@ -1,0 +1,5 @@
+/ratas
+*.sav
+*.sav.tmp
+/ratas-server
+/dist/

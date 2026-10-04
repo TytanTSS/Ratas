@@ -1,0 +1,18 @@
+# English: the example mod (mods_example/necromancy.toml). Mods can ship
+# their own translations in a [translations.en] table instead.
+"Некромантия" = "Necromancy"
+"Запретное искусство смерти и костей." = "The forbidden art of death and bones."
+"Повелевает костью и болезнью. Хрупок, но опасен." = "Commands bone and disease. Frail but dangerous."
+"Знание могил" = "Grave Lore"
+"Магия смерти крепнет." = "Death magic grows stronger."
+"Открывает костяное копьё." = "Unlocks Bone Spear."
+"Костяное копьё" = "Bone Spear"
+"Пронзающий осколок кости." = "A piercing shard of bone."
+"Открывает чумное облако." = "Unlocks Plague Cloud."
+"Облако болезни: долго травит всех врагов вокруг." = "A cloud of disease: poisons every enemy around for a long time."
+"Тёмный договор" = "Dark Pact"
+"Договор" = "Pact"
+"Сила в обмен на жизнь." = "Power in exchange for life."
+"Сила заклинаний растёт, но жизнь утекает." = "Spell power grows, but life drains away."
+"Костяной голем" = "Bone Golem"
+"Костяной фолиант" = "Bone Tome"

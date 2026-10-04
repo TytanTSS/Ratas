@@ -1,0 +1,750 @@
+# Маг: базовая ветка и подклассы Огненный маг, Ледяной маг, Магический рыцарь и секретный Запечатыватель.
+
+# ---- Маг ----
+
+[[skills]]
+key = "wisdom"
+name = "Мудрость"
+branch = "mage"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Запас маны."
+stats = { max_mp = 10 }
+
+[[skills]]
+key = "meditation"
+name = "Медитация"
+branch = "mage"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Восстановление маны."
+stats = { mp_regen = 0.4 }
+
+[[skills]]
+key = "arcane_mind"
+name = "Тайный разум"
+branch = "mage"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["wisdom"]
+desc = "Сила заклинаний и мана."
+stats = { spell_pct = 10, max_mp = 8 }
+
+[[skills]]
+key = "arcane_ward"
+name = "Чародейский оберег"
+branch = "mage"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["meditation"]
+desc = "Защитные чары от магии и стихий."
+stats = { res_magic = 6, res_elemental = 4 }
+
+[[skills]]
+key = "blink"
+name = "Скачок"
+branch = "mage"
+tier = 3
+max_rank = 1
+level = 5
+requires = ["arcane_mind"]
+grants = "blink"
+desc = "Мгновенный перенос на несколько шагов вперёд."
+
+[[skills]]
+key = "arcane_barrier"
+name = "Магический барьер"
+branch = "mage"
+tier = 3
+max_rank = 1
+level = 6
+requires = ["arcane_ward"]
+grants = "arcane_barrier"
+desc = "Барьер гасит часть любого урона."
+
+[[skills]]
+key = "elemental_mark"
+name = "Знак стихий"
+branch = "mage"
+tier = 4
+max_rank = 1
+level = 8
+requires = ["arcane_mind"]
+grants = "elemental_mark"
+desc = "Клеймо на врагах вокруг: их сопротивление огню, холоду и молнии падает на 30%."
+
+# ---- Огненный маг ----
+
+[[skills]]
+key = "fire_mastery"
+name = "Повелитель огня"
+branch = "pyromancer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон огнём."
+stats = { fire_pct = 10 }
+
+[[skills]]
+key = "fireball"
+name = "Огненный шар"
+branch = "pyromancer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "fireball"
+desc = "Взрывающийся шар огня, поджигает врагов."
+
+[[skills]]
+key = "flame_wave"
+name = "Огненная волна"
+branch = "pyromancer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["fireball"]
+grants = "flame_wave"
+desc = "Кольцо огня вокруг вас."
+
+[[skills]]
+key = "combustion"
+name = "Возгорание"
+branch = "pyromancer"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Чаще критический урон, сильнее пламя."
+stats = { crit = 3, fire_pct = 4 }
+
+[[skills]]
+key = "meteor"
+name = "Метеор"
+branch = "pyromancer"
+tier = 3
+max_rank = 1
+level = 9
+requires = ["flame_wave"]
+grants = "meteor"
+desc = "Огромный огненный камень с небес."
+
+[[skills]]
+key = "inferno"
+name = "Преисподняя"
+branch = "pyromancer"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["meteor"]
+grants = "inferno"
+desc = "Всё вокруг на пять шагов охвачено пламенем. Очень дорого."
+
+# ---- Ледяной маг ----
+
+[[skills]]
+key = "frost_mastery"
+name = "Повелитель льда"
+branch = "cryomancer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон холодом и стойкость к нему."
+stats = { cold_pct = 8, res_cold = 4 }
+
+[[skills]]
+key = "ice_lance"
+name = "Ледяное копьё"
+branch = "cryomancer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "ice_lance"
+desc = "Пронзающий осколок льда с замедлением."
+
+[[skills]]
+key = "frost_nova"
+name = "Ледяная волна"
+branch = "cryomancer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["ice_lance"]
+grants = "frost_nova"
+desc = "Холод вокруг вас ранит и замедляет врагов."
+
+[[skills]]
+key = "frozen_armor"
+name = "Ледяной доспех"
+branch = "cryomancer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["frost_mastery"]
+grants = "frozen_armor"
+desc = "Лёд защищает и ранит атакующих."
+
+[[skills]]
+key = "permafrost"
+name = "Вечная мерзлота"
+branch = "cryomancer"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Холод сильнее, мана восстанавливается быстрее."
+stats = { cold_pct = 6, mp_regen = 0.3 }
+
+[[skills]]
+key = "blizzard"
+name = "Метель"
+branch = "cryomancer"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["frost_nova"]
+grants = "blizzard"
+desc = "Буран на большой площади: урон и сильное замедление."
+
+# ---- Магический рыцарь ----
+
+[[skills]]
+key = "arcane_blade"
+name = "Чародейский клинок"
+branch = "spellblade"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Удары и заклинания сильнее."
+stats = { melee_pct = 5, spell_pct = 5 }
+
+[[skills]]
+key = "flame_blade"
+name = "Пылающий клинок"
+branch = "spellblade"
+tier = 1
+max_rank = 1
+level = 5
+grants = "flame_blade"
+desc = "Оружие пылает: удары наносят урон огнём."
+
+[[skills]]
+key = "frost_blade"
+name = "Ледяной клинок"
+branch = "spellblade"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["flame_blade"]
+grants = "frost_blade"
+desc = "Оружие покрыто инеем: удары наносят урон холодом."
+
+[[skills]]
+key = "storm_blade"
+name = "Грозовой клинок"
+branch = "spellblade"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["flame_blade"]
+grants = "storm_blade"
+desc = "Оружие искрит: удары наносят урон молнией."
+
+[[skills]]
+key = "battle_mage"
+name = "Боевой маг"
+branch = "spellblade"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Маг, привычный к ближнему бою."
+stats = { armor = 2, max_hp = 10, melee_pct = 5 }
+
+[[skills]]
+key = "spell_strike"
+name = "Удар заклинанием"
+branch = "spellblade"
+tier = 3
+max_rank = 1
+level = 9
+requires = ["arcane_blade"]
+grants = "spell_strike"
+desc = "Удар оружием, в который вложено заклинание."
+
+[[skills]]
+key = "elemental_fury"
+name = "Ярость стихий"
+branch = "spellblade"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["spell_strike"]
+grants = "elemental_fury"
+desc = "Круговой удар огнём, холодом и молнией разом."
+
+# ---- Запечатыватель ----
+
+[[skills]]
+key = "rune_lore"
+name = "Знание рун"
+branch = "sealer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила заклинаний и защита от магии."
+stats = { spell_pct = 5, res_magic = 4 }
+
+[[skills]]
+key = "seal"
+name = "Печать"
+branch = "sealer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "seal"
+desc = "Запечатывает умения врага на 5 с."
+
+[[skills]]
+key = "binding_seal"
+name = "Сковывающая печать"
+branch = "sealer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["seal"]
+grants = "binding_seal"
+desc = "Печать, которая заодно приковывает врага к месту."
+
+[[skills]]
+key = "null_field"
+name = "Поле пустоты"
+branch = "sealer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["seal"]
+grants = "null_field"
+desc = "Запечатывает всех врагов вокруг."
+
+[[skills]]
+key = "sealmaster"
+name = "Мастер печатей"
+branch = "sealer"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Сила заклинаний и мана."
+stats = { spell_pct = 6, mp_regen = 0.3 }
+
+[[skills]]
+key = "grand_seal"
+name = "Великая печать"
+branch = "sealer"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["null_field"]
+grants = "grand_seal"
+desc = "Долгая печать на всех вокруг цели, их защита слабеет."
+
+# ---- Умения мага ----
+
+[[abilities]]
+key = "magic_missile"
+name = "Магическая стрела"
+kind = "projectile"
+mana = 3
+cooldown_ms = 600
+dmg_type = "arcane"
+damage = [3, 6]
+scale = "int"
+scale_k = 1.0
+range = 9
+speed_ms = 40
+glyph = "*"
+color = "#c080ff"
+desc = "Сгусток магии летит в ближайшего врага."
+
+[[abilities]]
+key = "blink"
+name = "Скачок"
+kind = "dash"
+mana = 8
+cooldown_ms = 6000
+range = 6
+damage = [0, 0]
+glyph = "~"
+color = "#c0a0ff"
+desc = "Перенос на 6 шагов в направлении взгляда."
+
+[[abilities]]
+key = "arcane_barrier"
+name = "Магический барьер"
+kind = "buff"
+mana = 12
+cooldown_ms = 18000
+color = "#c0a0ff"
+desc = "+25% сопротивления всему урону на 6 с."
+[abilities.buff]
+key = "arcane_barrier"
+name = "Магический барьер"
+duration_ms = 6000
+stats = { res_all = 25 }
+color = "#c0a0ff"
+
+[[abilities]]
+key = "elemental_mark"
+name = "Знак стихий"
+kind = "nova"
+mana = 12
+cooldown_ms = 14000
+radius = 3
+damage = [0, 0]
+glyph = "*"
+color = "#ff80ff"
+desc = "Враги вокруг на 8 с теряют 30% сопротивления огню, холоду и молнии."
+[abilities.on_hit]
+key = "elem_mark"
+name = "Знак стихий"
+duration_ms = 8000
+stats = { res_fire = -30, res_cold = -30, res_lightning = -30 }
+color = "#ff80ff"
+
+[[abilities]]
+key = "fireball"
+name = "Огненный шар"
+kind = "projectile"
+mana = 10
+cooldown_ms = 2500
+dmg_type = "fire"
+damage = [7, 12]
+scale = "int"
+scale_k = 1.3
+range = 9
+radius = 1
+speed_ms = 60
+glyph = "o"
+color = "#ff8a2a"
+desc = "Взрывается при попадании и поджигает."
+[abilities.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 3
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[abilities]]
+key = "flame_wave"
+name = "Огненная волна"
+kind = "nova"
+mana = 18
+cooldown_ms = 6000
+radius = 3
+dmg_type = "fire"
+damage = [10, 16]
+scale = "int"
+scale_k = 1.2
+glyph = "*"
+color = "#ff6a1a"
+desc = "Огонь по всем врагам в радиусе 3."
+[abilities.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[abilities]]
+key = "meteor"
+name = "Метеор"
+kind = "projectile"
+mana = 30
+cooldown_ms = 12000
+dmg_type = "fire"
+damage = [22, 35]
+scale = "int"
+scale_k = 2.2
+range = 10
+radius = 2
+speed_ms = 90
+glyph = "@"
+color = "#ff3a1a"
+desc = "Гигантский взрыв огня."
+[abilities.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 4000
+dot_per_sec = 5
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[abilities]]
+key = "inferno"
+name = "Преисподняя"
+kind = "nova"
+mana = 40
+cooldown_ms = 16000
+radius = 5
+dmg_type = "fire"
+damage = [24, 34]
+scale = "int"
+scale_k = 2.0
+glyph = "*"
+color = "#ff4a0a"
+desc = "Пламя на пять шагов вокруг и сильное горение."
+[abilities.on_hit]
+key = "inferno_burn"
+name = "Адский огонь"
+duration_ms = 5000
+dot_per_sec = 6
+dmg_type = "fire"
+color = "#ff4a0a"
+
+[[abilities]]
+key = "ice_lance"
+name = "Ледяное копьё"
+kind = "projectile"
+mana = 9
+cooldown_ms = 2000
+dmg_type = "cold"
+damage = [9, 14]
+scale = "int"
+scale_k = 1.4
+range = 10
+speed_ms = 38
+glyph = "dir"
+color = "#a0e8ff"
+desc = "Сильный удар холодом с замедлением."
+[abilities.on_hit]
+key = "chill"
+name = "Холод"
+duration_ms = 2500
+stats = { move_speed = -40, attack_speed = -20 }
+color = "#a0e0ff"
+
+[[abilities]]
+key = "frost_nova"
+name = "Ледяная волна"
+kind = "nova"
+mana = 15
+cooldown_ms = 8000
+radius = 3
+dmg_type = "cold"
+damage = [5, 9]
+scale = "int"
+scale_k = 1.0
+glyph = "*"
+color = "#a0e0ff"
+desc = "Ранит и замедляет врагов вокруг."
+[abilities.on_hit]
+key = "chill"
+name = "Холод"
+duration_ms = 3500
+stats = { move_speed = -50, attack_speed = -30 }
+color = "#a0e0ff"
+
+[[abilities]]
+key = "frozen_armor"
+name = "Ледяной доспех"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+color = "#a0e8ff"
+desc = "15 с: +6 брони, +30% сопротивления холоду, атакующие ранятся о лёд."
+[abilities.buff]
+key = "frozen_armor"
+name = "Ледяной доспех"
+duration_ms = 15000
+stats = { armor = 6, res_cold = 30, thorns = 4 }
+color = "#a0e8ff"
+
+[[abilities]]
+key = "blizzard"
+name = "Метель"
+kind = "projectile"
+mana = 24
+cooldown_ms = 12000
+range = 10
+radius = 3
+speed_ms = 60
+dmg_type = "cold"
+damage = [14, 20]
+scale = "int"
+scale_k = 1.4
+glyph = "@"
+color = "#c8f0ff"
+desc = "Холод в радиусе 3: враги сильно замедлены и бьют реже."
+[abilities.on_hit]
+key = "deep_chill"
+name = "Стужа"
+duration_ms = 4000
+stats = { move_speed = -60, attack_speed = -40 }
+color = "#c8f0ff"
+
+[[abilities]]
+key = "flame_blade"
+name = "Пылающий клинок"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+color = "#ff8a3a"
+desc = "+8 урона огнём к каждому удару оружием на 20 с."
+[abilities.buff]
+key = "flame_blade"
+name = "Пылающий клинок"
+duration_ms = 20000
+stats = { add_fire = 8 }
+color = "#ff8a3a"
+
+[[abilities]]
+key = "frost_blade"
+name = "Ледяной клинок"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+color = "#8ad8ff"
+desc = "+7 урона холодом к каждому удару оружием на 20 с."
+[abilities.buff]
+key = "frost_blade"
+name = "Ледяной клинок"
+duration_ms = 20000
+stats = { add_cold = 7 }
+color = "#8ad8ff"
+
+[[abilities]]
+key = "storm_blade"
+name = "Грозовой клинок"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+color = "#fff06a"
+desc = "+9 урона молнией к каждому удару оружием на 20 с."
+[abilities.buff]
+key = "storm_blade"
+name = "Грозовой клинок"
+duration_ms = 20000
+stats = { add_lightning = 9 }
+color = "#fff06a"
+
+[[abilities]]
+key = "spell_strike"
+name = "Удар заклинанием"
+kind = "strike"
+mana = 6
+cooldown_ms = 3000
+dmg_type = "arcane"
+damage = [7, 11]
+scale = "int"
+scale_k = 1.0
+range = 1
+glyph = "*"
+color = "#c0a0ff"
+desc = "Удар оружием плюс урон тайной магией."
+
+[[abilities]]
+key = "elemental_fury"
+name = "Ярость стихий"
+kind = "cleave"
+mana = 20
+cooldown_ms = 9000
+radius = 2
+split = ["fire", "cold", "lightning"]
+damage = [12, 18]
+scale = "int"
+scale_k = 1.2
+glyph = "*"
+color = "#ff80ff"
+desc = "Огонь, холод и молния по всем врагам в радиусе 2 вместе с ударом оружия."
+
+[[abilities]]
+key = "seal"
+name = "Печать"
+kind = "projectile"
+mana = 8
+cooldown_ms = 6000
+dmg_type = "arcane"
+damage = [3, 6]
+scale = "int"
+scale_k = 0.6
+range = 9
+speed_ms = 35
+glyph = "*"
+color = "#e0c8ff"
+desc = "Цель 5 с не может применять умения."
+[abilities.on_hit]
+key = "sealed"
+name = "Печать"
+duration_ms = 5000
+silence = true
+color = "#e0c8ff"
+
+[[abilities]]
+key = "binding_seal"
+name = "Сковывающая печать"
+kind = "projectile"
+mana = 12
+cooldown_ms = 10000
+dmg_type = "arcane"
+damage = [5, 8]
+scale = "int"
+scale_k = 0.8
+range = 9
+speed_ms = 35
+glyph = "*"
+color = "#d0b0ff"
+desc = "4 с без умений и почти без движения."
+[abilities.on_hit]
+key = "bound"
+name = "Сковывающая печать"
+duration_ms = 4000
+silence = true
+stats = { move_speed = -90 }
+color = "#d0b0ff"
+
+[[abilities]]
+key = "null_field"
+name = "Поле пустоты"
+kind = "nova"
+mana = 14
+cooldown_ms = 12000
+radius = 3
+dmg_type = "arcane"
+damage = [4, 7]
+scale = "int"
+scale_k = 0.6
+glyph = "*"
+color = "#e8d8ff"
+desc = "Все враги в радиусе 3 на 3 с запечатаны."
+[abilities.on_hit]
+key = "sealed"
+name = "Печать"
+duration_ms = 3000
+silence = true
+color = "#e0c8ff"
+
+[[abilities]]
+key = "grand_seal"
+name = "Великая печать"
+kind = "projectile"
+mana = 26
+cooldown_ms = 16000
+range = 9
+radius = 2
+speed_ms = 45
+dmg_type = "arcane"
+damage = [12, 18]
+scale = "int"
+scale_k = 1.2
+glyph = "@"
+color = "#f0e0ff"
+desc = "Враги в радиусе 2 на 8 с запечатаны и теряют 20% сопротивления всему."
+[abilities.on_hit]
+key = "grand_seal"
+name = "Великая печать"
+duration_ms = 8000
+silence = true
+stats = { res_all = -20 }
+color = "#f0e0ff"

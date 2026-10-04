@@ -1,0 +1,808 @@
+# Плут: базовая ветка и подклассы Мастер ядов, Дуэлянт, Скаут, Трикстер и секретный Подражатель.
+
+# ---- Плут ----
+
+[[skills]]
+key = "lethality"
+name = "Смертоносность"
+branch = "rogue"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Удары в уязвимые места."
+stats = { crit = 2, crit_mult = 0.08 }
+
+[[skills]]
+key = "swift"
+name = "Быстрые ноги"
+branch = "rogue"
+tier = 1
+max_rank = 4
+level = 1
+desc = "Скорость передвижения."
+stats = { move_speed = 6 }
+
+[[skills]]
+key = "evasion"
+name = "Уклонение"
+branch = "rogue"
+tier = 2
+max_rank = 5
+level = 3
+requires = ["swift"]
+desc = "Шанс полностью избежать удара."
+stats = { dodge = 3 }
+
+[[skills]]
+key = "dash"
+name = "Рывок"
+branch = "rogue"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["swift"]
+grants = "dash"
+desc = "Мгновенный рывок вперёд сквозь опасность."
+
+[[skills]]
+key = "smoke_bomb"
+name = "Дымовая завеса"
+branch = "rogue"
+tier = 3
+max_rank = 1
+level = 6
+requires = ["evasion"]
+grants = "smoke_bomb"
+desc = "Облако дыма: огромный шанс уклониться и скорость."
+
+[[skills]]
+key = "shadow_step"
+name = "Тень"
+branch = "rogue"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["lethality"]
+desc = "Уклонение и скорость атаки."
+stats = { dodge = 3, attack_speed = 8 }
+
+# ---- Мастер ядов ----
+
+[[skills]]
+key = "toxicology"
+name = "Токсикология"
+branch = "poisoner"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Знание ядов: свои сильнее, чужие слабее."
+stats = { poison_pct = 10, res_poison = 4 }
+
+[[skills]]
+key = "venom_blade"
+name = "Отравленный клинок"
+branch = "poisoner"
+tier = 1
+max_rank = 1
+level = 5
+grants = "venom_blade"
+desc = "Удар отравленным оружием."
+
+[[skills]]
+key = "toxic_cloud"
+name = "Ядовитое облако"
+branch = "poisoner"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["toxicology"]
+grants = "toxic_cloud"
+desc = "Облако яда травит всех врагов вокруг."
+
+[[skills]]
+key = "cursed_edge"
+name = "Проклятый клинок"
+branch = "poisoner"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["venom_blade"]
+grants = "cursed_edge"
+desc = "Удар проклятым лезвием: тьма, яд и порча."
+
+[[skills]]
+key = "lingering_venom"
+name = "Въедливый яд"
+branch = "poisoner"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Яд сильнее, каждый удар оружием отравляет."
+stats = { poison_pct = 8, add_poison = 2 }
+
+[[skills]]
+key = "plague_burst"
+name = "Чумной взрыв"
+branch = "poisoner"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["toxic_cloud"]
+grants = "plague_burst"
+desc = "Склянка чумы разбивается о врагов."
+
+# ---- Дуэлянт ----
+
+[[skills]]
+key = "duel_focus"
+name = "Один на один"
+branch = "duelist"
+tier = 1
+max_rank = 5
+level = 5
+desc = "+8% урона за ранг, когда рядом лишь один враг."
+stats = { duel_pct = 8 }
+
+[[skills]]
+key = "rend"
+name = "Кровопускание"
+branch = "duelist"
+tier = 1
+max_rank = 1
+level = 5
+grants = "rend"
+desc = "Глубокая рана: кровотечение и ослабленная броня."
+
+[[skills]]
+key = "flurry"
+name = "Шквал ударов"
+branch = "duelist"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["duel_focus"]
+grants = "flurry"
+desc = "Четыре стремительных удара по одной цели."
+
+[[skills]]
+key = "riposte"
+name = "Контратака"
+branch = "duelist"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Уклонение и ответный укол каждому, кто бьёт вас."
+stats = { dodge = 3, thorns = 3 }
+
+[[skills]]
+key = "death_mark"
+name = "Метка смерти"
+branch = "duelist"
+tier = 3
+max_rank = 1
+level = 9
+requires = ["flurry"]
+grants = "death_mark"
+desc = "Цель становится уязвима к физическому урону."
+
+[[skills]]
+key = "coup_de_grace"
+name = "Удар милосердия"
+branch = "duelist"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["death_mark"]
+grants = "coup_de_grace"
+desc = "Добивание: огромный урон по израненной цели."
+
+# ---- Скаут ----
+
+[[skills]]
+key = "archery"
+name = "Стрельба"
+branch = "scout"
+tier = 1
+max_rank = 5
+level = 5
+equip = "bow"
+grants = "arrow"
+desc = "Открывает прицельный выстрел. С луком или арбалетом ранги усиливают дальний бой."
+stats = { ranged_pct = 8 }
+
+[[skills]]
+key = "keen_eye"
+name = "Зоркий глаз"
+branch = "scout"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Шанс критического удара."
+stats = { crit = 3 }
+
+[[skills]]
+key = "multishot"
+name = "Залп"
+branch = "scout"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["archery"]
+grants = "multishot"
+desc = "Три стрелы веером."
+
+[[skills]]
+key = "poison_arrows"
+name = "Ядовитые стрелы"
+branch = "scout"
+tier = 2
+max_rank = 3
+level = 7
+requires = ["archery"]
+grants = "poison_arrow"
+desc = "Стрела с ядом: травит и снижает сопротивление яду. Ранги усиливают яды."
+stats = { poison_pct = 10 }
+
+[[skills]]
+key = "hunters_mark"
+name = "Метка охотника"
+branch = "scout"
+tier = 3
+max_rank = 1
+level = 9
+requires = ["keen_eye"]
+grants = "hunters_mark"
+desc = "Помечает добычу: колющий и физический урон по ней проходит сильнее."
+
+[[skills]]
+key = "hunter"
+name = "Охотник"
+branch = "scout"
+tier = 3
+max_rank = 3
+level = 9
+requires = ["multishot"]
+desc = "Критические удары смертоноснее."
+stats = { crit_mult = 0.2, ranged_pct = 6 }
+
+[[skills]]
+key = "arrow_rain"
+name = "Ливень стрел"
+branch = "scout"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["hunter"]
+grants = "arrow_rain"
+desc = "Стрелы падают с неба на большую площадь."
+
+# ---- Трикстер ----
+
+[[skills]]
+key = "sleight"
+name = "Ловкость рук"
+branch = "trickster"
+tier = 1
+max_rank = 5
+level = 5
+desc = "+12% урона за ранг по врагу, который вас не видит или занят другим."
+stats = { ambush_pct = 12 }
+
+[[skills]]
+key = "decoy"
+name = "Обманка"
+branch = "trickster"
+tier = 1
+max_rank = 1
+level = 5
+grants = "decoy"
+desc = "Иллюзия, на которую отвлекаются враги."
+
+[[skills]]
+key = "vanish"
+name = "Исчезновение"
+branch = "trickster"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["decoy"]
+grants = "vanish"
+desc = "Невидимость: враги теряют вас из виду, пока вы не ударите."
+
+[[skills]]
+key = "backstab"
+name = "Удар в спину"
+branch = "trickster"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["sleight"]
+grants = "backstab"
+desc = "Тройной урон из невидимости или по врагу, отвлечённому на другого."
+
+[[skills]]
+key = "misdirection"
+name = "Отвлекающий манёвр"
+branch = "trickster"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Уклонение и скорость."
+stats = { dodge = 4, move_speed = 5 }
+
+[[skills]]
+key = "mirror_images"
+name = "Зеркальные двойники"
+branch = "trickster"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["vanish"]
+grants = "mirror_images"
+desc = "Три иллюзии разом."
+
+# ---- Подражатель ----
+
+[[skills]]
+key = "mimic_lore"
+name = "Чуткое подражание"
+branch = "mimic"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Скопированные умения сильнее на 6% за ранг."
+stats = { mimic_pct = 6 }
+
+[[skills]]
+key = "mimicry"
+name = "Подражание"
+branch = "mimic"
+tier = 1
+max_rank = 1
+level = 5
+grants = "mimicry"
+desc = "Копирует умение врага на 2 минуты. Копия слабее оригинала и зависит от уровней."
+
+[[skills]]
+key = "echo"
+name = "Эхо"
+branch = "mimic"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["mimicry"]
+grants = "echo"
+desc = "Повторяет скопированное умение с удвоенной силой."
+
+[[skills]]
+key = "adaptive_skin"
+name = "Приспособленность"
+branch = "mimic"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Тело подражателя учится выдерживать любой урон."
+stats = { res_all = 3 }
+
+[[skills]]
+key = "stolen_vigor"
+name = "Украденная сила"
+branch = "mimic"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Чужая сила питает вас."
+stats = { life_leech = 2, mp_regen = 0.3 }
+
+[[skills]]
+key = "perfect_copy"
+name = "Безупречная копия"
+branch = "mimic"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["echo"]
+desc = "Копии почти не уступают оригиналам: +25% к их силе."
+stats = { mimic_pct = 25 }
+
+# ---- Умения плута ----
+
+[[abilities]]
+key = "quick_strike"
+name = "Быстрый выпад"
+kind = "strike"
+mana = 3
+cooldown_ms = 1800
+count = 2
+dmg_type = "weapon"
+damage = [2, 4]
+scale = "dex"
+scale_k = 0.5
+range = 1
+glyph = "/"
+color = "#d0d8f0"
+desc = "Два молниеносных укола по врагу рядом."
+
+[[abilities]]
+key = "dash"
+name = "Рывок"
+kind = "dash"
+mana = 5
+cooldown_ms = 5000
+range = 5
+dmg_type = "weapon"
+damage = [3, 6]
+scale = "dex"
+scale_k = 0.5
+glyph = "~"
+color = "#a0ffa0"
+desc = "Рывок в направлении взгляда, задевая врагов на пути."
+
+[[abilities]]
+key = "smoke_bomb"
+name = "Дымовая завеса"
+kind = "buff"
+mana = 8
+cooldown_ms = 18000
+color = "#b0b0c0"
+desc = "+40% уклонения и +25% скорости на 4 с."
+[abilities.buff]
+key = "smoke"
+name = "В дыму"
+duration_ms = 4000
+stats = { dodge = 40, move_speed = 25 }
+color = "#b0b0c0"
+
+[[abilities]]
+key = "venom_blade"
+name = "Отравленный клинок"
+kind = "strike"
+mana = 5
+cooldown_ms = 3000
+dmg_type = "poison"
+damage = [4, 7]
+scale = "dex"
+scale_k = 0.8
+range = 1
+glyph = "!"
+color = "#6ad03a"
+desc = "Удар оружием с ядом: травит 5 с и снижает сопротивление яду на 25%."
+[abilities.on_hit]
+key = "deadly_venom"
+name = "Смертельный яд"
+duration_ms = 5000
+dot_per_sec = 4
+dmg_type = "poison"
+stats = { res_poison = -25 }
+color = "#6ad03a"
+
+[[abilities]]
+key = "toxic_cloud"
+name = "Ядовитое облако"
+kind = "nova"
+mana = 12
+cooldown_ms = 9000
+radius = 3
+dmg_type = "poison"
+damage = [3, 5]
+scale = "dex"
+scale_k = 0.4
+glyph = "%"
+color = "#8ad04a"
+desc = "Все враги в радиусе 3 отравлены на 6 с и теряют 20% сопротивления яду."
+[abilities.on_hit]
+key = "toxic_cloud"
+name = "Ядовитое облако"
+duration_ms = 6000
+dot_per_sec = 5
+dmg_type = "poison"
+stats = { res_poison = -20 }
+color = "#8ad04a"
+
+[[abilities]]
+key = "cursed_edge"
+name = "Проклятый клинок"
+kind = "strike"
+mana = 8
+cooldown_ms = 6000
+dmg_type = "shadow"
+damage = [4, 7]
+scale = "dex"
+scale_k = 0.7
+range = 1
+glyph = "/"
+color = "#9a5aff"
+desc = "Удар оружием и тьмой: цель отравлена и теряет 15% сопротивления всему на 6 с."
+[abilities.on_hit]
+key = "cursed_wound"
+name = "Проклятая рана"
+duration_ms = 6000
+dot_per_sec = 3
+dmg_type = "poison"
+stats = { res_all = -15 }
+color = "#9a5aff"
+
+[[abilities]]
+key = "plague_burst"
+name = "Чумной взрыв"
+kind = "projectile"
+mana = 20
+cooldown_ms = 12000
+range = 8
+radius = 2
+speed_ms = 50
+dmg_type = "poison"
+damage = [10, 16]
+scale = "dex"
+scale_k = 1.2
+glyph = "o"
+color = "#7ae03a"
+desc = "Взрыв чумы в радиусе 2, долгий яд."
+[abilities.on_hit]
+key = "plague"
+name = "Чума"
+duration_ms = 8000
+dot_per_sec = 6
+dmg_type = "poison"
+stats = { res_poison = -15 }
+color = "#7ae03a"
+
+[[abilities]]
+key = "rend"
+name = "Кровопускание"
+kind = "strike"
+mana = 5
+cooldown_ms = 4000
+dmg_type = "weapon"
+damage = [3, 6]
+scale = "dex"
+scale_k = 0.6
+range = 1
+glyph = "/"
+color = "#e03a3a"
+desc = "Кровотечение на 6 с, броня цели снижена на 4."
+[abilities.on_hit]
+key = "bleeding"
+name = "Кровотечение"
+duration_ms = 6000
+dot_per_sec = 4
+dmg_type = "slash"
+stats = { armor = -4 }
+color = "#e03a3a"
+
+[[abilities]]
+key = "flurry"
+name = "Шквал ударов"
+kind = "strike"
+mana = 10
+cooldown_ms = 6000
+count = 4
+dmg_type = "weapon"
+damage = [2, 4]
+scale = "dex"
+scale_k = 0.5
+range = 1
+glyph = "/"
+color = "#f0f0ff"
+desc = "Четыре удара по одной цели."
+
+[[abilities]]
+key = "death_mark"
+name = "Метка смерти"
+kind = "strike"
+mana = 6
+cooldown_ms = 12000
+dmg_type = "pierce"
+damage = [2, 4]
+scale = "dex"
+scale_k = 0.3
+range = 1
+glyph = "X"
+color = "#ff4a6a"
+desc = "На 10 с цель теряет 25% сопротивления физическому урону и 10% — всему."
+[abilities.on_hit]
+key = "death_mark"
+name = "Метка смерти"
+duration_ms = 10000
+stats = { res_physical = -25, res_all = -10 }
+color = "#ff4a6a"
+
+[[abilities]]
+key = "coup_de_grace"
+name = "Удар милосердия"
+kind = "strike"
+mana = 12
+cooldown_ms = 9000
+dmg_type = "weapon"
+damage = [10, 16]
+scale = "dex"
+scale_k = 1.2
+execute = 2.0
+range = 1
+glyph = "X"
+color = "#ffffff"
+desc = "До +200% урона по израненному врагу."
+
+[[abilities]]
+key = "arrow"
+name = "Прицельный выстрел"
+kind = "projectile"
+mana = 2
+cooldown_ms = 700
+equip = "bow"
+dmg_type = "pierce"
+damage = [4, 7]
+scale = "dex"
+scale_k = 0.9
+range = 10
+speed_ms = 35
+glyph = "dir"
+color = "#e0d0a0"
+desc = "Мощная стрела в ближайшего врага. Нужен лук или арбалет."
+
+[[abilities]]
+key = "multishot"
+name = "Залп"
+kind = "projectile"
+mana = 8
+cooldown_ms = 4000
+count = 3
+equip = "bow"
+dmg_type = "pierce"
+damage = [4, 7]
+scale = "dex"
+scale_k = 0.9
+range = 9
+speed_ms = 35
+glyph = "dir"
+color = "#f0e0b0"
+desc = "Три стрелы веером."
+
+[[abilities]]
+key = "poison_arrow"
+name = "Ядовитая стрела"
+kind = "projectile"
+mana = 5
+cooldown_ms = 2500
+equip = "bow"
+dmg_type = "pierce"
+damage = [4, 7]
+scale = "dex"
+scale_k = 0.8
+range = 10
+speed_ms = 35
+glyph = "dir"
+color = "#9ae04a"
+desc = "Отравляет на 5 с и снижает сопротивление яду на 20%."
+[abilities.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 5000
+dot_per_sec = 4
+dmg_type = "poison"
+stats = { res_poison = -20 }
+color = "#9ae04a"
+
+[[abilities]]
+key = "hunters_mark"
+name = "Метка охотника"
+kind = "projectile"
+mana = 6
+cooldown_ms = 10000
+dmg_type = "pierce"
+damage = [1, 2]
+scale = "dex"
+scale_k = 0.2
+range = 11
+speed_ms = 25
+glyph = "dir"
+color = "#ff6a6a"
+desc = "На 8 с снижает сопротивление цели колющему урону на 30% и физическому на 10%."
+[abilities.on_hit]
+key = "marked"
+name = "Метка охотника"
+duration_ms = 8000
+stats = { res_pierce = -30, res_physical = -10 }
+color = "#ff6a6a"
+
+[[abilities]]
+key = "arrow_rain"
+name = "Ливень стрел"
+kind = "projectile"
+mana = 22
+cooldown_ms = 12000
+equip = "bow"
+range = 10
+radius = 3
+speed_ms = 60
+dmg_type = "pierce"
+damage = [12, 20]
+scale = "dex"
+scale_k = 1.3
+glyph = "@"
+color = "#e8d8a0"
+desc = "Стрелы накрывают всё в радиусе 3."
+
+[[abilities]]
+key = "decoy"
+name = "Обманка"
+kind = "decoy"
+mana = 8
+cooldown_ms = 12000
+count = 1
+summon = "illusion"
+duration_ms = 7000
+color = "#c08aff"
+desc = "Иллюзия рядом с вами на 7 с; враги вокруг бросаются на неё."
+
+[[abilities]]
+key = "mirror_images"
+name = "Зеркальные двойники"
+kind = "decoy"
+mana = 16
+cooldown_ms = 20000
+count = 3
+summon = "illusion"
+duration_ms = 8000
+color = "#d0a0ff"
+desc = "Три иллюзии на 8 с."
+
+[[abilities]]
+key = "vanish"
+name = "Исчезновение"
+kind = "buff"
+mana = 10
+cooldown_ms = 16000
+color = "#8a8aa8"
+desc = "Невидимость на 8 с: враги не видят вас, пока вы не ударите; +20% скорости."
+[abilities.buff]
+key = "vanish"
+name = "Невидимость"
+duration_ms = 8000
+stealth = true
+stats = { move_speed = 20 }
+color = "#8a8aa8"
+
+[[abilities]]
+key = "backstab"
+name = "Удар в спину"
+kind = "strike"
+mana = 8
+cooldown_ms = 5000
+dmg_type = "weapon"
+damage = [8, 12]
+scale = "dex"
+scale_k = 1.0
+backstab = 3.0
+range = 1
+glyph = "X"
+color = "#c08aff"
+desc = "Тройной урон из невидимости или по врагу, который занят не вами."
+
+[[abilities]]
+key = "mimicry"
+name = "Подражание"
+kind = "mimic"
+mana = 6
+cooldown_ms = 6000
+range = 8
+color = "#ff8ad8"
+desc = "Копирует умение ближайшего врага на 2 минуты; оно появится на панели как «Копия»."
+
+[[abilities]]
+key = "copied"
+name = "Копия"
+kind = "copied"
+mana = 5
+cooldown_ms = 2500
+color = "#ff8ad8"
+desc = "Скопированное умение врага. Его сила зависит от уровня врага, вашего уровня и навыков подражателя."
+
+[[abilities]]
+key = "echo"
+name = "Эхо"
+kind = "echo"
+mana = 12
+cooldown_ms = 15000
+color = "#ffb0e8"
+desc = "Скопированное умение с удвоенной силой."

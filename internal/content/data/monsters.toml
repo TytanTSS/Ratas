@@ -1,0 +1,1994 @@
+# Монстры. depth [0, 0] — только поверхность, [0, n] — поверхность и этажи 1..n, [a, b] — этажи a..b.
+# themes — биомы поверхности и темы подземелий, где монстр водится. resist — сопротивления в процентах (100 = неуязвим, отрицательные — уязвимость).
+
+# ---- Поверхность: равнины, леса, холмы, болота ----
+
+[[monsters]]
+key = "wolf"
+name = "Волк"
+glyph = "w"
+color = "#b0b0b0"
+hp = 18
+damage = [2, 5]
+armor = 0
+dmg_type = "pierce"
+move_ms = 170
+attack_ms = 900
+xp = 8
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 0]
+resist = { cold = 15 }
+themes = ["forest", "plains", "hills"]
+gold = [0, 0]
+weight = 10
+group = [2, 4]
+
+[[monsters]]
+key = "boar"
+name = "Кабан"
+glyph = "b"
+color = "#9a6a4a"
+hp = 24
+damage = [3, 6]
+armor = 1
+dmg_type = "pierce"
+move_ms = 220
+attack_ms = 1100
+xp = 9
+sight = 6
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+themes = ["forest", "plains"]
+gold = [0, 0]
+weight = 8
+group = [1, 2]
+
+[[monsters]]
+key = "bandit"
+name = "Разбойник"
+glyph = "h"
+color = "#d0a070"
+hp = 26
+damage = [3, 7]
+armor = 2
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 1000
+xp = 14
+sight = 8
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+themes = ["plains", "hills", "sand"]
+gold = [3, 12]
+weight = 6
+group = [1, 3]
+persona = "Наглый лесной разбойник, грубый и жадный."
+
+[[monsters]]
+key = "bandit_archer"
+name = "Разбойник-лучник"
+glyph = "h"
+color = "#e0c080"
+hp = 18
+damage = [2, 4]
+armor = 1
+dmg_type = "slash"
+move_ms = 210
+attack_ms = 1100
+xp = 15
+sight = 10
+behavior = "ranged"
+role = "ranged"
+ability = "m_arrow"
+depth = [0, 0]
+themes = ["plains", "hills"]
+gold = [3, 10]
+weight = 4
+group = [1, 2]
+
+[[monsters]]
+key = "bandit_chief"
+name = "Атаман разбойников"
+glyph = "H"
+color = "#ffb060"
+hp = 70
+damage = [6, 11]
+armor = 4
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 1000
+xp = 60
+sight = 10
+behavior = "melee"
+role = "leader"
+abilities = ["m_war_cry"]
+depth = [0, 0]
+resist = { physical = 10 }
+themes = ["plains", "hills"]
+gold = [30, 60]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Атаман банды, хитрый и тщеславный. Любит угрожать и торговаться, но трус, когда проигрывает."
+
+[[monsters]]
+key = "spider"
+name = "Гигантский паук"
+glyph = "s"
+color = "#8a5a9a"
+hp = 20
+damage = [3, 6]
+armor = 1
+dmg_type = "pierce"
+move_ms = 150
+attack_ms = 900
+xp = 12
+sight = 8
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 3]
+resist = { poison = 50, fire = -25 }
+on_hit_pct = 25
+themes = ["forest", "swamp", "cave"]
+gold = [0, 0]
+weight = 6
+group = [1, 3]
+[monsters.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 4000
+dot_per_sec = 2
+dmg_type = "poison"
+color = "#9ae04a"
+
+[[monsters]]
+key = "lizardman"
+name = "Ящеролюд"
+glyph = "l"
+color = "#5ab05a"
+hp = 30
+damage = [4, 7]
+armor = 3
+dmg_type = "pierce"
+move_ms = 210
+attack_ms = 1000
+xp = 18
+sight = 8
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+resist = { poison = 30, cold = -25 }
+themes = ["swamp"]
+gold = [1, 6]
+weight = 8
+group = [1, 3]
+
+[[monsters]]
+key = "bog_witch"
+name = "Болотная ведьма"
+glyph = "W"
+color = "#9ad04a"
+hp = 40
+damage = [3, 5]
+armor = 1
+dmg_type = "blunt"
+move_ms = 230
+attack_ms = 1200
+xp = 45
+sight = 10
+behavior = "ranged"
+role = "caster"
+abilities = ["m_heal"]
+ability = "m_poison_spit"
+depth = [0, 0]
+resist = { poison = 75, shadow = 25, fire = -25 }
+themes = ["swamp"]
+gold = [10, 30]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Древняя болотная ведьма, говорит загадками, презирает чужаков."
+
+[[monsters]]
+key = "slime"
+name = "Слизень"
+glyph = "j"
+color = "#6ad04a"
+hp = 26
+damage = [3, 6]
+armor = 0
+dmg_type = "poison"
+move_ms = 280
+attack_ms = 1100
+xp = 12
+sight = 5
+behavior = "melee"
+role = "frontline"
+depth = [0, 4]
+resist = { blunt = 50, pierce = 40, poison = 100, fire = -40, cold = -30 }
+on_hit_pct = 30
+themes = ["swamp", "cave"]
+gold = [0, 3]
+weight = 6
+group = [1, 3]
+[monsters.on_hit]
+key = "acid"
+name = "Кислота"
+duration_ms = 5000
+stats = { armor = -4 }
+color = "#9ae04a"
+
+[[monsters]]
+key = "harpy"
+name = "Гарпия"
+glyph = "v"
+color = "#e0a0c0"
+hp = 22
+damage = [3, 6]
+armor = 0
+dmg_type = "slash"
+move_ms = 130
+attack_ms = 900
+xp = 16
+sight = 10
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 0]
+resist = { lightning = -25 }
+themes = ["hills", "sand"]
+gold = [0, 4]
+weight = 5
+group = [1, 3]
+
+[[monsters]]
+key = "bear"
+name = "Бурый медведь"
+glyph = "B"
+color = "#a0703a"
+hp = 60
+damage = [6, 11]
+armor = 3
+dmg_type = "slash"
+move_ms = 230
+attack_ms = 1300
+xp = 30
+sight = 6
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+resist = { cold = 25 }
+themes = ["forest"]
+gold = [0, 0]
+weight = 2
+group = [1, 1]
+
+[[monsters]]
+key = "treant"
+name = "Древень"
+glyph = "T"
+color = "#6a9a3a"
+hp = 150
+damage = [9, 15]
+armor = 5
+dmg_type = "blunt"
+move_ms = 320
+attack_ms = 1500
+xp = 90
+sight = 8
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [0, 0]
+resist = { pierce = 50, poison = 50, cold = 25, fire = -75 }
+themes = ["forest"]
+gold = [10, 30]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Древний дух леса, страж деревьев. Говорит медленно, о корнях и веках; ненавидит топоры и огонь."
+
+[[monsters]]
+key = "giant_bat"
+name = "Гигантская летучая мышь"
+glyph = "v"
+color = "#8a6a7a"
+hp = 12
+damage = [2, 4]
+armor = 0
+dmg_type = "pierce"
+move_ms = 120
+attack_ms = 800
+xp = 8
+sight = 8
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 3]
+night = true
+themes = ["forest", "swamp", "cave", "crypt"]
+gold = [0, 0]
+weight = 5
+group = [2, 4]
+
+[[monsters]]
+key = "wandering_skeleton"
+name = "Скелет"
+glyph = "z"
+color = "#e8e8d8"
+hp = 20
+damage = [3, 6]
+armor = 2
+dmg_type = "slash"
+move_ms = 240
+attack_ms = 1100
+xp = 12
+sight = 7
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+model = "skeleton"
+resist = { pierce = 50, poison = 100, blunt = -50, holy = -50 }
+themes = ["plains", "forest", "hills", "sand", "swamp", "cursed", "desert"]
+gold = [1, 5]
+weight = 9
+group = [1, 3]
+night = true
+
+[[monsters]]
+key = "ghost"
+name = "Призрак"
+glyph = "G"
+color = "#c0e0ff"
+hp = 25
+damage = [4, 7]
+armor = 0
+dmg_type = "cold"
+move_ms = 200
+attack_ms = 1100
+xp = 20
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 0]
+resist = { physical = 60, poison = 100, cold = 50, holy = -50, arcane = -25 }
+themes = ["plains", "forest", "swamp", "cursed"]
+gold = [0, 0]
+weight = 4
+group = [1, 1]
+night = true
+
+# ---- Пустыня ----
+
+[[monsters]]
+key = "scorpion"
+name = "Гигантский скорпион"
+glyph = "x"
+color = "#d0902a"
+hp = 28
+damage = [4, 7]
+armor = 3
+dmg_type = "pierce"
+move_ms = 190
+attack_ms = 1000
+xp = 18
+sight = 7
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+resist = { poison = 50, fire = 20, cold = -25 }
+on_hit_pct = 30
+themes = ["desert"]
+gold = [0, 0]
+weight = 9
+group = [1, 2]
+[monsters.on_hit]
+key = "scorpion_venom"
+name = "Яд скорпиона"
+duration_ms = 4000
+dot_per_sec = 3
+dmg_type = "poison"
+color = "#c0d040"
+
+[[monsters]]
+key = "nomad"
+name = "Кочевник-налётчик"
+glyph = "h"
+color = "#e0a050"
+hp = 26
+damage = [4, 7]
+armor = 2
+dmg_type = "slash"
+move_ms = 190
+attack_ms = 950
+xp = 16
+sight = 9
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+resist = { fire = 25 }
+themes = ["desert"]
+gold = [3, 12]
+weight = 6
+group = [2, 3]
+persona = "Пустынный налётчик, привыкший брать силой воду и золото у караванов."
+
+[[monsters]]
+key = "scarab"
+name = "Скарабей"
+glyph = "a"
+color = "#4ab0a0"
+hp = 10
+damage = [2, 4]
+armor = 3
+dmg_type = "pierce"
+move_ms = 150
+attack_ms = 800
+xp = 6
+sight = 7
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 5]
+resist = { pierce = 30, fire = -30 }
+themes = ["desert", "temple"]
+gold = [0, 1]
+weight = 7
+group = [3, 5]
+
+[[monsters]]
+key = "mummy"
+name = "Мумия"
+glyph = "M"
+color = "#d8c8a0"
+hp = 40
+damage = [5, 9]
+armor = 2
+dmg_type = "blunt"
+move_ms = 300
+attack_ms = 1300
+xp = 26
+sight = 7
+behavior = "melee"
+role = "frontline"
+depth = [0, 5]
+night = true
+resist = { poison = 100, physical = 15, fire = -75, holy = -40 }
+on_hit_pct = 25
+themes = ["desert", "temple"]
+gold = [2, 10]
+weight = 6
+group = [1, 2]
+[monsters.on_hit]
+key = "mummy_rot"
+name = "Гниль"
+duration_ms = 5000
+dot_per_sec = 2
+dmg_type = "poison"
+stats = { hp_regen = -1 }
+color = "#a0a060"
+
+[[monsters]]
+key = "sand_worm"
+name = "Песчаный червь"
+glyph = "S"
+color = "#c8a060"
+hp = 70
+damage = [7, 12]
+armor = 4
+dmg_type = "blunt"
+move_ms = 260
+attack_ms = 1400
+xp = 40
+sight = 7
+behavior = "ranged"
+role = "ranged"
+ability = "m_sand"
+depth = [0, 0]
+resist = { physical = 20, poison = 30, cold = -30 }
+themes = ["desert"]
+gold = [0, 5]
+weight = 2
+group = [1, 1]
+
+[[monsters]]
+key = "efreet"
+name = "Ифрит"
+glyph = "E"
+color = "#ff8a3a"
+hp = 80
+damage = [6, 10]
+armor = 3
+dmg_type = "fire"
+move_ms = 190
+attack_ms = 1000
+xp = 70
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_fire_breath"
+depth = [0, 0]
+resist = { fire = 100, poison = 100, cold = -50 }
+themes = ["desert"]
+gold = [20, 50]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Ифрит, гордый дух огня, тысячу лет запертый в пустыне. Говорит высокопарно, презирает смертных и их жалкие желания."
+
+# ---- Тундра ----
+
+[[monsters]]
+key = "ice_wolf"
+name = "Ледяной волк"
+glyph = "w"
+color = "#a8e0ff"
+hp = 24
+damage = [3, 6]
+armor = 1
+dmg_type = "pierce"
+model = "wolf"
+move_ms = 165
+attack_ms = 900
+xp = 14
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 4]
+resist = { cold = 60, fire = -30 }
+on_hit_pct = 20
+themes = ["tundra", "ice"]
+gold = [0, 0]
+weight = 10
+group = [2, 4]
+[monsters.on_hit]
+key = "chill"
+name = "Холод"
+duration_ms = 2000
+stats = { move_speed = -30 }
+color = "#a0e0ff"
+
+[[monsters]]
+key = "yeti"
+name = "Йети"
+glyph = "Y"
+color = "#e8f0ff"
+hp = 75
+damage = [7, 12]
+armor = 3
+dmg_type = "blunt"
+move_ms = 230
+attack_ms = 1300
+xp = 45
+sight = 7
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [0, 6]
+resist = { cold = 75, fire = -40 }
+themes = ["tundra", "ice"]
+gold = [0, 8]
+weight = 3
+group = [1, 1]
+
+[[monsters]]
+key = "ice_elemental"
+name = "Ледяной элементаль"
+glyph = "e"
+color = "#a0d8ff"
+hp = 34
+damage = [4, 7]
+armor = 4
+dmg_type = "cold"
+move_ms = 220
+attack_ms = 1100
+xp = 30
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_frost"
+depth = [0, 6]
+resist = { cold = 100, poison = 100, pierce = 40, fire = -50, blunt = -20 }
+themes = ["tundra", "ice"]
+gold = [0, 6]
+weight = 4
+group = [1, 2]
+
+[[monsters]]
+key = "frost_giant"
+name = "Ледяной великан"
+glyph = "J"
+color = "#c8e8ff"
+hp = 140
+damage = [10, 17]
+armor = 6
+dmg_type = "blunt"
+move_ms = 260
+attack_ms = 1400
+xp = 110
+sight = 9
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [0, 0]
+resist = { cold = 75, physical = 15, fire = -30 }
+themes = ["tundra"]
+gold = [30, 70]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Ледяной великан из древнего рода йотунов. Говорит медленно и гулко, презирает тепло и всё живое."
+
+# ---- Пепельные пустоши ----
+
+[[monsters]]
+key = "fire_imp"
+name = "Огненный бес"
+glyph = "i"
+color = "#ff6a2a"
+hp = 18
+damage = [3, 6]
+armor = 0
+dmg_type = "fire"
+move_ms = 140
+attack_ms = 900
+xp = 16
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_firebolt"
+depth = [0, 6]
+resist = { fire = 100, cold = -50, holy = -25 }
+themes = ["ash", "volcano", "fortress"]
+gold = [1, 5]
+weight = 9
+group = [2, 4]
+persona = "Мелкий огненный бес, хихикающий и злорадный."
+
+[[monsters]]
+key = "salamander"
+name = "Саламандра"
+glyph = "l"
+color = "#ff9a3a"
+hp = 32
+damage = [4, 8]
+armor = 3
+dmg_type = "fire"
+move_ms = 180
+attack_ms = 1000
+xp = 22
+sight = 8
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 6]
+resist = { fire = 100, cold = -50 }
+on_hit_pct = 25
+themes = ["ash", "volcano"]
+gold = [0, 4]
+weight = 7
+group = [1, 3]
+[monsters.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 3
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[monsters]]
+key = "magma_golem"
+name = "Магмовый голем"
+glyph = "Q"
+color = "#ff5a1a"
+hp = 90
+damage = [8, 14]
+armor = 8
+dmg_type = "fire"
+move_ms = 300
+attack_ms = 1500
+xp = 55
+sight = 6
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [0, 7]
+resist = { fire = 100, poison = 100, physical = 30, cold = -40 }
+themes = ["ash", "volcano"]
+gold = [3, 12]
+weight = 3
+group = [1, 1]
+
+[[monsters]]
+key = "fire_drake"
+name = "Пепельный дракон"
+glyph = "D"
+color = "#ff4a1a"
+hp = 160
+damage = [10, 16]
+armor = 6
+dmg_type = "fire"
+move_ms = 200
+attack_ms = 1100
+xp = 140
+sight = 11
+behavior = "melee"
+role = "frontline"
+ability = "m_fire_breath"
+depth = [0, 0]
+resist = { fire = 100, physical = 20, cold = -30 }
+themes = ["ash"]
+gold = [50, 100]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Молодой пепельный дракон. Самовлюблён, жаден до золота, говорит с шипением и гордостью."
+
+# ---- Проклятые земли ----
+
+[[monsters]]
+key = "shadow_wolf"
+name = "Теневой волк"
+glyph = "w"
+color = "#7a5aaa"
+hp = 26
+damage = [4, 7]
+armor = 1
+dmg_type = "shadow"
+model = "wolf"
+move_ms = 155
+attack_ms = 900
+xp = 18
+sight = 10
+behavior = "melee"
+role = "skirmisher"
+depth = [0, 6]
+resist = { shadow = 60, physical = 15, holy = -50 }
+themes = ["cursed", "fortress"]
+gold = [0, 0]
+weight = 9
+group = [2, 4]
+
+[[monsters]]
+key = "cultist"
+name = "Культист"
+glyph = "c"
+color = "#c03a3a"
+hp = 24
+damage = [3, 6]
+armor = 1
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 1000
+xp = 20
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_curse"
+depth = [0, 6]
+resist = { shadow = 30, holy = -25 }
+themes = ["cursed", "fortress"]
+gold = [4, 12]
+weight = 7
+group = [1, 3]
+persona = "Фанатик культа Бездны, бормочет молитвы демонам и жаждет принести героя в жертву."
+
+[[monsters]]
+key = "banshee"
+name = "Банши"
+glyph = "V"
+color = "#c8d8ff"
+hp = 30
+damage = [4, 8]
+armor = 0
+dmg_type = "cold"
+model = "ghost"
+move_ms = 170
+attack_ms = 1100
+xp = 26
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_shadowbolt"
+depth = [0, 0]
+night = true
+resist = { physical = 50, poison = 100, cold = 50, holy = -50 }
+themes = ["cursed"]
+gold = [0, 4]
+weight = 5
+group = [1, 1]
+
+[[monsters]]
+key = "dark_knight"
+name = "Тёмный рыцарь"
+glyph = "K"
+color = "#9a6aca"
+hp = 130
+damage = [9, 15]
+armor = 9
+dmg_type = "slash"
+move_ms = 210
+attack_ms = 1050
+xp = 100
+sight = 9
+behavior = "melee"
+role = "leader"
+abilities = ["m_war_cry"]
+ability = "m_curse"
+depth = [0, 8]
+resist = { physical = 30, shadow = 50, holy = -40 }
+themes = ["cursed", "fortress"]
+gold = [30, 70]
+weight = 1
+group = [1, 1]
+elite = true
+persona = "Падший рыцарь, продавший душу Бездне. Холоден, говорит о былой чести с горькой насмешкой."
+
+# ---- Пещеры ----
+
+[[monsters]]
+key = "rat"
+name = "Крыса"
+glyph = "r"
+color = "#a08070"
+hp = 9
+damage = [1, 3]
+armor = 0
+dmg_type = "pierce"
+move_ms = 160
+attack_ms = 800
+xp = 4
+sight = 6
+behavior = "melee"
+role = "skirmisher"
+depth = [1, 2]
+resist = { poison = 25 }
+themes = ["cave", "crypt"]
+gold = [0, 0]
+weight = 8
+group = [2, 4]
+
+[[monsters]]
+key = "goblin"
+name = "Гоблин"
+glyph = "g"
+color = "#7ac04a"
+hp = 16
+damage = [2, 5]
+armor = 1
+dmg_type = "slash"
+move_ms = 180
+attack_ms = 900
+xp = 10
+sight = 8
+behavior = "melee"
+role = "frontline"
+depth = [1, 4]
+themes = ["cave"]
+gold = [1, 6]
+weight = 10
+group = [2, 4]
+persona = "Мелкий злобный гоблин, визгливый и трусливый."
+
+[[monsters]]
+key = "goblin_archer"
+name = "Гоблин-лучник"
+glyph = "g"
+color = "#c0e04a"
+hp = 12
+damage = [1, 3]
+armor = 0
+dmg_type = "pierce"
+move_ms = 180
+attack_ms = 1000
+xp = 12
+sight = 9
+behavior = "ranged"
+role = "ranged"
+ability = "m_arrow"
+depth = [1, 4]
+themes = ["cave"]
+gold = [1, 5]
+weight = 6
+group = [1, 2]
+
+[[monsters]]
+key = "goblin_shaman"
+name = "Гоблин-шаман"
+glyph = "g"
+color = "#ff7aff"
+hp = 22
+damage = [2, 4]
+armor = 1
+dmg_type = "blunt"
+move_ms = 200
+attack_ms = 1100
+xp = 25
+sight = 9
+behavior = "ranged"
+role = "support"
+abilities = ["m_heal"]
+ability = "m_lightning"
+depth = [2, 5]
+resist = { lightning = 40 }
+themes = ["cave"]
+gold = [5, 15]
+weight = 3
+group = [1, 1]
+elite = true
+persona = "Гоблин-шаман, фанатично поклоняется Грозовому Глазу, командует сородичами."
+
+[[monsters]]
+key = "orc"
+name = "Орк"
+glyph = "o"
+color = "#5a9a3a"
+hp = 40
+damage = [5, 9]
+armor = 3
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 1100
+xp = 24
+sight = 8
+behavior = "melee"
+role = "frontline"
+depth = [2, 6]
+resist = { physical = 10 }
+themes = ["cave", "volcano"]
+gold = [3, 12]
+weight = 6
+group = [1, 3]
+
+[[monsters]]
+key = "cave_troll"
+name = "Пещерный тролль"
+glyph = "T"
+color = "#7a9a7a"
+hp = 90
+damage = [8, 14]
+armor = 5
+dmg_type = "blunt"
+move_ms = 260
+attack_ms = 1500
+xp = 60
+sight = 6
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [3, 6]
+resist = { physical = 15, fire = -50 }
+themes = ["cave"]
+gold = [5, 20]
+weight = 2
+group = [1, 1]
+
+[[monsters]]
+key = "orc_warlord"
+name = "Орочий вождь Гром"
+glyph = "O"
+color = "#ff4a2a"
+hp = 220
+damage = [10, 18]
+armor = 7
+dmg_type = "slash"
+move_ms = 210
+attack_ms = 1100
+xp = 300
+sight = 10
+behavior = "melee"
+role = "leader"
+abilities = ["m_war_cry"]
+depth = [3, 9]
+resist = { physical = 20, fire = 20 }
+themes = ["cave"]
+gold = [100, 200]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["grom_tusk", "plate_armor"]
+persona = "Гром, огромный орочий вождь. Говорит громко и коротко, уважает только силу, презирает слабых."
+
+[[monsters]]
+key = "cave_spider_queen"
+name = "Паучья королева"
+glyph = "S"
+color = "#c04a9a"
+hp = 150
+damage = [7, 12]
+armor = 4
+dmg_type = "pierce"
+move_ms = 170
+attack_ms = 1000
+xp = 200
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_web"
+depth = [2, 9]
+resist = { poison = 75, fire = -25 }
+on_hit_pct = 35
+themes = ["cave"]
+gold = [60, 120]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["elven_blade", "ranger_cloak"]
+persona = "Паучья королева, шепчет и шипит, считает героя добычей для своих детей."
+[monsters.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 5000
+dot_per_sec = 4
+dmg_type = "poison"
+color = "#9ae04a"
+
+# ---- Склепы и нежить ----
+
+[[monsters]]
+key = "skeleton"
+name = "Скелет-воин"
+glyph = "z"
+color = "#f0f0e0"
+hp = 22
+damage = [3, 6]
+armor = 2
+dmg_type = "slash"
+move_ms = 220
+attack_ms = 1000
+xp = 12
+sight = 8
+behavior = "melee"
+role = "frontline"
+depth = [1, 5]
+resist = { pierce = 50, poison = 100, blunt = -50, holy = -50 }
+themes = ["crypt", "temple"]
+gold = [1, 5]
+weight = 10
+group = [1, 3]
+
+[[monsters]]
+key = "skeleton_archer"
+name = "Скелет-лучник"
+glyph = "z"
+color = "#d0d0a0"
+hp = 16
+damage = [2, 4]
+armor = 1
+dmg_type = "slash"
+move_ms = 220
+attack_ms = 1100
+xp = 14
+sight = 9
+behavior = "ranged"
+role = "ranged"
+ability = "m_arrow"
+depth = [1, 5]
+resist = { pierce = 50, poison = 100, blunt = -50, holy = -50 }
+themes = ["crypt", "temple"]
+gold = [1, 5]
+weight = 6
+group = [1, 2]
+
+[[monsters]]
+key = "zombie"
+name = "Зомби"
+glyph = "Z"
+color = "#7a9a6a"
+hp = 35
+damage = [4, 8]
+armor = 1
+dmg_type = "blunt"
+move_ms = 330
+attack_ms = 1400
+xp = 14
+sight = 6
+behavior = "melee"
+role = "frontline"
+depth = [1, 4]
+resist = { poison = 100, fire = -50, holy = -50 }
+on_hit_pct = 20
+themes = ["crypt"]
+gold = [0, 3]
+weight = 7
+group = [1, 3]
+[monsters.on_hit]
+key = "disease"
+name = "Трупный яд"
+duration_ms = 6000
+dot_per_sec = 1.5
+dmg_type = "poison"
+stats = { hp_regen = -1 }
+color = "#8aa060"
+
+[[monsters]]
+key = "risen"
+name = "Восставший мертвец"
+glyph = "Z"
+color = "#8a9a8a"
+hp = 30
+damage = [4, 7]
+armor = 1
+dmg_type = "blunt"
+model = "zombie"
+move_ms = 320
+attack_ms = 1400
+xp = 14
+sight = 6
+behavior = "melee"
+role = "frontline"
+depth = [0, 0]
+night = true
+resist = { poison = 100, fire = -50, holy = -50 }
+themes = ["cursed"]
+gold = [0, 3]
+weight = 7
+group = [1, 3]
+
+[[monsters]]
+key = "ghoul"
+name = "Упырь"
+glyph = "u"
+color = "#b08080"
+hp = 34
+damage = [5, 9]
+armor = 2
+dmg_type = "slash"
+move_ms = 170
+attack_ms = 900
+xp = 26
+sight = 8
+behavior = "melee"
+role = "skirmisher"
+depth = [2, 6]
+resist = { poison = 100, holy = -50 }
+on_hit_pct = 20
+themes = ["crypt"]
+gold = [2, 8]
+weight = 5
+group = [1, 2]
+[monsters.on_hit]
+key = "bleeding"
+name = "Кровотечение"
+duration_ms = 4000
+dot_per_sec = 2
+dmg_type = "slash"
+color = "#e03a3a"
+
+[[monsters]]
+key = "wraith"
+name = "Умертвие"
+glyph = "W"
+color = "#8a8aff"
+hp = 45
+damage = [5, 10]
+armor = 3
+dmg_type = "cold"
+move_ms = 190
+attack_ms = 1100
+xp = 35
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_frost"
+depth = [3, 7]
+resist = { physical = 50, cold = 75, poison = 100, holy = -50, fire = -25 }
+themes = ["crypt", "ice"]
+gold = [5, 15]
+weight = 3
+group = [1, 1]
+
+[[monsters]]
+key = "necromancer"
+name = "Некромант"
+glyph = "N"
+color = "#c04aff"
+hp = 40
+damage = [3, 6]
+armor = 2
+dmg_type = "blunt"
+move_ms = 220
+attack_ms = 1100
+xp = 45
+sight = 10
+behavior = "ranged"
+role = "support"
+abilities = ["m_heal"]
+ability = "m_curse"
+depth = [2, 7]
+resist = { shadow = 50, holy = -25 }
+themes = ["crypt"]
+gold = [10, 30]
+weight = 2
+group = [1, 1]
+elite = true
+persona = "Некромант-отступник, высокомерный учёный, считает живых сырьём для экспериментов."
+
+[[monsters]]
+key = "lich"
+name = "Лич Морвен"
+glyph = "L"
+color = "#ff4aff"
+hp = 200
+damage = [8, 14]
+armor = 6
+dmg_type = "cold"
+move_ms = 230
+attack_ms = 1000
+xp = 320
+sight = 11
+behavior = "ranged"
+role = "caster"
+abilities = ["m_heal"]
+ability = "m_shadowbolt"
+depth = [3, 9]
+resist = { shadow = 75, cold = 50, poison = 100, physical = 25, holy = -50 }
+themes = ["crypt"]
+gold = [120, 220]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["crown_of_morwen", "rune_staff"]
+persona = "Морвен, древний лич, бывшая королева этих земель. Холодна, величественна, говорит архаично и с презрением к смертным."
+
+# ---- Гробницы и цитадели ----
+
+[[monsters]]
+key = "tomb_guardian"
+name = "Страж гробницы"
+glyph = "G"
+color = "#c8b080"
+hp = 70
+damage = [7, 12]
+armor = 8
+dmg_type = "blunt"
+model = "golem"
+move_ms = 280
+attack_ms = 1300
+xp = 45
+sight = 7
+behavior = "melee"
+role = "frontline"
+depth = [1, 7]
+resist = { pierce = 60, slash = 40, poison = 100, blunt = -30, lightning = -25 }
+themes = ["temple"]
+gold = [3, 12]
+weight = 4
+group = [1, 1]
+
+[[monsters]]
+key = "demon"
+name = "Демон-страж"
+glyph = "U"
+color = "#d02a3a"
+hp = 80
+damage = [9, 14]
+armor = 5
+dmg_type = "fire"
+move_ms = 210
+attack_ms = 1100
+xp = 60
+sight = 9
+behavior = "melee"
+role = "frontline"
+depth = [2, 8]
+resist = { fire = 75, shadow = 50, holy = -50, cold = -25 }
+on_hit_pct = 20
+themes = ["fortress"]
+gold = [5, 20]
+weight = 3
+group = [1, 1]
+[monsters.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 3
+dmg_type = "fire"
+color = "#ff6a1a"
+
+# ---- Боссы ледяных, огненных, пустынных и демонических подземелий ----
+
+[[monsters]]
+key = "frost_jarl"
+name = "Ярл Ледобород"
+glyph = "J"
+color = "#a8f0ff"
+hp = 260
+damage = [12, 20]
+armor = 8
+dmg_type = "blunt"
+model = "frost_giant"
+move_ms = 230
+attack_ms = 1150
+xp = 360
+sight = 10
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+depth = [2, 9]
+resist = { cold = 90, physical = 20, fire = -30 }
+themes = ["ice"]
+gold = [120, 220]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["frost_heart", "frost_axe"]
+persona = "Ярл Ледобород, король ледяных великанов. Гулкий бас, древние клятвы, презрение к «тёплой плоти»."
+
+[[monsters]]
+key = "magma_lord"
+name = "Игнар, Владыка Магмы"
+glyph = "Q"
+color = "#ff3a0a"
+hp = 280
+damage = [12, 20]
+armor = 9
+dmg_type = "fire"
+model = "magma_golem"
+move_ms = 240
+attack_ms = 1150
+xp = 380
+sight = 10
+behavior = "melee"
+role = "frontline"
+ability = "m_fire_breath"
+depth = [2, 9]
+resist = { fire = 100, poison = 100, physical = 25, cold = -40 }
+themes = ["volcano"]
+gold = [120, 240]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["dragonscale", "ember_staff"]
+persona = "Игнар, древний дух вулкана. Говорит рокочуще, как извержение; считает мир топливом для своего пламени."
+
+[[monsters]]
+key = "pharaoh"
+name = "Фараон Анх-Тамун"
+glyph = "P"
+color = "#ffd060"
+hp = 240
+damage = [10, 16]
+armor = 7
+dmg_type = "arcane"
+move_ms = 230
+attack_ms = 1100
+xp = 360
+sight = 11
+behavior = "ranged"
+role = "caster"
+ability = "m_arcane"
+depth = [2, 9]
+resist = { poison = 100, arcane = 40, physical = 15, fire = -50, holy = -40 }
+on_hit_pct = 30
+themes = ["temple"]
+gold = [120, 240]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["pharaoh_mask", "eye_of_storm"]
+persona = "Анх-Тамун, бессмертный фараон, проклявший собственный народ. Говорит о себе «Мы», требует поклонения и грозит вечным проклятием."
+[monsters.on_hit]
+key = "hex"
+name = "Проклятие фараона"
+duration_ms = 6000
+stats = { res_all = -20 }
+color = "#ffd060"
+
+[[monsters]]
+key = "demon_lord"
+name = "Азгарот, Князь Бездны"
+glyph = "A"
+color = "#ff2a5a"
+hp = 300
+damage = [13, 21]
+armor = 9
+dmg_type = "shadow"
+move_ms = 210
+attack_ms = 1050
+xp = 420
+sight = 11
+behavior = "melee"
+role = "leader"
+abilities = ["m_war_cry"]
+ability = "m_curse"
+depth = [2, 9]
+resist = { shadow = 75, fire = 50, poison = 100, holy = -50 }
+on_hit_pct = 25
+themes = ["fortress"]
+gold = [140, 260]
+weight = 0
+group = [1, 1]
+elite = true
+boss = true
+drops = ["demon_horn", "sun_blade"]
+persona = "Азгарот, демон-князь, призванный культом Бездны. Насмешлив, искушает смертных сделками, в гневе ревёт пламенем."
+[monsters.on_hit]
+key = "burn"
+name = "Адское пламя"
+duration_ms = 3000
+dot_per_sec = 5
+dmg_type = "fire"
+color = "#ff2a5a"
+
+# ---- Умения монстров ----
+
+[[abilities]]
+key = "m_arrow"
+name = "Стрела"
+kind = "projectile"
+cooldown_ms = 1800
+damage = [3, 6]
+range = 8
+speed_ms = 45
+glyph = "dir"
+color = "#c0b090"
+dmg_type = "pierce"
+
+[[abilities]]
+key = "m_firebolt"
+name = "Огненная искра"
+kind = "projectile"
+cooldown_ms = 2200
+damage = [4, 8]
+range = 8
+speed_ms = 55
+glyph = "*"
+color = "#ff7a2a"
+dmg_type = "fire"
+[abilities.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 2000
+dot_per_sec = 2
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[abilities]]
+key = "m_shadowbolt"
+name = "Тёмная стрела"
+kind = "projectile"
+cooldown_ms = 1600
+damage = [6, 11]
+range = 9
+speed_ms = 50
+glyph = "*"
+color = "#9a4aff"
+dmg_type = "shadow"
+
+[[abilities]]
+key = "m_web"
+name = "Паутина"
+kind = "projectile"
+cooldown_ms = 4000
+damage = [1, 2]
+range = 6
+speed_ms = 60
+glyph = "#"
+color = "#e0e0e0"
+dmg_type = "pierce"
+[abilities.on_hit]
+key = "web"
+name = "Паутина"
+duration_ms = 2500
+stats = { move_speed = -70 }
+color = "#e0e0e0"
+
+[[abilities]]
+key = "m_frost"
+name = "Ледяной осколок"
+kind = "projectile"
+cooldown_ms = 2500
+damage = [5, 9]
+range = 8
+speed_ms = 50
+glyph = "*"
+color = "#a0e0ff"
+dmg_type = "cold"
+[abilities.on_hit]
+key = "chill"
+name = "Холод"
+duration_ms = 2500
+stats = { move_speed = -40 }
+color = "#a0e0ff"
+
+[[abilities]]
+key = "m_lightning"
+name = "Молния"
+kind = "projectile"
+cooldown_ms = 2200
+damage = [5, 9]
+range = 8
+speed_ms = 22
+glyph = "*"
+color = "#fff06a"
+dmg_type = "lightning"
+
+[[abilities]]
+key = "m_poison_spit"
+name = "Ядовитый плевок"
+kind = "projectile"
+cooldown_ms = 2500
+damage = [3, 6]
+range = 7
+speed_ms = 50
+glyph = "*"
+color = "#9ae04a"
+dmg_type = "poison"
+[abilities.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 4000
+dot_per_sec = 3
+dmg_type = "poison"
+color = "#9ae04a"
+
+[[abilities]]
+key = "m_curse"
+name = "Порча"
+kind = "projectile"
+cooldown_ms = 5000
+damage = [3, 6]
+range = 8
+speed_ms = 45
+glyph = "*"
+color = "#c05aff"
+dmg_type = "shadow"
+[abilities.on_hit]
+key = "hex"
+name = "Порча"
+duration_ms = 6000
+stats = { res_all = -20 }
+color = "#c05aff"
+
+[[abilities]]
+key = "m_fire_breath"
+name = "Огненное дыхание"
+kind = "projectile"
+cooldown_ms = 4000
+damage = [6, 10]
+range = 6
+radius = 1
+speed_ms = 45
+glyph = "o"
+color = "#ff6a1a"
+dmg_type = "fire"
+[abilities.on_hit]
+key = "burn"
+name = "Горение"
+duration_ms = 3000
+dot_per_sec = 3
+dmg_type = "fire"
+color = "#ff6a1a"
+
+[[abilities]]
+key = "m_stomp"
+name = "Топот"
+kind = "nova"
+cooldown_ms = 5000
+damage = [5, 9]
+radius = 1
+glyph = "#"
+color = "#d0c0a0"
+dmg_type = "blunt"
+[abilities.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 900
+stun = true
+color = "#ffe080"
+
+[[abilities]]
+key = "m_sand"
+name = "Песчаный вихрь"
+kind = "projectile"
+cooldown_ms = 3000
+damage = [4, 8]
+range = 8
+speed_ms = 40
+glyph = "*"
+color = "#e0c080"
+dmg_type = "blunt"
+[abilities.on_hit]
+key = "blinded"
+name = "Песок в глазах"
+duration_ms = 3000
+stats = { crit = -20, attack_speed = -20 }
+color = "#e0c080"
+
+[[abilities]]
+key = "m_arcane"
+name = "Тайный заряд"
+kind = "projectile"
+cooldown_ms = 2000
+damage = [6, 11]
+range = 9
+speed_ms = 35
+glyph = "*"
+color = "#d08aff"
+dmg_type = "arcane"
+
+[[abilities]]
+key = "m_heal"
+name = "Целительный обряд"
+kind = "heal"
+cooldown_ms = 6000
+radius = 4
+damage = [10, 16]
+glyph = "+"
+color = "#80ff80"
+
+[[abilities]]
+key = "m_war_cry"
+name = "Боевой рёв"
+kind = "buff"
+cooldown_ms = 18000
+radius = 5
+color = "#ff6a4a"
+[abilities.buff]
+key = "m_war_cry"
+name = "Боевой рёв"
+duration_ms = 8000
+stats = { melee_pct = 25, armor = 3 }
+color = "#ff6a4a"
+
+[[abilities]]
+key = "m_shield"
+name = "Щит веры"
+kind = "buff"
+cooldown_ms = 20000
+radius = 5
+color = "#ffe08a"
+[abilities.buff]
+key = "m_shield"
+name = "Щит веры"
+duration_ms = 8000
+stats = { res_all = 20, armor = 3 }
+color = "#ffe08a"
+
+# ---- Бойцы отрядов ----
+
+[[monsters]]
+key = "bandit_thief"
+name = "Разбойник-вор"
+glyph = "h"
+color = "#a090c8"
+hp = 20
+damage = [3, 6]
+armor = 1
+dmg_type = "pierce"
+move_ms = 150
+attack_ms = 800
+xp = 16
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+on_hit_pct = 25
+depth = [0, 0]
+themes = ["plains", "hills", "forest", "sand"]
+gold = [2, 10]
+weight = 3
+group = [1, 2]
+persona = "Вор с ножом за голенищем: заходит со спины и бьёт в почки."
+[monsters.on_hit]
+key = "venom"
+name = "Яд"
+duration_ms = 4000
+dot_per_sec = 2
+dmg_type = "poison"
+color = "#9ae04a"
+
+[[monsters]]
+key = "bandit_mage"
+name = "Разбойник-маг"
+glyph = "h"
+color = "#d08aff"
+hp = 18
+damage = [2, 4]
+armor = 0
+dmg_type = "blunt"
+move_ms = 210
+attack_ms = 1100
+xp = 18
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_firebolt"
+depth = [0, 0]
+themes = ["plains", "hills"]
+gold = [4, 14]
+weight = 2
+group = [1, 1]
+persona = "Недоучка из академии, подавшийся в разбой. Высокомерен и труслив."
+
+[[monsters]]
+key = "orc_shaman"
+name = "Орк-шаман"
+glyph = "o"
+color = "#9ad04a"
+hp = 32
+damage = [3, 6]
+armor = 2
+dmg_type = "blunt"
+move_ms = 210
+attack_ms = 1100
+xp = 30
+sight = 9
+behavior = "ranged"
+role = "support"
+ability = "m_lightning"
+abilities = ["m_heal"]
+depth = [2, 6]
+resist = { lightning = 30 }
+themes = ["cave", "volcano"]
+gold = [5, 15]
+weight = 3
+group = [1, 1]
+
+[[monsters]]
+key = "skeleton_mage"
+name = "Скелет-маг"
+glyph = "z"
+color = "#a0c0ff"
+hp = 18
+damage = [2, 4]
+armor = 1
+dmg_type = "blunt"
+move_ms = 220
+attack_ms = 1100
+xp = 16
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_frost"
+depth = [1, 6]
+resist = { pierce = 50, poison = 100, blunt = -50, holy = -50, cold = 30 }
+themes = ["crypt", "temple"]
+gold = [1, 6]
+weight = 4
+group = [1, 1]
+
+# ---- Союзники: призванные существа и бойцы-NPC (ally = true, сами не появляются) ----
+
+[[monsters]]
+key = "illusion"
+name = "Иллюзия"
+glyph = "@"
+color = "#c08aff"
+hp = 30
+damage = [0, 0]
+armor = 0
+move_ms = 200
+attack_ms = 1000
+xp = 0
+sight = 0
+behavior = "decoy"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "imp_minion"
+name = "Бес"
+glyph = "i"
+color = "#ff8a3a"
+hp = 45
+damage = [3, 6]
+armor = 1
+dmg_type = "fire"
+move_ms = 150
+attack_ms = 900
+xp = 0
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_firebolt"
+model = "fire_imp"
+resist = { fire = 75 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "felguard"
+name = "Страж бездны"
+glyph = "U"
+color = "#ff3a5a"
+hp = 150
+damage = [9, 14]
+armor = 6
+dmg_type = "shadow"
+move_ms = 190
+attack_ms = 1000
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+model = "demon"
+resist = { shadow = 50, fire = 30 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "spirit_wolf"
+name = "Призрачный волк"
+glyph = "w"
+color = "#80c8ff"
+hp = 55
+damage = [4, 8]
+armor = 2
+dmg_type = "cold"
+move_ms = 140
+attack_ms = 850
+xp = 0
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+model = "wolf"
+resist = { cold = 50, poison = 100 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "town_guard"
+name = "Стражник"
+glyph = "@"
+color = "#a0c0ff"
+hp = 90
+damage = [6, 10]
+armor = 5
+dmg_type = "pierce"
+move_ms = 200
+attack_ms = 1000
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+model = "guard"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "knight_errant"
+name = "Странствующий рыцарь"
+glyph = "@"
+color = "#e0e0f0"
+hp = 150
+damage = [8, 13]
+armor = 8
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 1000
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+abilities = ["m_war_cry"]
+model = "knight_errant"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "hunter_npc"
+name = "Охотник"
+glyph = "@"
+color = "#8ac060"
+hp = 75
+damage = [4, 7]
+armor = 2
+dmg_type = "pierce"
+move_ms = 170
+attack_ms = 1000
+xp = 0
+sight = 11
+behavior = "ranged"
+role = "ranged"
+ability = "m_arrow"
+model = "hunter_npc"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "pilgrim"
+name = "Паломница"
+glyph = "@"
+color = "#fff0c0"
+hp = 80
+damage = [3, 6]
+armor = 2
+dmg_type = "holy"
+move_ms = 210
+attack_ms = 1100
+xp = 0
+sight = 9
+behavior = "ranged"
+role = "support"
+ability = "m_heal"
+abilities = ["m_shield"]
+model = "priest"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "mercenary"
+name = "Наёмник"
+glyph = "@"
+color = "#c8a070"
+hp = 120
+damage = [7, 12]
+armor = 5
+dmg_type = "slash"
+move_ms = 190
+attack_ms = 1000
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+model = "mercenary"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "battle_mage"
+name = "Боевой маг"
+glyph = "@"
+color = "#8ab0ff"
+hp = 70
+damage = [3, 5]
+armor = 1
+dmg_type = "arcane"
+move_ms = 200
+attack_ms = 1100
+xp = 0
+sight = 10
+behavior = "ranged"
+role = "caster"
+ability = "m_firebolt"
+model = "battle_mage"
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true

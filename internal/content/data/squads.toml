@@ -1,0 +1,140 @@
+# Отряды: смешанные группы, которые воюют вместе. Бойцы (role = frontline) держат врага,
+# воры (skirmisher) заходят с флангов и со спины, лучники и маги (ranged, caster) стоят позади,
+# шаманы (support) лечат своих, вожаки (leader) поднимают боевой дух.
+# depth и themes — как у монстров; weight — частота среди отрядов той же местности.
+
+[[squads]]
+key = "bandit_gang"
+name = "Банда разбойников"
+themes = ["plains", "hills", "forest", "sand"]
+depth = [0, 0]
+weight = 6
+members = [
+  { monster = "bandit", count = [1, 2] },
+  { monster = "bandit_thief", count = [1, 2] },
+  { monster = "bandit_archer", count = [1, 2] },
+  { monster = "bandit_mage", count = [0, 1] },
+]
+
+[[squads]]
+key = "bandit_warband"
+name = "Шайка атамана"
+themes = ["plains", "hills"]
+depth = [0, 0]
+weight = 2
+members = [
+  { monster = "bandit_chief", count = [1, 1] },
+  { monster = "bandit", count = [2, 2] },
+  { monster = "bandit_thief", count = [1, 1] },
+  { monster = "bandit_archer", count = [2, 2] },
+  { monster = "bandit_mage", count = [1, 1] },
+]
+
+[[squads]]
+key = "nomad_raiders"
+name = "Налётчики пустыни"
+themes = ["desert"]
+depth = [0, 0]
+weight = 5
+members = [
+  { monster = "nomad", count = [2, 3] },
+  { monster = "bandit_archer", count = [1, 2] },
+  { monster = "bandit_mage", count = [0, 1] },
+]
+
+[[squads]]
+key = "goblin_raid"
+name = "Гоблинский набег"
+themes = ["cave"]
+depth = [1, 4]
+weight = 6
+members = [
+  { monster = "goblin", count = [2, 3] },
+  { monster = "goblin_archer", count = [1, 2] },
+  { monster = "goblin_shaman", count = [0, 1] },
+]
+
+[[squads]]
+key = "orc_warband"
+name = "Орочья орда"
+themes = ["cave", "volcano"]
+depth = [2, 7]
+weight = 4
+members = [
+  { monster = "orc", count = [2, 3] },
+  { monster = "orc_shaman", count = [1, 1] },
+  { monster = "goblin_archer", count = [1, 2] },
+]
+
+[[squads]]
+key = "undead_patrol"
+name = "Дозор мертвецов"
+themes = ["crypt", "temple"]
+depth = [1, 6]
+weight = 6
+members = [
+  { monster = "skeleton", count = [2, 3] },
+  { monster = "skeleton_archer", count = [1, 2] },
+  { monster = "skeleton_mage", count = [0, 1] },
+]
+
+[[squads]]
+key = "night_dead"
+name = "Восставшие из могил"
+themes = ["plains", "forest", "cursed", "swamp"]
+depth = [0, 0]
+weight = 3
+night = true
+members = [
+  { monster = "wandering_skeleton", count = [2, 3] },
+  { monster = "skeleton_archer", count = [1, 1] },
+  { monster = "ghost", count = [0, 1] },
+]
+
+[[squads]]
+key = "necro_circle"
+name = "Круг некроманта"
+themes = ["crypt"]
+depth = [2, 7]
+weight = 2
+members = [
+  { monster = "necromancer", count = [1, 1] },
+  { monster = "zombie", count = [2, 3] },
+  { monster = "skeleton_archer", count = [1, 1] },
+]
+
+[[squads]]
+key = "cult_circle"
+name = "Круг культистов"
+themes = ["cursed", "fortress"]
+depth = [0, 7]
+weight = 5
+members = [
+  { monster = "cultist", count = [2, 3] },
+  { monster = "shadow_wolf", count = [1, 2] },
+  { monster = "dark_knight", count = [0, 1] },
+]
+
+[[squads]]
+key = "frost_pack"
+name = "Ледяная стая"
+themes = ["tundra", "ice"]
+depth = [0, 5]
+weight = 4
+members = [
+  { monster = "ice_wolf", count = [2, 3] },
+  { monster = "yeti", count = [0, 1] },
+  { monster = "ice_elemental", count = [0, 1] },
+]
+
+[[squads]]
+key = "fire_brood"
+name = "Огненный выводок"
+themes = ["ash", "volcano"]
+depth = [0, 6]
+weight = 4
+members = [
+  { monster = "salamander", count = [1, 2] },
+  { monster = "fire_imp", count = [2, 3] },
+  { monster = "magma_golem", count = [0, 1] },
+]

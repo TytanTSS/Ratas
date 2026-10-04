@@ -1,0 +1,743 @@
+# Тайлы карты. Новые тайлы добавляйте только в конец: номер тайла в сохранениях — его позиция в списке.
+
+[[tiles]]
+key = "void"
+name = "Пустота"
+glyph = " "
+fg = "#000000"
+walkable = false
+transparent = false
+
+# ---- Поверхность ----
+
+[[tiles]]
+key = "deep_water"
+name = "Глубокая вода"
+glyph = "~"
+fg = "#1f4fa8"
+bg = "#0a1f45"
+walkable = false
+transparent = true
+biome = "water"
+
+[[tiles]]
+key = "water"
+name = "Мелководье"
+glyph = "~"
+fg = "#4f8fe0"
+bg = "#123063"
+walkable = true
+transparent = true
+move_cost = 2.2
+biome = "water"
+
+[[tiles]]
+key = "sand"
+name = "Песок"
+glyph = "."
+fg = "#d9c27a"
+walkable = true
+transparent = true
+biome = "sand"
+
+[[tiles]]
+key = "grass"
+name = "Трава"
+glyph = "."
+fg = "#5fa043"
+walkable = true
+transparent = true
+biome = "plains"
+
+[[tiles]]
+key = "grass2"
+name = "Трава"
+glyph = ","
+fg = "#4c8a35"
+walkable = true
+transparent = true
+biome = "plains"
+
+[[tiles]]
+key = "tall_grass"
+name = "Высокая трава"
+glyph = "\""
+fg = "#78b24a"
+walkable = true
+transparent = true
+move_cost = 1.2
+biome = "plains"
+
+[[tiles]]
+key = "flowers"
+name = "Цветы"
+glyph = "*"
+fg = "#e07ab8"
+walkable = true
+transparent = true
+biome = "plains"
+
+[[tiles]]
+key = "forest_floor"
+name = "Лесная подстилка"
+glyph = "."
+fg = "#3d6b2c"
+walkable = true
+transparent = true
+biome = "forest"
+
+[[tiles]]
+key = "tree"
+name = "Дерево"
+glyph = "T"
+fg = "#2f8a3a"
+walkable = false
+transparent = false
+biome = "forest"
+
+[[tiles]]
+key = "pine"
+name = "Ель"
+glyph = "A"
+fg = "#1f6b4a"
+walkable = false
+transparent = false
+biome = "forest"
+
+[[tiles]]
+key = "bush"
+name = "Кустарник"
+glyph = "&"
+fg = "#4a8f3a"
+walkable = true
+transparent = false
+move_cost = 1.6
+biome = "forest"
+
+[[tiles]]
+key = "swamp"
+name = "Топь"
+glyph = ","
+fg = "#6b7d3a"
+bg = "#1c2410"
+walkable = true
+transparent = true
+move_cost = 1.8
+biome = "swamp"
+
+[[tiles]]
+key = "reeds"
+name = "Камыш"
+glyph = "\""
+fg = "#9a9a4a"
+bg = "#1c2410"
+walkable = true
+transparent = false
+move_cost = 1.8
+biome = "swamp"
+
+[[tiles]]
+key = "dead_tree"
+name = "Сухое дерево"
+glyph = "Y"
+fg = "#7a6a50"
+walkable = false
+transparent = true
+biome = "swamp"
+
+[[tiles]]
+key = "hill"
+name = "Холм"
+glyph = "n"
+fg = "#9a8255"
+walkable = true
+transparent = true
+move_cost = 1.5
+biome = "hills"
+
+[[tiles]]
+key = "mountain"
+name = "Горы"
+glyph = "^"
+fg = "#8c8c96"
+walkable = false
+transparent = false
+biome = "hills"
+
+[[tiles]]
+key = "snow"
+name = "Снежная вершина"
+glyph = "^"
+fg = "#f2f5ff"
+walkable = false
+transparent = false
+biome = "snow"
+
+[[tiles]]
+key = "road"
+name = "Дорога"
+glyph = "."
+fg = "#b39060"
+bg = "#2a2015"
+walkable = true
+transparent = true
+move_cost = 0.8
+biome = "plains"
+
+[[tiles]]
+key = "bridge"
+name = "Мост"
+glyph = "="
+fg = "#a0784a"
+bg = "#123063"
+walkable = true
+transparent = true
+move_cost = 0.8
+biome = "plains"
+
+# ---- Деревни ----
+
+[[tiles]]
+key = "house_wall"
+name = "Стена дома"
+glyph = "#"
+fg = "#a0784a"
+bg = "#3a2a1a"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "house_floor"
+name = "Деревянный пол"
+glyph = "."
+fg = "#8a6a45"
+bg = "#1e150c"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "door"
+name = "Дверь"
+glyph = "+"
+fg = "#c8964a"
+bg = "#3a2a1a"
+walkable = false
+transparent = false
+interact = "door"
+becomes = "door_open"
+
+[[tiles]]
+key = "door_open"
+name = "Открытая дверь"
+glyph = "'"
+fg = "#c8964a"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "well"
+name = "Колодец"
+glyph = "O"
+fg = "#7fb2e0"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "fence"
+name = "Забор"
+glyph = "|"
+fg = "#8a6a45"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "dungeon"
+name = "Вход в подземелье"
+glyph = ">"
+fg = "#ff7a3a"
+bg = "#3a1a10"
+walkable = true
+transparent = true
+interact = "dungeon"
+
+# ---- Подземелья ----
+
+[[tiles]]
+key = "stone_wall"
+name = "Каменная стена"
+glyph = "#"
+fg = "#8a8a9a"
+bg = "#2a2a33"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "stone_floor"
+name = "Каменный пол"
+glyph = "."
+fg = "#6a6a78"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "cave_wall"
+name = "Стена пещеры"
+glyph = "#"
+fg = "#8a6a4a"
+bg = "#2a1e14"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "cave_floor"
+name = "Пол пещеры"
+glyph = "."
+fg = "#7a6250"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "rubble"
+name = "Обломки"
+glyph = ":"
+fg = "#7a7a7a"
+walkable = true
+transparent = true
+move_cost = 1.4
+
+[[tiles]]
+key = "bones"
+name = "Кости"
+glyph = "%"
+fg = "#d8d8c8"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "stairs_down"
+name = "Лестница вниз"
+glyph = ">"
+fg = "#ffffff"
+bg = "#30303a"
+walkable = true
+transparent = true
+interact = "stairs_down"
+
+[[tiles]]
+key = "stairs_up"
+name = "Лестница вверх"
+glyph = "<"
+fg = "#ffffff"
+bg = "#30303a"
+walkable = true
+transparent = true
+interact = "stairs_up"
+
+[[tiles]]
+key = "chest"
+name = "Сундук"
+glyph = "="
+fg = "#ffd24a"
+bg = "#3a2a10"
+walkable = false
+transparent = true
+interact = "chest"
+becomes = "chest_open"
+
+[[tiles]]
+key = "chest_open"
+name = "Открытый сундук"
+glyph = "_"
+fg = "#9a7a3a"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "lava"
+name = "Лава"
+glyph = "~"
+fg = "#ff5a1a"
+bg = "#5a1a05"
+walkable = true
+transparent = true
+move_cost = 1.5
+damage = 12
+light = "#ff5a1a"
+
+[[tiles]]
+key = "altar"
+name = "Алтарь"
+glyph = "_"
+fg = "#c070ff"
+bg = "#2a103a"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "pillar"
+name = "Колонна"
+glyph = "O"
+fg = "#9a9aa8"
+walkable = false
+transparent = false
+
+# ---- Пустыня ----
+
+[[tiles]]
+key = "desert_sand"
+name = "Пески"
+glyph = "."
+fg = "#e6c47a"
+walkable = true
+transparent = true
+biome = "desert"
+
+[[tiles]]
+key = "dunes"
+name = "Барханы"
+glyph = "~"
+fg = "#d8b064"
+walkable = true
+transparent = true
+move_cost = 1.3
+biome = "desert"
+
+[[tiles]]
+key = "cactus"
+name = "Кактус"
+glyph = "!"
+fg = "#4f9a48"
+walkable = false
+transparent = true
+biome = "desert"
+
+[[tiles]]
+key = "palm"
+name = "Пальма"
+glyph = "T"
+fg = "#5ab04a"
+walkable = false
+transparent = false
+biome = "desert"
+
+[[tiles]]
+key = "sandstone"
+name = "Скалы песчаника"
+glyph = "^"
+fg = "#c89a5a"
+walkable = false
+transparent = false
+biome = "desert"
+
+# ---- Тундра ----
+
+[[tiles]]
+key = "snow_ground"
+name = "Снег"
+glyph = "."
+fg = "#e4ecf6"
+walkable = true
+transparent = true
+biome = "tundra"
+
+[[tiles]]
+key = "snowdrift"
+name = "Сугроб"
+glyph = "~"
+fg = "#f4f8ff"
+walkable = true
+transparent = true
+move_cost = 1.5
+biome = "tundra"
+
+[[tiles]]
+key = "ice"
+name = "Лёд"
+glyph = "="
+fg = "#a8d8f0"
+bg = "#2a5070"
+walkable = true
+transparent = true
+move_cost = 0.9
+biome = "tundra"
+
+[[tiles]]
+key = "snow_pine"
+name = "Заснеженная ель"
+glyph = "A"
+fg = "#3a6a5a"
+walkable = false
+transparent = false
+biome = "tundra"
+
+[[tiles]]
+key = "ice_rock"
+name = "Ледяная глыба"
+glyph = "^"
+fg = "#a8d0f0"
+walkable = false
+transparent = false
+biome = "tundra"
+
+# ---- Пепельные пустоши ----
+
+[[tiles]]
+key = "ash"
+name = "Пепел"
+glyph = "."
+fg = "#77696c"
+walkable = true
+transparent = true
+biome = "ash"
+
+[[tiles]]
+key = "basalt"
+name = "Базальтовые скалы"
+glyph = "^"
+fg = "#5a4c50"
+walkable = false
+transparent = false
+biome = "ash"
+
+[[tiles]]
+key = "charred_tree"
+name = "Обугленное дерево"
+glyph = "Y"
+fg = "#4a3a36"
+walkable = false
+transparent = true
+biome = "ash"
+
+[[tiles]]
+key = "magma_crack"
+name = "Трещины магмы"
+glyph = "%"
+fg = "#ff6a2a"
+bg = "#2a1410"
+walkable = true
+transparent = true
+damage = 4
+biome = "ash"
+
+# ---- Проклятые земли ----
+
+[[tiles]]
+key = "blight_grass"
+name = "Мёртвая трава"
+glyph = ","
+fg = "#6a6070"
+walkable = true
+transparent = true
+biome = "cursed"
+
+[[tiles]]
+key = "twisted_tree"
+name = "Кривое дерево"
+glyph = "T"
+fg = "#5a3a62"
+walkable = false
+transparent = false
+biome = "cursed"
+
+[[tiles]]
+key = "mushrooms"
+name = "Светящиеся грибы"
+glyph = "*"
+fg = "#b07aff"
+walkable = true
+transparent = true
+biome = "cursed"
+light = "#b07aff"
+
+# ---- Достопримечательности ----
+
+[[tiles]]
+key = "gravestone"
+name = "Надгробие"
+glyph = "+"
+fg = "#a8a8b0"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "menhir"
+name = "Менгир"
+glyph = "|"
+fg = "#9a9aa8"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "shrine"
+name = "Святилище"
+glyph = "_"
+fg = "#ffe08a"
+bg = "#3a3010"
+walkable = false
+transparent = true
+interact = "shrine"
+becomes = "shrine_used"
+light = "#ffe08a"
+
+[[tiles]]
+key = "shrine_used"
+name = "Угасшее святилище"
+glyph = "_"
+fg = "#807058"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "tent"
+name = "Шатёр"
+glyph = "^"
+fg = "#c87a4a"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "campfire"
+name = "Костёр"
+glyph = "*"
+fg = "#ff9a3a"
+bg = "#2a1a0a"
+walkable = false
+transparent = true
+light = "#ff9a3a"
+
+[[tiles]]
+key = "brazier"
+name = "Жаровня"
+glyph = "*"
+fg = "#ffb040"
+bg = "#301808"
+walkable = false
+transparent = true
+light = "#ff9a3a"
+
+# ---- Новые подземелья ----
+
+[[tiles]]
+key = "crystal"
+name = "Ледяной кристалл"
+glyph = "*"
+fg = "#a0f0ff"
+walkable = false
+transparent = true
+light = "#80e0ff"
+
+[[tiles]]
+key = "web"
+name = "Паутина"
+glyph = "%"
+fg = "#d8d8e0"
+walkable = true
+transparent = true
+move_cost = 3
+
+[[tiles]]
+key = "ice_wall"
+name = "Ледяная стена"
+glyph = "#"
+fg = "#a8d0f0"
+bg = "#2a4060"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "ice_floor"
+name = "Ледяной пол"
+glyph = "."
+fg = "#b0d0e8"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "basalt_wall"
+name = "Базальтовая стена"
+glyph = "#"
+fg = "#7a5a50"
+bg = "#2a1a18"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "basalt_floor"
+name = "Застывшая лава"
+glyph = "."
+fg = "#6a5450"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "sandstone_wall"
+name = "Стена из песчаника"
+glyph = "#"
+fg = "#d8b070"
+bg = "#4a3820"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "sandstone_floor"
+name = "Плиты песчаника"
+glyph = "."
+fg = "#c0a070"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "dark_wall"
+name = "Стена цитадели"
+glyph = "#"
+fg = "#7a5a7a"
+bg = "#201420"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "dark_floor"
+name = "Пол цитадели"
+glyph = "."
+fg = "#5e4e60"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "carpet"
+name = "Ковёр"
+glyph = ":"
+fg = "#b02a3a"
+bg = "#300a10"
+walkable = true
+transparent = true
+
+[[tiles]]
+key = "sarcophagus"
+name = "Саркофаг"
+glyph = "="
+fg = "#e0c070"
+bg = "#403010"
+walkable = false
+transparent = true
+interact = "chest"
+becomes = "sarcophagus_open"
+
+[[tiles]]
+key = "sarcophagus_open"
+name = "Вскрытый саркофаг"
+glyph = "_"
+fg = "#9a8050"
+walkable = false
+transparent = true
+
+# ---- Руины ----
+
+[[tiles]]
+key = "ruin_wall"
+name = "Руины"
+glyph = "#"
+fg = "#9a948a"
+bg = "#2a2826"
+walkable = false
+transparent = false

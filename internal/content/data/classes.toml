@@ -1,0 +1,442 @@
+# Классы, подклассы и ветки навыков.
+#
+# Класс прокачивается очками навыков, вложенными в его ветки: это и есть уровень класса.
+# На 5-м уровне класса (поле level подкласса) можно выбрать один подкласс — его ветка откроется.
+# Начать второй класс можно с 5-го уровня персонажа. Секретные классы и подклассы (secret = true)
+# открываются только заданиями уникальных персонажей мира.
+
+# ---- Классы ----
+
+[[classes]]
+key = "warrior"
+name = "Воин"
+color = "#ff6a4a"
+desc = "Ближний бой и живучесть. Подклассы: Страж, Гладиатор, Рыцарь."
+attrs = { str = 8, dex = 4, int = 2, vit = 7 }
+abilities = ["power_strike"]
+items = ["short_sword", "wooden_shield", "leather_armor", "leather_cap", "cloth_pants", "potion_health", "potion_health"]
+
+[[classes]]
+key = "rogue"
+name = "Плут"
+color = "#a8b0c8"
+desc = "Быстрые выпады и подвижность. Подклассы: Мастер ядов, Дуэлянт, Скаут, Трикстер."
+attrs = { str = 4, dex = 9, int = 3, vit = 5 }
+abilities = ["quick_strike"]
+items = ["dagger", "dagger", "leather_armor", "rogue_hood", "leather_pants", "potion_health", "poison_vial"]
+
+[[classes]]
+key = "mage"
+name = "Маг"
+color = "#6aa8ff"
+desc = "Магия стихий и массовые заклинания. Подклассы: Огненный маг, Ледяной маг, Магический рыцарь."
+attrs = { str = 3, dex = 4, int = 9, vit = 5 }
+abilities = ["magic_missile"]
+items = ["staff", "robe", "wizard_hat", "cloth_pants", "potion_health", "potion_mana"]
+
+[[classes]]
+key = "priest"
+name = "Жрец"
+color = "#ffe08a"
+desc = "Служение богу: исцеление и усиление себя и союзников. Подклассы: Судья, Святой, Воитель."
+attrs = { str = 5, dex = 3, int = 7, vit = 6 }
+abilities = ["smite", "lesser_heal"]
+items = ["mace", "holy_symbol", "priest_robe", "cloth_pants", "potion_health", "holy_water"]
+
+[[classes]]
+key = "shaman"
+name = "Шаман"
+color = "#7ad0ff"
+desc = "Секретный класс. Говорит с бурей и духами предков. Подклассы: Повелитель бурь, Хранитель духов."
+attrs = { str = 4, dex = 4, int = 8, vit = 6 }
+abilities = ["lightning_bolt"]
+items = ["totem_staff", "fur_cloak", "leather_armor", "potion_health", "potion_mana"]
+secret = true
+
+[[classes]]
+key = "warlock"
+name = "Чернокнижник"
+color = "#b05aff"
+desc = "Секретный класс. Сделки с бездной, проклятия и демоны. Подклассы: Проклинатель, Демонолог."
+attrs = { str = 2, dex = 4, int = 9, vit = 6 }
+abilities = ["shadow_bolt"]
+items = ["bone_wand", "grimoire", "robe", "potion_health", "potion_mana"]
+secret = true
+
+# ---- Подклассы ----
+
+[[subclasses]]
+key = "guardian"
+name = "Страж"
+class = "warrior"
+color = "#8ab0ff"
+desc = "Защита и живучесть, провокация врагов на себя. Многие навыки требуют щит."
+
+[[subclasses]]
+key = "gladiator"
+name = "Гладиатор"
+class = "warrior"
+color = "#ff4a3a"
+desc = "Сила, которая растёт вместе с ранами. Навыки требуют двуручное оружие или два оружия."
+
+[[subclasses]]
+key = "knight"
+name = "Рыцарь"
+class = "warrior"
+color = "#d8d8e8"
+desc = "Равновесие силы и стойкости. Навыкам нужно лишь оружие в руках."
+
+[[subclasses]]
+key = "sun_knight"
+name = "Солнечный рыцарь"
+class = "warrior"
+color = "#ffb83a"
+desc = "Испепеляет врагов божественным светом: удары разом наносят физический урон, урон светом и огнём. Сильнее прочих путей воина."
+secret = true
+
+[[subclasses]]
+key = "poisoner"
+name = "Мастер ядов"
+class = "rogue"
+color = "#8ad04a"
+desc = "Яды, порча и проклятые клинки."
+
+[[subclasses]]
+key = "duelist"
+name = "Дуэлянт"
+class = "rogue"
+color = "#e0e0f0"
+desc = "Бой один на один: серии ударов по одной цели."
+
+[[subclasses]]
+key = "scout"
+name = "Скаут"
+class = "rogue"
+color = "#9ad070"
+desc = "Луки и арбалеты, бой на расстоянии."
+
+[[subclasses]]
+key = "trickster"
+name = "Трикстер"
+class = "rogue"
+color = "#c08aff"
+desc = "Иллюзии, невидимость и удар в спину, пока враг отвлечён обманкой."
+
+[[subclasses]]
+key = "mimic"
+name = "Подражатель"
+class = "rogue"
+color = "#ff8ad8"
+desc = "Копирует умения врагов. Копия чуть слабее оригинала и зависит от уровня врага и вашего."
+secret = true
+
+[[subclasses]]
+key = "pyromancer"
+name = "Огненный маг"
+class = "mage"
+color = "#ff7a2a"
+desc = "Огромный урон огнём по площади ценой большого расхода маны."
+
+[[subclasses]]
+key = "cryomancer"
+name = "Ледяной маг"
+class = "mage"
+color = "#8ad8ff"
+desc = "Средний урон льдом, замедление и ослабление атак. Средний расход маны."
+
+[[subclasses]]
+key = "spellblade"
+name = "Магический рыцарь"
+class = "mage"
+color = "#c0a0ff"
+desc = "Ближний бой, усиленный магией: стихии добавляются к ударам оружия. Средний расход маны."
+
+[[subclasses]]
+key = "sealer"
+name = "Запечатыватель"
+class = "mage"
+color = "#e0c8ff"
+desc = "Запечатывает умения врагов: под печатью они не могут колдовать."
+secret = true
+
+[[subclasses]]
+key = "judge"
+name = "Судья"
+class = "priest"
+color = "#ffd86a"
+desc = "Исцеление и усиление, а также кара: средний урон святым светом."
+
+[[subclasses]]
+key = "saint"
+name = "Святой"
+class = "priest"
+color = "#fff4c8"
+desc = "Сильнейшее лечение и благословения, воскрешение павших союзников в течение минуты."
+
+[[subclasses]]
+key = "templar"
+name = "Воитель"
+class = "priest"
+color = "#f0c060"
+desc = "Ближний бой с благословлённым оружием и удары святым светом."
+
+[[subclasses]]
+key = "deathbringer"
+name = "Вестник смерти"
+class = "priest"
+color = "#8a5aff"
+desc = "Отрёкся от света ради тьмы: урон тьмой, ослабление сопротивлений и приговор, убивающий всех существ слабее вас."
+secret = true
+
+[[subclasses]]
+key = "stormcaller"
+name = "Повелитель бурь"
+class = "shaman"
+color = "#fff06a"
+desc = "Цепные молнии и грозы."
+
+[[subclasses]]
+key = "spiritkeeper"
+name = "Хранитель духов"
+class = "shaman"
+color = "#80e0c0"
+desc = "Духи предков лечат и защищают, призрачные волки сражаются рядом."
+
+[[subclasses]]
+key = "hexer"
+name = "Проклинатель"
+class = "warlock"
+color = "#c05aff"
+desc = "Проклятия, обрекающие врагов на медленную смерть."
+
+[[subclasses]]
+key = "demonologist"
+name = "Демонолог"
+class = "warlock"
+color = "#ff5a5a"
+desc = "Призывает бесов и стражей бездны."
+
+# ---- Ветки навыков ----
+
+[[branches]]
+key = "warrior"
+name = "Воин"
+color = "#ff6a4a"
+desc = "Основы ближнего боя и выживания."
+class = "warrior"
+
+[[branches]]
+key = "guardian"
+name = "Страж"
+color = "#8ab0ff"
+desc = "Щит, провокация и несокрушимость."
+class = "warrior"
+subclass = "guardian"
+
+[[branches]]
+key = "gladiator"
+name = "Гладиатор"
+color = "#ff4a3a"
+desc = "Ярость, кровь и тяжёлое оружие."
+class = "warrior"
+subclass = "gladiator"
+
+[[branches]]
+key = "knight"
+name = "Рыцарь"
+color = "#d8d8e8"
+desc = "Выучка, честь и тактика."
+class = "warrior"
+subclass = "knight"
+
+[[branches]]
+key = "sun_knight"
+name = "Солнечный рыцарь"
+color = "#ffb83a"
+desc = "Пламя рассвета в каждом ударе."
+class = "warrior"
+subclass = "sun_knight"
+
+[[branches]]
+key = "rogue"
+name = "Плут"
+color = "#a8b0c8"
+desc = "Точность, скорость и уклонение."
+class = "rogue"
+
+[[branches]]
+key = "poisoner"
+name = "Мастер ядов"
+color = "#8ad04a"
+desc = "Яды и проклятые клинки."
+class = "rogue"
+subclass = "poisoner"
+
+[[branches]]
+key = "duelist"
+name = "Дуэлянт"
+color = "#e0e0f0"
+desc = "Серии ударов и добивания."
+class = "rogue"
+subclass = "duelist"
+
+[[branches]]
+key = "scout"
+name = "Скаут"
+color = "#9ad070"
+desc = "Стрельба из луков и арбалетов."
+class = "rogue"
+subclass = "scout"
+
+[[branches]]
+key = "trickster"
+name = "Трикстер"
+color = "#c08aff"
+desc = "Иллюзии, невидимость, удар в спину."
+class = "rogue"
+subclass = "trickster"
+
+[[branches]]
+key = "mimic"
+name = "Подражатель"
+color = "#ff8ad8"
+desc = "Чужие умения в своих руках."
+class = "rogue"
+subclass = "mimic"
+
+[[branches]]
+key = "mage"
+name = "Маг"
+color = "#6aa8ff"
+desc = "Мана, тайные чары и защита."
+class = "mage"
+
+[[branches]]
+key = "pyromancer"
+name = "Огненный маг"
+color = "#ff7a2a"
+desc = "Огонь, пожирающий всё вокруг."
+class = "mage"
+subclass = "pyromancer"
+
+[[branches]]
+key = "cryomancer"
+name = "Ледяной маг"
+color = "#8ad8ff"
+desc = "Холод, сковывающий врагов."
+class = "mage"
+subclass = "cryomancer"
+
+[[branches]]
+key = "spellblade"
+name = "Магический рыцарь"
+color = "#c0a0ff"
+desc = "Клинок, заряженный стихиями."
+class = "mage"
+subclass = "spellblade"
+
+[[branches]]
+key = "sealer"
+name = "Запечатыватель"
+color = "#e0c8ff"
+desc = "Печати, лишающие врагов магии."
+class = "mage"
+subclass = "sealer"
+
+[[branches]]
+key = "priest"
+name = "Жрец"
+color = "#ffe08a"
+desc = "Молитвы, исцеление и благословения."
+class = "priest"
+
+[[branches]]
+key = "judge"
+name = "Судья"
+color = "#ffd86a"
+desc = "Суд света над нечистью."
+class = "priest"
+subclass = "judge"
+
+[[branches]]
+key = "saint"
+name = "Святой"
+color = "#fff4c8"
+desc = "Исцеление, защита и воскрешение."
+class = "priest"
+subclass = "saint"
+
+[[branches]]
+key = "templar"
+name = "Воитель"
+color = "#f0c060"
+desc = "Благословлённое оружие."
+class = "priest"
+subclass = "templar"
+
+[[branches]]
+key = "deathbringer"
+name = "Вестник смерти"
+color = "#8a5aff"
+desc = "Тьма, порча и смертный приговор."
+class = "priest"
+subclass = "deathbringer"
+
+[[branches]]
+key = "shaman"
+name = "Шаман"
+color = "#7ad0ff"
+desc = "Буря и духи."
+class = "shaman"
+
+[[branches]]
+key = "stormcaller"
+name = "Повелитель бурь"
+color = "#fff06a"
+desc = "Молнии и грозы."
+class = "shaman"
+subclass = "stormcaller"
+
+[[branches]]
+key = "spiritkeeper"
+name = "Хранитель духов"
+color = "#80e0c0"
+desc = "Исцеление и призрачные волки."
+class = "shaman"
+subclass = "spiritkeeper"
+
+[[branches]]
+key = "warlock"
+name = "Чернокнижник"
+color = "#b05aff"
+desc = "Тьма и похищение жизни."
+class = "warlock"
+
+[[branches]]
+key = "hexer"
+name = "Проклинатель"
+color = "#c05aff"
+desc = "Проклятия и рок."
+class = "warlock"
+subclass = "hexer"
+
+[[branches]]
+key = "demonologist"
+name = "Демонолог"
+color = "#ff5a5a"
+desc = "Призыв демонов."
+class = "warlock"
+subclass = "demonologist"
+
+[[branches]]
+key = "survival"
+name = "Выживание"
+color = "#e0c060"
+desc = "Общие умения любого странника, доступны всем."
+
+[[branches]]
+key = "secret"
+name = "Тайные знания"
+color = "#ff80ff"
+desc = "Навыки, которым учат лишь уникальные мастера этого мира."
+secret = true

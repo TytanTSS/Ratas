@@ -1,0 +1,715 @@
+# Воин: базовая ветка и подклассы Страж, Гладиатор, Рыцарь и секретный Солнечный рыцарь.
+# equip у навыка — бонусы работают только с этим снаряжением; у умения — без него умение не применить:
+# weapon — любое оружие, shield — щит, twohand_dual — двуручное оружие или по оружию в каждой руке, bow — лук или арбалет.
+
+# ---- Воин ----
+
+[[skills]]
+key = "toughness"
+name = "Закалка"
+branch = "warrior"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Тело привыкает к ударам."
+stats = { max_hp = 12 }
+
+[[skills]]
+key = "brute"
+name = "Тяжёлая рука"
+branch = "warrior"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Удары в ближнем бою становятся сильнее."
+stats = { melee_pct = 8 }
+
+[[skills]]
+key = "cleave"
+name = "Рассекающий удар"
+branch = "warrior"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["brute"]
+grants = "cleave"
+desc = "Удар по всем врагам вокруг. Каждый ранг: +5% урона в ближнем бою."
+stats = { melee_pct = 5 }
+
+[[skills]]
+key = "stone_skin"
+name = "Каменная кожа"
+branch = "warrior"
+tier = 2
+max_rank = 5
+level = 3
+requires = ["toughness"]
+desc = "Броня крепче."
+stats = { armor = 2 }
+
+[[skills]]
+key = "charge"
+name = "Натиск"
+branch = "warrior"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["brute"]
+grants = "charge"
+desc = "Рывок к врагу с оглушающим ударом."
+
+[[skills]]
+key = "war_cry"
+name = "Боевой клич"
+branch = "warrior"
+tier = 3
+max_rank = 1
+level = 6
+requires = ["cleave"]
+grants = "war_cry"
+desc = "Ярость: временно +40% урона и +5 брони."
+
+[[skills]]
+key = "fortress"
+name = "Крепость"
+branch = "warrior"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["stone_skin"]
+desc = "Регенерация здоровья."
+stats = { hp_regen = 0.6, max_hp = 10 }
+
+[[skills]]
+key = "iron_will"
+name = "Железная воля"
+branch = "warrior"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["stone_skin"]
+desc = "Стойкость к стихиям и магии."
+stats = { res_elemental = 4, res_magic = 4 }
+
+# ---- Страж ----
+
+[[skills]]
+key = "shield_mastery"
+name = "Владение щитом"
+branch = "guardian"
+tier = 1
+max_rank = 5
+level = 5
+equip = "shield"
+desc = "Со щитом в руке: шанс блока и броня."
+stats = { block = 4, armor = 2 }
+
+[[skills]]
+key = "shield_bash"
+name = "Удар щитом"
+branch = "guardian"
+tier = 1
+max_rank = 1
+level = 5
+grants = "shield_bash"
+desc = "Оглушающий удар щитом."
+
+[[skills]]
+key = "taunt"
+name = "Провокация"
+branch = "guardian"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["shield_mastery"]
+grants = "taunt"
+desc = "Заставляет врагов вокруг атаковать только вас."
+
+[[skills]]
+key = "bulwark"
+name = "Оплот"
+branch = "guardian"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Здоровье и сопротивление любому урону."
+stats = { max_hp = 15, res_all = 3 }
+
+[[skills]]
+key = "shield_wall"
+name = "Стена щитов"
+branch = "guardian"
+tier = 3
+max_rank = 1
+level = 9
+requires = ["taunt"]
+grants = "shield_wall"
+desc = "Ненадолго почти неуязвим, но медлителен."
+
+[[skills]]
+key = "last_stand"
+name = "Последний рубеж"
+branch = "guardian"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["bulwark"]
+grants = "last_stand"
+desc = "Мгновенно восстанавливает много здоровья и укрепляет броню."
+
+# ---- Гладиатор ----
+
+[[skills]]
+key = "fury"
+name = "Ярость раненого"
+branch = "gladiator"
+tier = 1
+max_rank = 5
+level = 5
+equip = "twohand_dual"
+desc = "Чем меньше здоровья, тем сильнее удары: до +12% урона за ранг при почти пустом здоровье."
+stats = { fury = 12 }
+
+[[skills]]
+key = "bloodlust"
+name = "Жажда крови"
+branch = "gladiator"
+tier = 1
+max_rank = 3
+level = 5
+equip = "twohand_dual"
+desc = "Часть нанесённого урона лечит."
+stats = { life_leech = 2 }
+
+[[skills]]
+key = "rampage"
+name = "Вихрь стали"
+branch = "gladiator"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["fury"]
+grants = "whirlwind"
+desc = "Сокрушительный круговой удар большого радиуса."
+
+[[skills]]
+key = "execute"
+name = "Казнь"
+branch = "gladiator"
+tier = 2
+max_rank = 1
+level = 7
+grants = "execute"
+desc = "Тем сильнее, чем меньше у врага здоровья."
+
+[[skills]]
+key = "berserk"
+name = "Берсерк"
+branch = "gladiator"
+tier = 3
+max_rank = 3
+level = 9
+equip = "twohand_dual"
+requires = ["rampage"]
+desc = "Атаки быстрее и злее."
+stats = { attack_speed = 12, melee_pct = 6 }
+
+[[skills]]
+key = "blood_frenzy"
+name = "Кровавое безумие"
+branch = "gladiator"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["berserk"]
+grants = "blood_frenzy"
+desc = "Неистовство: скорость и урон ценой утекающей жизни."
+
+# ---- Рыцарь ----
+
+[[skills]]
+key = "weapon_discipline"
+name = "Выучка"
+branch = "knight"
+tier = 1
+max_rank = 5
+level = 5
+equip = "weapon"
+desc = "С оружием в руках: урон и броня."
+stats = { melee_pct = 5, armor = 1 }
+
+[[skills]]
+key = "sunder"
+name = "Сокрушение брони"
+branch = "knight"
+tier = 1
+max_rank = 1
+level = 5
+grants = "sunder"
+desc = "Удар, раскалывающий доспехи: цель теряет броню и сопротивление физическому урону."
+
+[[skills]]
+key = "ground_slam"
+name = "Удар оземь"
+branch = "knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["sunder"]
+grants = "ground_slam"
+desc = "Сотрясает землю: дробящий урон и оглушение врагов вокруг."
+
+[[skills]]
+key = "rally"
+name = "Сплочение"
+branch = "knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["weapon_discipline"]
+grants = "rally"
+desc = "Боевой порядок: вы и союзники рядом бьёте сильнее и крепче держитесь."
+
+[[skills]]
+key = "knight_veteran"
+name = "Ветеран турниров"
+branch = "knight"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Здоровье, урон и стойкость."
+stats = { max_hp = 10, melee_pct = 4, res_all = 2 }
+
+[[skills]]
+key = "honor_strike"
+name = "Удар чести"
+branch = "knight"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["knight_veteran"]
+grants = "honor_strike"
+desc = "Мощный удар, возвращающий треть урона здоровьем."
+
+# ---- Солнечный рыцарь ----
+
+[[skills]]
+key = "solar_blood"
+name = "Солнечная кровь"
+branch = "sun_knight"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Свет и пламя в крови: урон светом, огнём и в ближнем бою, здоровье."
+stats = { holy_pct = 10, fire_pct = 10, melee_pct = 5, max_hp = 10 }
+
+[[skills]]
+key = "solar_strike"
+name = "Солнечный удар"
+branch = "sun_knight"
+tier = 1
+max_rank = 1
+level = 5
+grants = "solar_strike"
+desc = "Удар оружием, пылающий светом и огнём."
+
+[[skills]]
+key = "sunfire"
+name = "Солнечная вспышка"
+branch = "sun_knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["solar_strike"]
+grants = "sunfire"
+desc = "Вспышка света и огня вокруг вас."
+
+[[skills]]
+key = "dawn_aura"
+name = "Аура рассвета"
+branch = "sun_knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["solar_blood"]
+grants = "dawn_aura"
+desc = "Оружие ваше и союзников рядом пылает светом и огнём."
+
+[[skills]]
+key = "radiance"
+name = "Сияние"
+branch = "sun_knight"
+tier = 3
+max_rank = 3
+level = 9
+desc = "Тьма и огонь не берут сияющего."
+stats = { res_shadow = 8, res_fire = 8, hp_regen = 0.6, armor = 2 }
+
+[[skills]]
+key = "sun_cataclysm"
+name = "Падение солнца"
+branch = "sun_knight"
+tier = 4
+max_rank = 1
+level = 12
+requires = ["sunfire"]
+grants = "sun_cataclysm"
+desc = "Осколок солнца обрушивается на врагов."
+
+# ---- Умения воина ----
+
+[[abilities]]
+key = "power_strike"
+name = "Мощный удар"
+kind = "strike"
+mana = 4
+cooldown_ms = 2500
+dmg_type = "weapon"
+damage = [6, 10]
+scale = "str"
+scale_k = 1.2
+range = 1
+glyph = "!"
+color = "#ffb04a"
+desc = "Сокрушительный удар по врагу рядом."
+
+[[abilities]]
+key = "cleave"
+name = "Рассечение"
+kind = "cleave"
+mana = 6
+cooldown_ms = 3000
+dmg_type = "weapon"
+damage = [4, 8]
+scale = "str"
+scale_k = 0.9
+radius = 1
+glyph = "*"
+color = "#ff7a4a"
+desc = "Бьёт всех врагов вокруг."
+
+[[abilities]]
+key = "charge"
+name = "Натиск"
+kind = "dash"
+mana = 6
+cooldown_ms = 8000
+range = 5
+dmg_type = "weapon"
+damage = [4, 8]
+scale = "str"
+scale_k = 0.6
+glyph = "~"
+color = "#ffb070"
+desc = "Рывок вперёд; первый враг на пути получает удар и оглушение на 1 с."
+[abilities.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 1000
+stun = true
+color = "#ffe080"
+
+[[abilities]]
+key = "war_cry"
+name = "Боевой клич"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+color = "#ff4a4a"
+desc = "Временно усиливает урон и броню."
+[abilities.buff]
+key = "war_cry"
+name = "Ярость"
+duration_ms = 8000
+stats = { melee_pct = 40, armor = 5 }
+color = "#ff4a4a"
+
+[[abilities]]
+key = "shield_bash"
+name = "Удар щитом"
+kind = "strike"
+mana = 5
+cooldown_ms = 6000
+equip = "shield"
+dmg_type = "blunt"
+damage = [5, 9]
+scale = "str"
+scale_k = 0.8
+range = 1
+glyph = "#"
+color = "#a0b8ff"
+desc = "Удар щитом с оглушением на 1,5 с. Нужен щит."
+[abilities.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 1500
+stun = true
+color = "#ffe080"
+
+[[abilities]]
+key = "taunt"
+name = "Провокация"
+kind = "taunt"
+mana = 6
+cooldown_ms = 10000
+radius = 4
+glyph = "!"
+color = "#ff8a5a"
+desc = "Враги в радиусе 4 на 5 с атакуют только вас; ваша броня растёт."
+[abilities.on_hit]
+key = "taunted"
+name = "Провокация"
+duration_ms = 5000
+taunt = true
+color = "#ff8a5a"
+[abilities.buff]
+key = "taunting"
+name = "Вызов"
+duration_ms = 5000
+stats = { armor = 4 }
+color = "#ff8a5a"
+
+[[abilities]]
+key = "shield_wall"
+name = "Стена щитов"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+equip = "shield"
+color = "#8ab0ff"
+desc = "6 с: +40% сопротивления всему, +30% блока, но вы медленнее. Нужен щит."
+[abilities.buff]
+key = "shield_wall"
+name = "Стена щитов"
+duration_ms = 6000
+stats = { res_all = 40, block = 30, move_speed = -30 }
+color = "#8ab0ff"
+
+[[abilities]]
+key = "last_stand"
+name = "Последний рубеж"
+kind = "heal"
+mana = 0
+cooldown_ms = 60000
+damage = [30, 40]
+scale = "vit"
+scale_k = 3.0
+glyph = "+"
+color = "#c0d8ff"
+desc = "Восстанавливает много здоровья и даёт +8 брони на 8 с."
+[abilities.buff]
+key = "last_stand"
+name = "Последний рубеж"
+duration_ms = 8000
+stats = { armor = 8 }
+color = "#c0d8ff"
+
+[[abilities]]
+key = "whirlwind"
+name = "Вихрь стали"
+kind = "cleave"
+mana = 18
+cooldown_ms = 7000
+equip = "twohand_dual"
+dmg_type = "weapon"
+damage = [10, 18]
+scale = "str"
+scale_k = 1.4
+radius = 2
+glyph = "@"
+color = "#ffd0a0"
+desc = "Удар по всем врагам в радиусе 2. Нужно двуручное оружие или два оружия."
+
+[[abilities]]
+key = "execute"
+name = "Казнь"
+kind = "strike"
+mana = 8
+cooldown_ms = 6000
+equip = "twohand_dual"
+dmg_type = "weapon"
+damage = [8, 12]
+scale = "str"
+scale_k = 1.0
+execute = 1.5
+range = 1
+glyph = "X"
+color = "#ff3a3a"
+desc = "До +150% урона по израненному врагу. Нужно двуручное оружие или два оружия."
+
+[[abilities]]
+key = "blood_frenzy"
+name = "Кровавое безумие"
+kind = "buff"
+mana = 0
+cooldown_ms = 25000
+equip = "twohand_dual"
+color = "#ff2a2a"
+desc = "8 с: +40% скорости атаки и +30% урона, но здоровье утекает."
+[abilities.buff]
+key = "blood_frenzy"
+name = "Кровавое безумие"
+duration_ms = 8000
+stats = { attack_speed = 40, melee_pct = 30, hp_regen = -3 }
+color = "#ff2a2a"
+
+[[abilities]]
+key = "sunder"
+name = "Сокрушение брони"
+kind = "strike"
+mana = 6
+cooldown_ms = 5000
+equip = "weapon"
+dmg_type = "weapon"
+damage = [5, 9]
+scale = "str"
+scale_k = 1.0
+range = 1
+glyph = "#"
+color = "#d0a070"
+desc = "Цель на 6 с теряет 6 брони и 25% сопротивления физическому урону."
+[abilities.on_hit]
+key = "sundered"
+name = "Расколотая броня"
+duration_ms = 6000
+stats = { armor = -6, res_physical = -25 }
+color = "#d0a070"
+
+[[abilities]]
+key = "ground_slam"
+name = "Удар оземь"
+kind = "nova"
+mana = 14
+cooldown_ms = 9000
+radius = 2
+equip = "weapon"
+dmg_type = "blunt"
+damage = [8, 14]
+scale = "str"
+scale_k = 1.1
+glyph = "#"
+color = "#e0c080"
+desc = "Дробящий урон в радиусе 2 и оглушение на 1,3 с."
+[abilities.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 1300
+stun = true
+color = "#ffe080"
+
+[[abilities]]
+key = "rally"
+name = "Сплочение"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+radius = 4
+color = "#e8e8f8"
+desc = "Вам и союзникам в радиусе 4: +20% урона в ближнем бою и +4 брони на 10 с."
+[abilities.buff]
+key = "rally"
+name = "Сплочение"
+duration_ms = 10000
+stats = { melee_pct = 20, armor = 4 }
+color = "#e8e8f8"
+
+[[abilities]]
+key = "honor_strike"
+name = "Удар чести"
+kind = "strike"
+mana = 10
+cooldown_ms = 8000
+equip = "weapon"
+dmg_type = "weapon"
+damage = [10, 16]
+scale = "str"
+scale_k = 1.2
+leech = 30
+range = 1
+glyph = "!"
+color = "#f0f0ff"
+desc = "Мощный удар; 30% урона возвращается здоровьем."
+
+[[abilities]]
+key = "solar_strike"
+name = "Солнечный удар"
+kind = "strike"
+mana = 6
+cooldown_ms = 3000
+split = ["holy", "fire"]
+damage = [8, 13]
+scale = "str"
+scale_k = 1.0
+range = 1
+glyph = "*"
+color = "#ffb83a"
+desc = "Удар оружием плюс урон светом и огнём, цель горит 3 с."
+[abilities.on_hit]
+key = "sunburn"
+name = "Солнечный ожог"
+duration_ms = 3000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ffb83a"
+
+[[abilities]]
+key = "sunfire"
+name = "Солнечная вспышка"
+kind = "nova"
+mana = 14
+cooldown_ms = 7000
+radius = 2
+split = ["holy", "fire"]
+damage = [12, 18]
+scale = "str"
+scale_k = 1.0
+glyph = "*"
+color = "#ffd06a"
+desc = "Свет и огонь по всем врагам в радиусе 2."
+[abilities.on_hit]
+key = "sunburn"
+name = "Солнечный ожог"
+duration_ms = 3000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ffb83a"
+
+[[abilities]]
+key = "dawn_aura"
+name = "Аура рассвета"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+radius = 4
+color = "#ffd06a"
+desc = "Вам и союзникам рядом: +6 урона светом и +6 огнём к ударам, +15% сопротивления тьме на 12 с."
+[abilities.buff]
+key = "dawn_aura"
+name = "Аура рассвета"
+duration_ms = 12000
+stats = { add_holy = 6, add_fire = 6, res_shadow = 15 }
+color = "#ffd06a"
+
+[[abilities]]
+key = "sun_cataclysm"
+name = "Падение солнца"
+kind = "projectile"
+mana = 32
+cooldown_ms = 14000
+range = 9
+radius = 3
+speed_ms = 70
+split = ["holy", "fire"]
+damage = [30, 45]
+scale = "str"
+scale_k = 1.8
+glyph = "@"
+color = "#ffc040"
+desc = "Огромный взрыв света и огня в радиусе 3."
+[abilities.on_hit]
+key = "sunburn"
+name = "Солнечный ожог"
+duration_ms = 4000
+dot_per_sec = 6
+dmg_type = "fire"
+color = "#ffb83a"
