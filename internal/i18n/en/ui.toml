@@ -284,3 +284,8 @@
 "Пустое имя." = "Empty name."
 "Автосохранение." = "Autosave."
 "Сервер остановлен." = "The server has stopped."
+"умения с панели (в окне — в сторону курсора мыши)" = "abilities from the bar (in the window — toward the mouse cursor)"
+"Мышь (окно)" = "Mouse (window)"
+"ЛКМ — атака, ПКМ — умение 1, оба туда, где курсор" = "LMB — attack, RMB — ability 1, both where the cursor is"
+"окно администратора (запуск с -admin)" = "admin window (start with -admin)"
+"вставить текст из буфера обмена в поле ввода" = "paste clipboard text into an input field"
