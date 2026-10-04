@@ -19,6 +19,7 @@
 "графический режим в отдельном окне" = "graphics mode in a separate window"
 "порт сервера (по умолчанию из настроек, 7777)" = "server port (default from settings, 7777)"
 "каталог модов (по умолчанию ~/.ratas/mods)" = "mods folder (default ~/.ratas/mods)"
+"показать версию и выйти" = "print the version and exit"
 "язык: ru или en (по умолчанию из настроек)" = "language: ru or en (default from settings)"
 "Ратас — ASCII RPG в терминале.\n\nИспользование:\n  ratas                 главное меню в терминале\n  ratas -gfx            графический режим в отдельном окне\n  ratas -new -host      новый мир, открытый для друзей\n  ratas -join IP:7777   присоединиться к другу\n  ratas -server -seed 1 выделенный сервер\n\nФлаги:" = "Ratas — an ASCII RPG in the terminal.\n\nUsage:\n  ratas                 main menu in the terminal\n  ratas -gfx            graphics mode in a separate window\n  ratas -new -host      a new world open to friends\n  ratas -join IP:7777   join a friend\n  ratas -server -seed 1 dedicated server\n\nFlags:"
 "Ошибка контента:" = "Content error:"

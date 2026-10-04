@@ -1,0 +1,122 @@
+name: Release
+
+# Publishing a release:
+#   git tag v0.2.0 && git push origin v0.2.0
+# or run this workflow by hand (Actions → Release → Run workflow) with a tag name;
+# a tag that does not exist yet is created on the selected branch.
+# Tags with a hyphen (v0.2.0-beta.1) become pre-releases.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: build ${{ matrix.target }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-amd64
+            os: windows-latest
+            smoke: dist/ratas-*-windows-amd64/ratas.exe
+          - target: windows-arm64
+            os: ubuntu-latest
+          - target: macos-universal
+            os: macos-latest
+            smoke: dist/ratas-*-macos-universal/ratas
+          - target: linux-amd64
+            # The oldest available runner: its glibc sets the minimum for players.
+            os: ubuntu-22.04
+            smoke: dist/ratas-*-linux-amd64/ratas
+          - target: linux-server-amd64
+            os: ubuntu-latest
+            smoke: dist/ratas-*-linux-server-amd64/ratas-server
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: X11/OpenGL dev packages for Ebitengine
+        if: matrix.target == 'linux-amd64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libc6-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev \
+            libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
+
+      - name: Build and package
+        run: scripts/package.sh "${{ matrix.target }}" "$TAG"
+
+      - name: Smoke test
+        if: matrix.smoke
+        run: |
+          out=$(${{ matrix.smoke }} -version)
+          echo "$out"
+          [ "$out" = "ratas $TAG" ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+            exit 0
+          fi
+          flags=()
+          case $TAG in *-*) flags+=(--prerelease) ;; esac
+          gh release create "$TAG" dist/* \
+            --title "Ратас $TAG" \
+            --target "$GITHUB_SHA" \
+            --notes-file .github/release-notes.md \
+            --generate-notes \
+            "${flags[@]}"

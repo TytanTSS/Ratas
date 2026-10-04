@@ -20,6 +20,9 @@ import (
 	"ratas/internal/server"
 )
 
+// version is set at release build time: -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 func main() {
 	var (
 		join      = flag.String("join", "", "подключиться к миру по адресу host:port")
@@ -34,12 +37,20 @@ func main() {
 		window    = flag.Bool("gfx", false, "графический режим в отдельном окне")
 		port      = flag.Int("port", 0, "порт сервера (по умолчанию из настроек, 7777)")
 		mods      = flag.String("mods", "", "каталог модов (по умолчанию ~/.ratas/mods)")
+		showVer   = flag.Bool("version", false, "показать версию и выйти")
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Ратас — ASCII RPG в терминале.\n\nИспользование:\n  ratas                 главное меню в терминале\n  ratas -gfx            графический режим в отдельном окне\n  ratas -new -host      новый мир, открытый для друзей\n  ratas -join IP:7777   присоединиться к другу\n  ratas -server -seed 1 выделенный сервер\n\nФлаги:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if !*window {
+		ensureConsole()
+	}
+	if *showVer {
+		fmt.Println("ratas", version)
+		return
+	}
 
 	cfg := config.Load()
 	if *port != 0 {
