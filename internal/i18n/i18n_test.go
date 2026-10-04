@@ -26,19 +26,19 @@ func TestTranslator(t *testing.T) {
 	}
 	c.rebuild()
 	for in, want := range map[string]string{
-		"Зелье здоровья":                          "Health Potion",
-		"  Зелье здоровья ":                       "  Health Potion ",
-		"зелье здоровья":                          "health Potion",
-		"Регион: Каменные холмы — спокойный край.": "Region: Stone Hills — a quiet land.",
-		"Вы получили 12 опыта.":                   "You gained 12 experience.",
-		"Мирослава (Кузнец) пал в бою.":           "Miroslava (Smith) has fallen in battle.",
-		"Прогресс: 3/5 • выдал: Иван":             "Progress: 3/5 • given by: Ivan",
-		"Блок          +5%":                       "Block         +5%",
-		"меч у Ивана":                             "Ivana's sword",
+		"Зелье здоровья":    "Health Potion",
+		"  Зелье здоровья ": "  Health Potion ",
+		"зелье здоровья":    "health Potion",
+		"Регион: Каменные холмы — спокойный край.":    "Region: Stone Hills — a quiet land.",
+		"Вы получили 12 опыта.":                       "You gained 12 experience.",
+		"Мирослава (Кузнец) пал в бою.":               "Miroslava (Smith) has fallen in battle.",
+		"Прогресс: 3/5 • выдал: Иван":                 "Progress: 3/5 • given by: Ivan",
+		"Блок          +5%":                           "Block         +5%",
+		"меч у Ивана":                                 "Ivana's sword",
 		"Говорят, в Каменке неспокойно. Береги себя.": "They say Kamenke is restless. Take care.",
-		"[Зелье здоровья]":                        "[Health Potion]",
-		"no cyrillic":                             "no cyrillic",
-		"А, Лира! Рад тебя видеть, Лира.":          "Ah, Lira! Glad to see you, Lira.",
+		"[Зелье здоровья]":                            "[Health Potion]",
+		"no cyrillic":                                 "no cyrillic",
+		"А, Лира! Рад тебя видеть, Лира.":             "Ah, Lira! Glad to see you, Lira.",
 	} {
 		if got := c.translate(in); got != want {
 			t.Errorf("%q → %q, want %q", in, got, want)
