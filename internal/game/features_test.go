@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"ratas/internal/content"
 	"ratas/internal/proto"
 	"ratas/internal/world"
 )
@@ -255,5 +256,135 @@ func TestBossDropsArtifacts(t *testing.T) {
 	}
 	if got < 5 || got > 25 {
 		t.Fatalf("the lich dropped its phylactery %d times of 40", got)
+	}
+}
+
+// Every unique character is placed in the world and every quest reward exists.
+func TestNewUniquesPlaced(t *testing.T) {
+	g := setup(t)
+	placed := map[string]bool{}
+	for _, e := range g.Entities {
+		if e.NPC != nil && e.NPC.Unique != "" {
+			placed[e.NPC.Unique] = true
+		}
+	}
+	for _, k := range []string{"olkha", "koschei", "torgrim", "yaroslava", "evstafiy", "ignatiy"} {
+		if !placed[k] {
+			t.Errorf("the unique %s who teaches a secret class or subclass is not in the world", k)
+		}
+	}
+	if len(placed) < 16 {
+		t.Errorf("only %d uniques placed", len(placed))
+	}
+	for _, u := range content.Uniques() {
+		kind, key, _ := strings.Cut(u.Reward, ":")
+		ok := false
+		switch kind {
+		case "item":
+			ok = content.Item(key) != nil
+		case "class":
+			ok = content.Class(key) != nil && content.Class(key).Secret
+		case "subclass":
+			ok = content.Subclass(key) != nil && content.Subclass(key).Secret
+		case "skill":
+			ok = content.Skill(key) != nil
+		}
+		if !ok {
+			t.Errorf("unique %s: bad reward %q", u.Key, u.Reward)
+		}
+		switch u.Quest {
+		case "slay", "boss":
+			if content.Monster(u.Target) == nil {
+				t.Errorf("unique %s: unknown target %q", u.Key, u.Target)
+			}
+		case "relics":
+			if d := content.Item(u.Target); d == nil || d.Kind != "quest" {
+				t.Errorf("unique %s: bad relic %q", u.Key, u.Target)
+			}
+		}
+	}
+}
+
+// The new secret classes and subclasses can be opened and all their
+// abilities work.
+func TestNewSecretClasses(t *testing.T) {
+	g := setup(t)
+	p, _, _ := g.Join("Тест", "warrior")
+	wild(t, g, p)
+	pl := p.Player
+	g.GiveXP(p, 20000)
+	for _, r := range []string{"class:druid", "class:necromancer", "subclass:berserker"} {
+		g.unlock(p, r)
+	}
+	for _, c := range []string{"druid", "necromancer"} {
+		if why := CanStartClass(pl, c); why != "" {
+			t.Fatalf("%s: %s", c, why)
+		}
+		g.startClass(p, c)
+		if !pl.HasClass(c) {
+			t.Fatalf("class %s not started", c)
+		}
+	}
+	if !slices.Contains(pl.Abilities, "thorn_whip") || !slices.Contains(pl.Abilities, "bone_spear") {
+		t.Fatalf("starting abilities: %v", pl.Abilities)
+	}
+	g.Admin(p, "/god")
+	l := g.Levels[p.Level]
+	for _, sk := range content.Skills() {
+		b := content.Branch(sk.Branch)
+		switch b.Key {
+		case "druid", "grove_keeper", "shapeshifter", "necromancer", "bonelord", "plaguebringer",
+			"berserker", "monster_hunter", "chronomancer", "inquisitor":
+		default:
+			continue
+		}
+		if sk.Grants == "" {
+			continue
+		}
+		a := content.Ability(sk.Grants)
+		// a fresh enemy next to the hero for every ability
+		for _, o := range g.onLevel(p.Level) {
+			if o.Monster != nil {
+				g.Remove(o)
+			}
+		}
+		w := spawnAt(g, "wolf", l, p.Pos.Add(world.Pos{X: 1}))
+		w.Monster.Target = 0
+		g.indexLevels()
+		p.Facing = world.DirRight
+		p.MP, p.Cooldowns = 1000, map[string]float64{}
+		g.unlockAbility(p, sk.Grants)
+		if !g.useAbility(p, sk.Grants, nil) {
+			t.Fatalf("%s: the cast waits", sk.Grants)
+		}
+		if _, ok := p.Cooldowns[sk.Grants]; !ok && a.CooldownMs > 0 {
+			t.Errorf("%s (%s) was not cast", a.Name, a.Kind)
+			continue
+		}
+		switch a.Kind {
+		case "summon":
+			found := false
+			for _, o := range g.Entities {
+				if o.Owner == p.ID && o.Monster != nil && o.Monster.Def == a.Summon {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("%s: nothing summoned", a.Name)
+			}
+		case "buff":
+			found := false
+			for _, b := range p.Buffs {
+				found = found || b.Def.Key == a.Buff.Key
+			}
+			if !found {
+				t.Errorf("%s: no buff", a.Name)
+			}
+		case "nova", "cleave", "strike", "chain":
+			if a.Damage[1] > 0 && w.HP >= w.MaxHP {
+				t.Errorf("%s: the wolf next to the hero was not hurt", a.Name)
+			}
+		}
+		run(g, 20)
 	}
 }

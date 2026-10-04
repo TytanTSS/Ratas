@@ -12,7 +12,7 @@ import (
 )
 
 // MaxUniques is how many unique characters a world gets.
-const MaxUniques = 11
+const MaxUniques = 18
 
 // placeUniques settles unique characters in the wild. Those who teach secret
 // classes and subclasses come first, the rest are picked at random.
