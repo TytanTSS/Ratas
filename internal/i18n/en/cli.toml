@@ -110,6 +110,7 @@
 "Сохранить" = "Save"
 "Не удалось сохранить настройки:" = "Could not save the settings:"
 "Язык" = "Language"
+"Русский" = "Русский"
 "Язык интерфейса, предметов, заданий и разговоров. ИИ-персонажи отвечают на нём же." = "Language of the interface, items, quests and conversations. AI characters answer in it too."
 "режим администратора: команды доступны всем игрокам" = "admin mode: commands are available to every player"
 "режим администратора для тестирования: команды /god, /give, /tp... (окно команд — F9)" = "admin mode for testing: commands /god, /give, /tp... (command window — F9)"

@@ -21,6 +21,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
+
+	"ratas/internal/i18n"
 )
 
 //go:embed data/*.toml
@@ -310,6 +312,8 @@ type Bundle struct {
 	Skills      []SkillDef      `json:"skills,omitempty" toml:"skills,omitempty"`
 	Classes     []ClassDef      `json:"classes,omitempty" toml:"classes,omitempty"`
 	NPCs        []NPCRoleDef    `json:"npcs,omitempty" toml:"npcs,omitempty"`
+	// Translations of the mod's texts: language → Russian text → translation.
+	Translations map[string]map[string]string `json:"translations,omitempty" toml:"translations,omitempty"`
 }
 
 // DB is an indexed Bundle.
@@ -334,7 +338,12 @@ type DB struct {
 var active atomic.Pointer[DB]
 
 // Use installs db as the active content set.
-func Use(d *DB) { active.Store(d) }
+func Use(d *DB) {
+	for l, m := range d.Translations {
+		i18n.Add(l, m)
+	}
+	active.Store(d)
+}
 
 // Get returns the active content set.
 func Get() *DB { return active.Load() }
@@ -437,6 +446,17 @@ func mergeByKey[T any](dst []T, src []T, key func(*T) string) []T {
 
 // Merge overlays o on b (same key = replace, new key = append).
 func (b *Bundle) Merge(o Bundle) {
+	for l, m := range o.Translations {
+		if b.Translations == nil {
+			b.Translations = map[string]map[string]string{}
+		}
+		if b.Translations[l] == nil {
+			b.Translations[l] = map[string]string{}
+		}
+		for k, v := range m {
+			b.Translations[l][k] = v
+		}
+	}
 	b.DamageTypes = mergeByKey(b.DamageTypes, o.DamageTypes, func(t *DamageTypeDef) string { return t.Key })
 	b.Subclasses = mergeByKey(b.Subclasses, o.Subclasses, func(t *SubclassDef) string { return t.Key })
 	b.Squads = mergeByKey(b.Squads, o.Squads, func(t *SquadDef) string { return t.Key })

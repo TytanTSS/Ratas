@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -84,7 +85,7 @@ func runShots(dir string) error {
 	srvCh := make(chan *server.Server, 1)
 	client.LocalServerHook = func(s *server.Server) { srvCh <- s }
 	cfg := config.Default()
-	cfg.AIEnabled, cfg.Name = false, "Герой"
+	cfg.AIEnabled, cfg.Name, cfg.Language = false, "Герой", os.Getenv("RATAS_LANG")
 	go func() { g.done <- client.RunWith(scr, st, cfg, nil, client.StartOptions{}) }()
 	go script(g, srvCh, dir)
 	if err := ebiten.RunGame(g); err != nil && err != ebiten.Termination {
@@ -360,5 +361,63 @@ func script(g *Game, srvCh chan *server.Server, dir string) {
 	})
 	time.Sleep(1200 * time.Millisecond)
 	shot("21_fallen")
+
+	// walk east over open land and record how the hero is drawn
+	srv.Call(func(gm *game.Game) {
+		l := gm.Levels["overworld"]
+		for y := 10; y < l.H-10; y++ {
+			for x := 10; x < l.W-30; x++ {
+				ok := true
+				for dx := 0; dx < 14 && ok; dx++ {
+					ok = l.Free(x+dx, y) && l.Def(x+dx, y).MoveCost <= 1
+				}
+				if ok && gm.RegionName(world.Pos{X: x, Y: y}) != "" {
+					gm.PlaceForTest(player(gm), "overworld", world.Pos{X: x, Y: y})
+					return
+				}
+			}
+		}
+	})
+	time.Sleep(800 * time.Millisecond)
+	walkCheck(g, scr)
 	client.RequestClose(scr)
+}
+
+// walkCheck holds the right arrow for a while and samples the hero's drawn
+// position every frame; it prints how even the motion was.
+func walkCheck(g *Game, scr *gridScreen) {
+	type sample struct{ t, x float64 }
+	var samples []sample
+	stop := time.Now().Add(1800 * time.Millisecond)
+	go func() {
+		for time.Now().Before(stop) {
+			scr.InjectKey(tcell.KeyRight, 0, tcell.ModNone)
+			time.Sleep(60 * time.Millisecond)
+		}
+	}()
+	for time.Now().Before(stop.Add(400 * time.Millisecond)) {
+		// one sample per drawn frame, timed by the renderer's own clock
+		if sc := g.scene; sc != nil {
+			if st := g.world.ents[sc.YouID]; st != nil && (len(samples) == 0 || g.world.t > samples[len(samples)-1].t) {
+				samples = append(samples, sample{g.world.t, st.x})
+			}
+		}
+		time.Sleep(4 * time.Millisecond)
+	}
+	var speeds []float64
+	for i := 1; i < len(samples); i++ {
+		if dt := samples[i].t - samples[i-1].t; dt > 0 {
+			speeds = append(speeds, (samples[i].x-samples[i-1].x)/dt)
+		}
+	}
+	// the middle of the walk, away from starting and stopping
+	if n := len(speeds); n > 20 {
+		mid := speeds[n/6 : n*2/3]
+		lo, hi, sum := math.Inf(1), 0.0, 0.0
+		for _, v := range mid {
+			lo, hi, sum = math.Min(lo, v), math.Max(hi, v), sum+v
+		}
+		fmt.Printf("walk: %d frames, cells/s while walking: min %.2f avg %.2f max %.2f, moved %.1f cells\n",
+			len(samples), lo, sum/float64(len(mid)), hi, samples[len(samples)-1].x-samples[0].x)
+	}
 }

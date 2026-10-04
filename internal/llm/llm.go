@@ -57,6 +57,7 @@ type NPCRequest struct {
 	PlayerDeeds  []string // what the hero is known for
 	TimesMet     int      // earlier conversations with this hero
 	OwnQuest     string   // a unique character's own quest and its state
+	Lang         string   // the player's language: "ru" or "en"
 }
 
 type NPCReply struct {
@@ -81,6 +82,7 @@ type TacticRequest struct {
 	Distance    int
 	AbilityName string
 	Events      []string
+	Lang        string // language of the line the monster may shout
 }
 
 type TacticReply struct {

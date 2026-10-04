@@ -12,6 +12,7 @@ import (
 
 	"ratas/internal/client"
 	"ratas/internal/content"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 	"ratas/internal/world"
 )
@@ -291,6 +292,7 @@ func (ls *mapLabels) place(s string, face *text.GoTextFace, x, y float64) (float
 
 // inkText draws text with a parchment halo so it reads over the land.
 func inkText(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, fg, halo color.RGBA) {
+	s = i18n.T(s)
 	w := text.Advance(s, face)
 	m := face.Metrics()
 	tx, ty := x-w/2, y-(m.HAscent+m.HDescent)/2
@@ -308,7 +310,7 @@ func inkText(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, f
 }
 
 func textRect(s string, face *text.GoTextFace, x, y float64) image.Rectangle {
-	w := text.Advance(s, face)
+	w := text.Advance(i18n.T(s), face)
 	h := face.Size * 1.2
 	return image.Rect(int(x-w/2-2), int(y-h/2), int(x+w/2+2), int(y+h/2))
 }
@@ -461,9 +463,9 @@ func (r *worldRenderer) drawWorldMap(dst *ebiten.Image, sc *client.Scene, area i
 
 	// title ribbon
 	title := r.face(r.fonts.bold, "map-title", 20*sc0)
-	name := l.Name
+	name := i18n.T(l.Name)
 	if l.ID == "overworld" {
-		name = "Карта мира — " + l.Name
+		name = i18n.Tf("Карта мира — %s", l.Name)
 	}
 	tw := text.Advance(name, title) + 40*sc0
 	tx, ty := float64(sheet.Min.X+sheet.Max.X)/2, float64(sheet.Min.Y)+titleH*0.62
@@ -593,7 +595,7 @@ func (r *worldRenderer) drawWorldMap(dst *ebiten.Image, sc *client.Scene, area i
 			continue
 		}
 		x, y := at(p.X, p.Y)
-		s := strings.ToUpper(p.Name)
+		s := strings.ToUpper(i18n.T(p.Name))
 		if len([]rune(s)) <= 10 {
 			s = spaced(s)
 		}
@@ -680,7 +682,7 @@ func (r *worldRenderer) legendRect(x, bottom float64, face *text.GoTextFace, ms 
 	rows := legendRows(overworld)
 	w := 0.0
 	for _, rw := range rows {
-		w = math.Max(w, text.Advance(rw.name, face))
+		w = math.Max(w, text.Advance(i18n.T(rw.name), face))
 	}
 	bw, bh := w+ms*1.6+20*r.scale, float64(len(rows))*r.legendLine(ms)+12*r.scale
 	return image.Rect(int(x), int(bottom-bh), int(x+bw), int(bottom))
@@ -700,7 +702,7 @@ func (r *worldRenderer) mapLegend(dst *ebiten.Image, at image.Rectangle, face *t
 		m := face.Metrics()
 		op.GeoM.Translate(x+12*sc0+ms*1.3, cy-(m.HAscent+m.HDescent)/2)
 		op.ColorScale.ScaleWithColor(cInk)
-		text.Draw(dst, rw.name, face, op)
+		text.Draw(dst, i18n.T(rw.name), face, op)
 	}
 }
 

@@ -13,7 +13,7 @@ Play the person described in the request as a living individual with their own v
 - Have a distinct manner of speech that fits your personality; vary phrasing and do not repeat what you already said in the conversation.
 - Sometimes ask the player a question back, share a feeling or a bit of gossip, or hint at something worth exploring.
 
-Answer in 1-3 short sentences (at most about 250 characters): the reply is shown in a small dialogue box while the world keeps moving. Reply in the language the player writes in; the game's default language is Russian. Never mention being an AI, a model, or a game, and do not invent game mechanics.
+Answer in 1-3 short sentences (at most about 250 characters): the reply is shown in a small dialogue box while the world keeps moving. Reply in the language named in the request; if the player clearly writes in another language, answer in theirs. Never mention being an AI, a model, or a game, and do not invent game mechanics.
 
 Besides speaking, choose exactly one action that the game will carry out:
 - none: just talk (the usual choice).
@@ -37,7 +37,7 @@ Tactics:
 - call_allies: shout for nearby allies to join the fight.
 - use_ability: use your special ability right now.
 
-Choose what this character would plausibly do and keep the fight interesting but beatable: a coward flees when hurt, a proud boss rarely retreats, a commander calls for help when outnumbered. "say" is a short in-character line in Russian (at most about 80 characters), or an empty string to stay silent — stay silent about half the time.`
+Choose what this character would plausibly do and keep the fight interesting but beatable: a coward flees when hurt, a proud boss rarely retreats, a commander calls for help when outnumbered. "say" is a short in-character line in the language named in the request (at most about 80 characters), or an empty string to stay silent — stay silent about half the time.`
 
 func npcSchema() map[string]any {
 	return map[string]any{
@@ -88,7 +88,7 @@ func yesNo(b bool) string {
 func npcPrompt(r NPCRequest) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "<character>\nName: %s, %s of the village %s in the realm of %s.\nPersonality: %s\n</character>\n\n", r.NPCName, r.Role, r.Village, r.World, r.Persona)
-	fmt.Fprintf(&b, "<situation>\nTime of day: %s.\nPlayer: %s, a level %d %s.\n", r.TimeOfDay, r.PlayerName, r.PlayerLevel, r.PlayerClass)
+	fmt.Fprintf(&b, "<situation>\nLanguage: %s.\nTime of day: %s.\nPlayer: %s, a level %d %s.\n", langName(r.Lang), r.TimeOfDay, r.PlayerName, r.PlayerLevel, r.PlayerClass)
 	if r.Region != "" {
 		fmt.Fprintf(&b, "Region: %s.\n", r.Region)
 	}
@@ -140,6 +140,7 @@ func tacticPrompt(r TacticRequest) string {
 		role = "boss"
 	}
 	fmt.Fprintf(&b, "You are %s (%s). Personality: %s\n", r.Name, role, r.Persona)
+	fmt.Fprintf(&b, "Language of your line: %s.\n", langName(r.Lang))
 	fmt.Fprintf(&b, "Your health: %d%%.\n", r.HPPct)
 	if len(r.Allies) > 0 {
 		fmt.Fprintf(&b, "Allies nearby: %s.\n", strings.Join(r.Allies, ", "))
@@ -156,4 +157,12 @@ func tacticPrompt(r TacticRequest) string {
 		fmt.Fprintf(&b, "Recent event: %s\n", e)
 	}
 	return b.String()
+}
+
+// langName names a language code for the model.
+func langName(code string) string {
+	if code == "en" {
+		return "English"
+	}
+	return "Russian"
 }

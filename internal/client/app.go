@@ -15,6 +15,7 @@ import (
 	"ratas/internal/config"
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/llm"
 	"ratas/internal/proto"
 	"ratas/internal/server"
@@ -71,6 +72,7 @@ func RunWith(scr tcell.Screen, sink Sink, cfg *config.Config, mods []string, opt
 	defer scr.Fini()
 	scr.SetStyle(tcell.StyleDefault.Background(cBlack).Foreground(cText))
 	scr.HideCursor()
+	i18n.SetLang(cfg.Language)
 	scr.EnablePaste()
 	asciiUI = cfg.ASCIIOnly && sink == nil
 	a := &App{scr: scr, cv: &canvas{s: scr}, cfg: cfg, events: make(chan tcell.Event, 256), mods: mods, gfx: sink}
@@ -555,7 +557,7 @@ func (a *App) loadMenu() {
 	for _, s := range saves {
 		items = append(items, menuItem{
 			key:   s.Path,
-			label: fmt.Sprintf("%-22s %s", s.WorldName+" #"+strconv.FormatInt(s.Seed, 10), s.SavedAt.Format("02.01 15:04")),
+			label: fmt.Sprintf("%-22s %s", i18n.T(s.WorldName)+" #"+strconv.FormatInt(s.Seed, 10), s.SavedAt.Format("02.01 15:04")),
 			desc:  "Герои: " + strings.Join(s.Characters, ", "),
 		})
 	}
@@ -639,6 +641,13 @@ func (a *App) joinGame(addr, name string) {
 }
 
 func (a *App) settingsForm() {
+	lang := &field{label: "Язык", hint: "Язык интерфейса, предметов, заданий и разговоров. ИИ-персонажи отвечают на нём же."}
+	for i, l := range i18n.Langs {
+		lang.choices = append(lang.choices, l.Name)
+		if l.Code == i18n.Lang() {
+			lang.choice = i
+		}
+	}
 	name := &field{label: "Имя по умолчанию", input: &textInput{maxLen: 16}}
 	name.input.Set(a.cfg.Name)
 	port := &field{label: "Порт сервера", input: &textInput{maxLen: 5}, hint: "TCP-порт для режима «Открыть для сети»."}
@@ -658,9 +667,11 @@ func (a *App) settingsForm() {
 	if a.cfg.ASCIIOnly {
 		ascii.choice = 1
 	}
-	if !a.form("Настройки", []*field{name, port, ai, key, model, ascii, {label: "Сохранить", button: true}}) {
+	if !a.form("Настройки", []*field{lang, name, port, ai, key, model, ascii, {label: "Сохранить", button: true}}) {
 		return
 	}
+	a.cfg.Language = i18n.Langs[lang.choice].Code
+	i18n.SetLang(a.cfg.Language)
 	a.cfg.Name = strings.TrimSpace(name.input.String())
 	if p, err := strconv.Atoi(strings.TrimSpace(port.input.String())); err == nil && p > 0 && p < 65536 {
 		a.cfg.Port = p

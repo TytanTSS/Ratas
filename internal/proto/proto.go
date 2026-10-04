@@ -22,6 +22,7 @@ type Hello struct {
 	Name    string
 	Class   string
 	Version int
+	Lang    string // the player's language: AI characters answer in it
 }
 
 // Input is a real-time control event. Move is a world.Dir value.
@@ -97,6 +98,8 @@ type EntityView struct {
 	Dead    bool     // a fallen hero
 	Ally    bool     // a party member or one of your summons
 	Gear    []string // heroes: right hand, left hand, head, chest, back
+	Step    uint16   // milliseconds one step takes at the current pace (smooth movement)
+	Swing   uint8    // grows with every attack (swing animation)
 	Rarity  uint8    // items on the ground: 0 common .. 4 legendary
 }
 

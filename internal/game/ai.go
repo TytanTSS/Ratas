@@ -632,7 +632,7 @@ func (g *Game) maybeAskTactic(m *Entity, def *content.MonsterDef, target *Entity
 		Distance: m.Pos.Manhattan(target.Pos), Events: ms.Events,
 	}
 	if target.Player != nil {
-		req.EnemyLevel = target.Player.Level
+		req.EnemyLevel, req.Lang = target.Player.Level, target.Player.Lang
 		if c := content.Class(target.Player.Class); c != nil {
 			req.EnemyClass = c.Name
 		}

@@ -14,6 +14,7 @@ import (
 
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 )
 
@@ -22,6 +23,7 @@ type session struct {
 	out     chan *proto.ServerMsg
 	host    bool
 	name    string
+	lang    string // the player's language
 	entity  *game.Entity
 	level   string
 	pending bool // waiting for class choice
@@ -307,6 +309,7 @@ func (s *Server) hello(sess *session, h *proto.Hello) {
 		return
 	}
 	sess.name = validName(h.Name)
+	sess.lang = i18n.Normalize(h.Lang)
 	if sess.name == "" {
 		s.send(sess, &proto.ServerMsg{Kick: "Пустое имя."})
 		s.drop(sess)
@@ -332,6 +335,7 @@ func (s *Server) join(sess *session, class string) {
 	}
 	sess.pending = false
 	sess.entity = e
+	e.Player.Lang = sess.lang
 	sess.level = e.Level
 	w.YouID = e.ID
 	s.Logf("%s joined", sess.name)

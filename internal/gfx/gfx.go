@@ -26,6 +26,7 @@ import (
 
 	"ratas/internal/client"
 	"ratas/internal/config"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 	"ratas/internal/world"
 )
@@ -198,7 +199,7 @@ func Run(cfg *config.Config, mods []string, opts client.StartOptions) error {
 	g.world = newWorldRenderer(f)
 	g.menu = newMenuBackdrop(g.world)
 
-	ebiten.SetWindowTitle("Ратас")
+	ebiten.SetWindowTitle(i18n.T("Ратас"))
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowSizeLimits(800, 500, -1, -1)
 	ww, wh := 1440, 900
@@ -253,7 +254,7 @@ func (g *Game) Update() error {
 		(inpututil.IsKeyJustPressed(ebiten.KeyEnter) && ebiten.IsKeyPressed(ebiten.KeyAlt)) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	} else {
-		g.input.update(g.scr)
+		g.input.update(g.scr, ebitenKeys{}, now, g.scene)
 	}
 	if _, wy := ebiten.Wheel(); wy != 0 {
 		g.world.zoom(wy)

@@ -10,6 +10,7 @@ import (
 
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 )
 
@@ -260,9 +261,9 @@ func (p *play) drawChar() {
 		if cl == nil {
 			continue
 		}
-		label := fmt.Sprintf("%s %d", cl.Name, cv.Level)
+		label := fmt.Sprintf("%s %d", i18n.T(cl.Name), cv.Level)
 		if sc := content.Subclass(cv.Subclass); sc != nil {
-			label += " (" + sc.Name + ")"
+			label += " (" + i18n.T(sc.Name) + ")"
 		}
 		if cx+runeLen(label) >= x+w-2 {
 			break
@@ -329,7 +330,7 @@ func (p *play) charStats(x, y, w, maxY int) {
 	for _, k := range [][2]string{{"block", "Блок"}, {"fury", "Ярость ран."}, {"duel_pct", "Один на один"},
 		{"ambush_pct", "Из засады"}, {"heal_pct", "Сила лечения"}, {"mimic_pct", "Сила копий"}} {
 		if v := st[k[0]]; v != 0 {
-			lines = append(lines, fmt.Sprintf("%-14s+%.0f%%", k[1], v))
+			lines = append(lines, fmt.Sprintf("%-14s+%.0f%%", i18n.T(k[1]), v))
 		}
 	}
 	lines = append(lines, fmt.Sprintf("Убито врагов  %.0f", st["kills"]))
@@ -366,10 +367,10 @@ func (p *play) charResists(x, y, w, maxY int) {
 	var bonus []string
 	for _, dt := range content.DamageTypes() {
 		if v := st[dt.Key+"_pct"]; v != 0 {
-			bonus = append(bonus, fmt.Sprintf("%s %+.0f%%", dt.Short, v))
+			bonus = append(bonus, fmt.Sprintf("%s %+.0f%%", i18n.T(dt.Short), v))
 		}
 		if v := st["add_"+dt.Key]; v != 0 {
-			bonus = append(bonus, fmt.Sprintf("+%.0f %s", v, dt.Short))
+			bonus = append(bonus, fmt.Sprintf("+%.0f %s", v, i18n.T(dt.Short)))
 		}
 	}
 	if len(bonus) > 0 && ry+2 < maxY {
