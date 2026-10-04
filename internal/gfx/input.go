@@ -56,6 +56,12 @@ func (in *inputState) update(scr tcell.SimulationScreen) {
 		mod |= tcell.ModShift
 	}
 
+	// paste: Ctrl+V (Cmd+V on macOS), Shift+Insert
+	ctrl := ebiten.IsKeyPressed(ebiten.KeyControl) || ebiten.IsKeyPressed(ebiten.KeyMeta)
+	if (ctrl && inpututil.IsKeyJustPressed(ebiten.KeyV)) || (mod&tcell.ModShift != 0 && inpututil.IsKeyJustPressed(ebiten.KeyInsert)) {
+		scr.InjectKey(tcell.KeyCtrlV, 0, tcell.ModCtrl)
+		chars = nil // the OS may also type a "v"
+	}
 	for k, tk := range specialKeys {
 		if !inpututil.IsKeyJustPressed(k) {
 			continue

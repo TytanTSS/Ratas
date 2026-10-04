@@ -3,3 +3,4 @@
 *.sav.tmp
 /ratas-server
 /dist/
+__pycache__/

@@ -134,6 +134,7 @@ func (g *Game) killMonster(m *Entity, killer *Entity) {
 		heroes = append(heroes, p.Name)
 		g.GiveXP(p, ms.XP)
 		p.Player.Kills++
+		g.killDeeds(p, m, def, p == kc)
 		if p == killer {
 			g.Log(p, "#e0e0e0", "Вы убили: %s (+%d опыта).", m.Name, ms.XP)
 		} else {
@@ -425,6 +426,10 @@ func (g *Game) useAbility(c *Entity, key string, target *Entity) bool {
 		c.MP -= a.Mana
 		c.Cooldowns[key] = g.Now + float64(a.CooldownMs)
 	}
+	g.deed(c, "casts", 1)
+	if a.Kind == "summon" {
+		g.deed(c, "summons", 1)
+	}
 	return true
 }
 
@@ -710,10 +715,12 @@ func castStrike(g *Game, c *Entity, a *content.AbilityDef, target *Entity) bool 
 
 func castHeal(g *Game, c *Entity, a *content.AbilityDef, _ *Entity) bool {
 	amount := g.abilityPower(c, a) * (1 + c.stats.HealPct/100)
+	g.deed(c, "heal", int(math.Min(amount, c.MaxHP-c.HP)))
 	g.heal(c, amount)
 	if a.Radius > 0 {
 		for _, o := range g.onLevel(c.Level) {
 			if o != c && o.Alive() && o.Blocks() && g.friendly(c, o) && c.Pos.Dist(o.Pos) <= a.Radius {
+				g.deed(c, "heal", int(math.Min(amount*0.7, o.MaxHP-o.HP)))
 				g.heal(o, amount*0.7)
 			}
 		}

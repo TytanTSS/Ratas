@@ -67,6 +67,18 @@ var modelDefs = map[string]modelDef{
 		return hum{skin: hex("#d0d0c4"), hair: hairBlack, hairStyle: "long", outfit: "robe", top: hex("#20262a"), trim: c, boots: hex("#121614"),
 			glow: true, eyes: c, weapon: "skullstaff", weaponCol: c, offhand: "book", offCol: hex("#2a3a2a"), cape: hex("#141a16")}
 	}),
+	"monk": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkinTan, outfit: "robe", top: hex("#e08a30"), trim: hex("#8a3a1a"), boots: hex("#6a3a1a"),
+			weapon: "staff", weaponCol: hex("#a07a4a")}
+	}),
+	"skald": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hairBlond, hairStyle: "long", beard: hairBlond, outfit: "fur", top: hex("#7a5a8a"), trim: c,
+			pants: hex("#4a3a2a"), head: "horned", headCol: cSteel, cape: hex("#5a2a4a"), weapon: "axe", shield: hex("#8a5a3a"), shieldForm: "round"}
+	}),
+	"brewer_hero": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#5a3a2a"), hairStyle: "wild", outfit: "leather", top: hex("#4a6a4a"), trim: c,
+			pants: hex("#3a3a2a"), mask: hex("#5a5a4a"), weapon: "dagger", offhand: "orb", offCol: c}
+	}),
 	"necromancer": hero(func(c color.RGBA) hum {
 		return hum{skin: hex("#c8c0b0"), outfit: "robe", top: hex("#28262e"), trim: cBone, boots: hex("#1a181e"),
 			head: "hood", headCol: hex("#1c1a20"), glow: true, eyes: hex("#8aff7a"), weapon: "skullstaff", weaponCol: hex("#8aff7a")}
@@ -403,6 +415,77 @@ var modelDefs = map[string]modelDef{
 		return hum{skin: cSkinDark, outfit: "robe", top: hex("#f0e8d8"), trim: c, boots: hex("#c8b898"), head: "turban",
 			headCol: hex("#f8f4ea"), mask: hex("#e8dcc4"), weapon: "staff", weaponCol: c}
 	}),
+	"old_voivode": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hairGrey, beard: hairGrey, outfit: "plate", top: hex("#8a8a90"), trim: c, pants: cIron,
+			head: "helmet", headCol: hex("#a0a0a8"), cape: hex("#8a2a1a"), weapon: "sword", shield: hex("#8a2a1a"), shieldMark: cGold}
+	}),
+	"assassin_master": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#d8c8c0"), outfit: "leather", top: hex("#141418"), trim: c, pants: hex("#101014"), boots: hex("#0a0a0c"),
+			head: "hood", headCol: hex("#18181c"), mask: hex("#0c0c10"), cape: hex("#1a1a20"), weapon: "dagger", weaponCol: c, offhand: "dagger", offCol: c}
+	}),
+	"archmage_npc": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#f0f0f0"), hairStyle: "long", beard: hex("#f4f4f4"), outfit: "robe", top: hex("#2a3a8a"), trim: c,
+			boots: hex("#1a2450"), head: "wizard", headCol: hex("#2a3a8a"), weapon: "staff", weaponCol: c, offhand: "book", offCol: hex("#4a2a6a")}
+	}),
+	"oracle_npc": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkinTan, hair: hex("#e0e0e8"), hairStyle: "long", outfit: "robe", top: hex("#e8eef8"), trim: c,
+			boots: hex("#a0a8b8"), mask: hex("#8a9ab0"), offhand: "orb", offCol: c}
+	}),
+	"fire_keeper": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#8a5a3a"), hair: hairBlack, hairStyle: "wild", outfit: "fur", top: hex("#5a3a2a"), trim: c,
+			head: "horns", headCol: hex("#3a2a20"), glow: true, eyes: hex("#ffa040"), weapon: "totem", weaponCol: c}
+	}),
+	"nameless": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#b8a8b0"), outfit: "robe", top: hex("#20102a"), trim: c, boots: hex("#140a1a"),
+			head: "hood", headCol: hex("#1a0a24"), glow: true, eyes: c, weapon: "skullstaff", weaponCol: c}
+	}),
+	"moon_druid": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#e8e8f4"), hair: hex("#c0c8f0"), hairStyle: "long", outfit: "robe", top: hex("#2a3060"), trim: c,
+			boots: hex("#1a1e40"), head: "circlet", headCol: hex("#e0e8ff"), weapon: "staff", weaponCol: c}
+	}),
+	"mourner": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#d8d8d8"), hair: hairGrey, hairStyle: "long", outfit: "robe", top: hex("#2a2e34"), trim: c,
+			boots: hex("#1a1c20"), head: "hood", headCol: hex("#30343a"), offhand: "symbol", offCol: c}
+	}),
+	"star_archer": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#e0e4f0"), hairStyle: "long", outfit: "leather", top: hex("#2a3460"), trim: c,
+			pants: hex("#1a2040"), cape: hex("#d0d8ff"), weapon: "bow", weaponCol: c}
+	}),
+	"wild_huntsman": hero(func(c color.RGBA) hum {
+		return hum{build: "big", skin: hex("#a8b8a0"), outfit: "fur", top: hex("#3a4a32"), trim: c, head: "horns", headCol: hex("#6a5a3a"),
+			glow: true, eyes: hex("#c0ffc0"), cape: hex("#2a3424"), weapon: "spear", weaponCol: c}
+	}),
+	"grail_keeper": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hairGrey, beard: hairGrey, outfit: "plate", top: hex("#f0f0f8"), trim: cGold, pants: hex("#c8c8d8"),
+			cape: hex("#e8d8a0"), weapon: "spear", weaponCol: hex("#fff4c0"), offhand: "orb", offCol: c}
+	}),
+	"fallen_paladin": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#c8b8c0"), outfit: "plate", top: hex("#2a2030"), trim: c, pants: hex("#1a141e"), head: "helmet",
+			headCol: hex("#2a2030"), glow: true, eyes: hex("#c060ff"), cape: hex("#3a1a4a"), weapon: "sword", weaponCol: c, shield: hex("#2a2030"), shieldMark: c}
+	}),
+	"drunken_npc": hero(func(c color.RGBA) hum {
+		return hum{build: "big", skin: hex("#e8b090"), hair: hairGrey, beard: hairGrey, outfit: "robe", top: hex("#c08a40"), trim: hex("#6a3a1a"),
+			boots: hex("#5a3a1a"), weapon: "staff", weaponCol: hex("#8a6a4a"), offhand: "orb", offCol: hex("#a06a30")}
+	}),
+	"dragon_monk": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkinTan, outfit: "robe", top: hex("#b02a1a"), trim: cGold, boots: hex("#4a1a10"), weapon: "staff", weaponCol: c}
+	}),
+	"dirge_singer": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#d8d4dc"), hair: hairBlack, hairStyle: "long", outfit: "robe", top: hex("#1a1820"), trim: c, boots: hex("#121016"),
+			head: "feathers", headCol: hex("#2a2a30"), cape: hex("#1e1c24"), weapon: "staff", weaponCol: c}
+	}),
+	"rune_carver": hero(func(c color.RGBA) hum {
+		return hum{build: "big", skin: cSkin, hair: hex("#c87a3a"), hairStyle: "long", beard: hex("#c87a3a"), outfit: "fur", top: hex("#5a5a6a"),
+			trim: c, head: "horned", headCol: cSteel, weapon: "hammer", weaponCol: c}
+	}),
+	"plague_doc": hero(func(c color.RGBA) hum {
+		return hum{skin: hex("#c8c0b0"), outfit: "robe", top: hex("#1a1a1a"), trim: c, boots: hex("#0e0e0e"), head: "wizard",
+			headCol: hex("#141414"), mask: hex("#e8e0c8"), weapon: "staff", weaponCol: c}
+	}),
+	"old_alchemist": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#f0f0f0"), beard: hex("#f4f4f4"), outfit: "robe", top: hex("#5a2a6a"), trim: cGold,
+			boots: hex("#3a1a4a"), head: "cap", headCol: hex("#3a1a4a"), offhand: "orb", offCol: c}
+	}),
 	"sun_smith": hero(func(c color.RGBA) hum {
 		return hum{skin: cSkinTan, beard: hex("#c08a3a"), outfit: "leather", top: hex("#8a5a2a"), trim: cGold, pants: hex("#4a3a30"),
 			weapon: "hammer", weaponCol: cGold}
@@ -456,6 +539,8 @@ var modelAliases = map[string]string{
 	"hunter_npc": "hunter", "wandering_mage": "battle_mage", "town_guard": "guard",
 	"imp_minion": "fire_imp", "felguard": "demon", "spirit_wolf": "wolf",
 	"skeleton_minion": "skeleton", "skeleton_mage_minion": "skeleton_mage", "bone_golem_minion": "golem", "treant_minion": "treant",
+	"rng_wolf_companion": "wolf", "rng_hawk": "giant_bat", "rng_bear_companion": "bear", "wl_soldier": "guard", "wr_ghost": "ghost",
+	"wh_hound": "wolf", "wh_huntsman": "hunter", "tm_golem": "golem",
 }
 
 // glyphModels guess a model for modded creatures without one.

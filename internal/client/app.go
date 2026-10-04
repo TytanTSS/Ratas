@@ -71,16 +71,20 @@ func RunWith(scr tcell.Screen, sink Sink, cfg *config.Config, mods []string, opt
 	defer scr.Fini()
 	scr.SetStyle(tcell.StyleDefault.Background(cBlack).Foreground(cText))
 	scr.HideCursor()
+	scr.EnablePaste()
 	asciiUI = cfg.ASCIIOnly && sink == nil
 	a := &App{scr: scr, cv: &canvas{s: scr}, cfg: cfg, events: make(chan tcell.Event, 256), mods: mods, gfx: sink}
 	go func() {
+		var pf pasteFilter
 		for {
 			ev := scr.PollEvent()
 			if ev == nil {
 				close(a.events)
 				return
 			}
-			a.events <- ev
+			if pf.keep(ev) {
+				a.events <- ev
+			}
 		}
 	}()
 	if opts.Name != "" {

@@ -182,6 +182,7 @@ type BranchDef struct {
 	Class    string `json:"class,omitempty" toml:"class,omitempty"`       // the class tree this branch belongs to ("" = common)
 	Subclass string `json:"subclass,omitempty" toml:"subclass,omitempty"` // the subclass this branch belongs to
 	Secret   bool   `json:"secret,omitempty" toml:"secret,omitempty"`     // skills are only granted by unique quests
+	Hidden   bool   `json:"hidden,omitempty" toml:"hidden,omitempty"`     // hidden skills of a class, opened by deeds
 }
 
 // SubclassDef is a specialisation chosen inside a class once its class
@@ -208,6 +209,10 @@ type SkillDef struct {
 	Stats    map[string]float64 `json:"stats,omitempty" toml:"stats,omitempty"`       // per rank
 	Grants   string             `json:"grants,omitempty" toml:"grants,omitempty"`     // ability unlocked at rank 1
 	Equip    string             `json:"equip,omitempty" toml:"equip,omitempty"`       // the stats work only with this gear
+	// A hidden skill opens by itself when its deed is done DeedCount times
+	// (see game/deeds.go); its branch is hidden.
+	Deed      string `json:"deed,omitempty" toml:"deed,omitempty"`
+	DeedCount int    `json:"deed_count,omitempty" toml:"deed_count,omitempty"`
 }
 
 type ClassDef struct {

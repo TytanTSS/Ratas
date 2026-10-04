@@ -245,6 +245,8 @@ type PlayerSheet struct {
 	Classes     []ClassView
 	Unlocks     []string
 	Places      []Place
+	Deeds       map[string]int // deed counters (hidden skills)
+	Found       int            // landmarks found
 }
 
 type Snapshot struct {

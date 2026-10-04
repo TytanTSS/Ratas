@@ -268,13 +268,28 @@ func TestNewUniquesPlaced(t *testing.T) {
 			placed[e.NPC.Unique] = true
 		}
 	}
-	for _, k := range []string{"olkha", "koschei", "torgrim", "yaroslava", "evstafiy", "ignatiy"} {
-		if !placed[k] {
-			t.Errorf("the unique %s who teaches a secret class or subclass is not in the world", k)
+	for _, u := range content.Uniques() {
+		if (strings.HasPrefix(u.Reward, "class:") || strings.HasPrefix(u.Reward, "subclass:")) && !placed[u.Key] {
+			t.Errorf("the unique %s who teaches %s is not in the world", u.Key, u.Reward)
 		}
 	}
-	if len(placed) < 16 {
+	if len(placed) < 35 {
 		t.Errorf("only %d uniques placed", len(placed))
+	}
+	// every secret class and subclass has a teacher
+	taught := map[string]bool{}
+	for _, u := range content.Uniques() {
+		taught[u.Reward] = true
+	}
+	for _, c := range content.Classes() {
+		if c.Secret && !taught["class:"+c.Key] {
+			t.Errorf("nobody teaches the secret class %s", c.Key)
+		}
+	}
+	for _, sc := range content.Subclasses() {
+		if sc.Secret && !taught["subclass:"+sc.Key] {
+			t.Errorf("nobody teaches the secret subclass %s", sc.Key)
+		}
 	}
 	for _, u := range content.Uniques() {
 		kind, key, _ := strings.Cut(u.Reward, ":")
@@ -330,16 +345,25 @@ func TestNewSecretClasses(t *testing.T) {
 	}
 	g.Admin(p, "/god")
 	l := g.Levels[p.Level]
+	// every ability any class can learn, on a hero holding the gear it needs
 	for _, sk := range content.Skills() {
 		b := content.Branch(sk.Branch)
-		switch b.Key {
-		case "druid", "grove_keeper", "shapeshifter", "necromancer", "bonelord", "plaguebringer",
-			"berserker", "monster_hunter", "chronomancer", "inquisitor":
-		default:
+		if b.Class == "" || sk.Grants == "" {
 			continue
 		}
-		if sk.Grants == "" {
-			continue
+		p.Player.Inventory = nil
+		switch a := content.Ability(sk.Grants); {
+		case a.Kind == "revive" || a.Kind == "mimic" || a.Kind == "echo" || a.Kind == "copied":
+			continue // need a fallen ally or a copied ability: see their own tests
+		case a.Equip == "twohand_dual":
+			g.EquipForTest(p, "greatsword", false)
+		case a.Equip == "bow":
+			g.EquipForTest(p, "hunting_bow", false)
+		case a.Equip == "shield":
+			g.EquipForTest(p, "long_sword", false)
+			g.EquipForTest(p, "wooden_shield", true)
+		default:
+			g.EquipForTest(p, "long_sword", false)
 		}
 		a := content.Ability(sk.Grants)
 		// a fresh enemy next to the hero for every ability
@@ -350,8 +374,18 @@ func TestNewSecretClasses(t *testing.T) {
 		}
 		w := spawnAt(g, "wolf", l, p.Pos.Add(world.Pos{X: 1}))
 		w.Monster.Target = 0
+		p.Buffs = nil
+		p.Recalc()
 		g.indexLevels()
 		p.Facing = world.DirRight
+		if a.Kind == "dash" {
+			p.Facing = world.DirLeft // room to dash away from the wolf
+			for i := 1; i <= 6; i++ {
+				if q := p.Pos.Add(world.Pos{X: -i}); !l.Walkable(q.X, q.Y) {
+					l.Set(q.X, q.Y, content.TileID("grass"))
+				}
+			}
+		}
 		p.MP, p.Cooldowns = 1000, map[string]float64{}
 		g.unlockAbility(p, sk.Grants)
 		if !g.useAbility(p, sk.Grants, nil) {
@@ -485,5 +519,85 @@ func TestCityLife(t *testing.T) {
 	run(g, 1200)
 	if d := walker.Pos.Dist(walker.NPC.Night); d > max(10, start/2) {
 		t.Fatalf("at night the citizen is still %d tiles from the tavern (was %d)", d, start)
+	}
+}
+
+// Hidden skills: every deed is valid, and doing the deed opens the skill.
+func TestDeedsOpenHiddenSkills(t *testing.T) {
+	g := setup(t)
+	perClass := map[string]int{}
+	for _, sk := range content.Skills() {
+		b := content.Branch(sk.Branch)
+		if sk.Deed == "" {
+			if b.Hidden {
+				t.Errorf("skill %s in a hidden branch has no deed", sk.Key)
+			}
+			continue
+		}
+		if !DeedKnown(sk.Deed) || sk.DeedCount <= 0 || !b.Hidden {
+			t.Errorf("hidden skill %s: deed %q ×%d, branch hidden %v", sk.Key, sk.Deed, sk.DeedCount, b.Hidden)
+		}
+		if strings.Contains(DeedText(sk.Deed, sk.DeedCount), sk.Deed) {
+			t.Errorf("hidden skill %s: no text for deed %q", sk.Key, sk.Deed)
+		}
+		perClass[b.Class]++
+	}
+	for _, c := range content.Classes() {
+		if perClass[c.Key] < 10 {
+			t.Errorf("class %s has %d hidden skills", c.Key, perClass[c.Key])
+		}
+	}
+
+	p, _, _ := g.Join("Тест", "warrior")
+	wild(t, g, p)
+	l := g.Levels[p.Level]
+	g.Admin(p, "/god")
+	// kill 300 monsters: "A Thousand Battles" opens
+	for i := 0; i < 300; i++ {
+		w := spawnAt(g, "wolf", l, p.Pos.Add(world.Pos{X: 1}))
+		w.HP = 0
+		g.kill(w, p)
+	}
+	if p.Player.Deeds["kills"] != 300 || p.Player.Deeds["kill:wolf"] != 300 || p.Player.Deeds["theme:forest"] != 300 {
+		t.Fatalf("deeds: %v", p.Player.Deeds)
+	}
+	run(g, 12)
+	if p.Player.Skills["hwa_battles"] != 1 {
+		t.Fatal("A Thousand Battles did not open after 300 kills")
+	}
+	// a rogue's hidden skill does not open for a warrior
+	if p.Player.Skills["hro_bandit_bane"] != 0 || p.Player.Skills["hro_roads"] != 0 {
+		t.Fatal("a hidden skill of another class opened")
+	}
+	// damage, crits and steps are counted
+	before := p.Player.Deeds["dmg:slash"]
+	w := spawnAt(g, "wolf", l, p.Pos.Add(world.Pos{X: 1}))
+	g.damage(p, w, single("slash", 50))
+	if p.Player.Deeds["dmg:slash"] <= before {
+		t.Fatal("damage dealt is not counted")
+	}
+	// the class capstone opens at class level 25 and grants its ability
+	p.Player.Deeds["classlevel"] = 0
+	for _, sk := range content.Skills() {
+		if b := content.Branch(sk.Branch); b.Class == "warrior" && !b.Hidden && b.Subclass == "" {
+			p.Player.Skills[sk.Key] = sk.MaxRank
+		}
+	}
+	for ClassLevel(p.Player, "warrior") < 25 {
+		p.Player.Skills["weapon_discipline"]++
+	}
+	p.Player.deedCheck = true
+	run(g, 12)
+	if p.Player.Skills["hwa_unbreakable"] != 1 || !slices.Contains(p.Player.Abilities, "hwa_unbreakable") {
+		t.Fatal("the warrior capstone did not open at class level 25")
+	}
+	// the sheet carries the counters to the client
+	if sh := g.Sheet(p); sh.Deeds["kills"] < 300 {
+		t.Fatal("deeds not in the sheet")
+	}
+	// respec keeps hidden skills
+	g.respec(p)
+	if p.Player.Skills["hwa_battles"] != 1 {
+		t.Fatal("respec removed a hidden skill")
 	}
 }

@@ -495,6 +495,11 @@ func (g *Game) Sheet(e *Entity) *proto.PlayerSheet {
 	}
 	sh.Unlocks = append([]string(nil), p.Unlocks...)
 	sh.Places = g.places(e)
+	sh.Deeds = map[string]int{}
+	for k, v := range p.Deeds {
+		sh.Deeds[k] = v
+	}
+	sh.Found = len(p.Found)
 	return sh
 }
 

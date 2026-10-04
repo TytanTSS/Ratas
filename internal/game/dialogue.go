@@ -339,6 +339,7 @@ func (g *Game) turnInQuests(p, npc *Entity) string {
 		if q.Done && q.GiverID == npc.ID && q.Unique == "" {
 			pl.Gold += q.Gold
 			g.GiveXP(p, q.XP)
+			g.deed(p, "quests", 1)
 			parts = append(parts, fmt.Sprintf("%d золота", q.Gold))
 			g.Log(p, "#ffd24a", "Награда за задание: %d золота, %d опыта.", q.Gold, q.XP)
 			continue

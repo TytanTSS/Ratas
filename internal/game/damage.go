@@ -95,6 +95,7 @@ func (g *Game) rollCrit(e *Entity, d *Damage) {
 	if g.chance(e.stats.Crit) {
 		d.Crit = true
 		d.scale(e.stats.CritMult)
+		g.deed(e, "crits", 1)
 	}
 }
 
@@ -197,6 +198,7 @@ func (g *Game) damage(src, dst *Entity, d Damage) float64 {
 	}
 	if !d.DoT && src != nil && dst.stats.Dodge > 0 && g.chance(dst.stats.Dodge) {
 		g.FX(dst.Level, dst.Pos, "уклон", 0, "#a0a0ff", 600)
+		g.deed(dst, "dodge", 1)
 		return 0
 	}
 	mult := 1.0
@@ -222,6 +224,7 @@ func (g *Game) damage(src, dst *Entity, d Damage) float64 {
 	blocked := !d.DoT && dst.stats.Block > 0 && g.chance(dst.stats.Block)
 	if blocked {
 		g.FX(dst.Level, dst.Pos, "блок", 0, "#a0c0ff", 600)
+		g.deed(dst, "block", 1)
 	}
 	total := 0.0
 	immune := true
@@ -241,6 +244,9 @@ func (g *Game) damage(src, dst *Entity, d Damage) float64 {
 			immune = false
 		}
 		total += v * (1 - res/100)
+		if dealt := int(math.Round(v * (1 - res/100))); dealt > 0 && src != dst {
+			g.deed(src, "dmg:"+p.Type, dealt)
+		}
 	}
 	g.provoke(src, dst)
 	if immune {
