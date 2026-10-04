@@ -50,6 +50,7 @@ type entState struct {
 	trail  [][2]float64
 	gen    int
 	left   bool // facing left (sprites are mirrored)
+	you    bool // the player's own hero: turns sharper, it answers the keys
 }
 
 type floatText struct {

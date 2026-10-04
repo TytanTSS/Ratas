@@ -240,7 +240,7 @@ func (g *Game) Update() error {
 		(inpututil.IsKeyJustPressed(ebiten.KeyEnter) && ebiten.IsKeyPressed(ebiten.KeyAlt)) {
 		ebiten.SetFullscreen(!ebiten.IsFullscreen())
 	} else {
-		g.input.update(g.scr)
+		g.input.update(g.scr, ebitenKeys{}, now, g.scene)
 	}
 	if _, wy := ebiten.Wheel(); wy != 0 {
 		g.world.zoom(wy)

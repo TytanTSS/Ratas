@@ -41,6 +41,7 @@ func (s *segment) at(t float64) (x, y, vx, vy float64) {
 const (
 	settleTime = 0.16 // seconds of inertia after the last step
 	serverTick = 0.06 // a server tick (50 ms) and a little more
+	turnKeep   = 0.35 // how much of its sideways velocity your hero keeps in a turn
 )
 
 // moveTo starts the curve to a new cell reported by the server.
@@ -72,8 +73,19 @@ func (st *entState) moveTo(tx, ty int, now float64, kind uint8) {
 	if kind == kindProjectile {
 		end, dur = 1, st.stepS*math.Max(0.3, math.Min(1, dist))
 	}
+	v0x, v0y := st.vx, st.vy
+	if st.you && dist > 0 {
+		// your own hero turns at the press of a key: it keeps a little of its
+		// sideways velocity, so it still rounds the corner, and the rest
+		// turns to the new way at once instead of drifting on the old one
+		nx, ny := dx/dist, dy/dist
+		along := math.Max(0, v0x*nx+v0y*ny)
+		px, py := v0x-along*nx, v0y-along*ny
+		turned := along + math.Hypot(px, py)*(1-turnKeep)
+		v0x, v0y = turned*nx+px*turnKeep, turned*ny+py*turnKeep
+	}
 	st.seg = segment{
-		p0x: st.x, p0y: st.y, v0x: st.vx, v0y: st.vy,
+		p0x: st.x, p0y: st.y, v0x: v0x, v0y: v0y,
 		p1x: fx, p1y: fy, v1x: ux * speed * end, v1y: uy * speed * end,
 		t0: now, dur: dur,
 	}
@@ -118,6 +130,7 @@ func (r *worldRenderer) syncEnts(sc *client.Scene, from float64) {
 			if e.ID == sc.YouID || e.Kind == kindProjectile {
 				st.alpha = 1
 			}
+			st.you = e.ID == sc.YouID
 			r.ents[e.ID] = st
 		}
 		if e.Step > 0 {
