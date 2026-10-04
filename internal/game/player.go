@@ -84,7 +84,7 @@ type PlayerState struct {
 	Copied    string             `json:"-"` // ability copied by a mimic
 	CopiedLvl int                `json:"-"`
 	CopiedEnd float64            `json:"-"`
-	aim       *world.Pos // the tile the current attack or ability is aimed at
+	aim       *world.Pos         // the tile the current attack or ability is aimed at
 	region    int
 	lastHint  string
 	regenAcc  float64
