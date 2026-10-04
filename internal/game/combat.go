@@ -179,6 +179,7 @@ func (g *Game) questProgress(p *Entity, monster string) {
 func (g *Game) meleeAttack(a, d *Entity) {
 	a.NextAttack = g.Now + a.stats.AttackMs
 	a.Facing = world.DirTowards(a.Pos, d.Pos)
+	a.Swings++
 	dmg := g.meleeDamage(a)
 	g.rollCrit(a, &dmg)
 	g.weaponHit(a, d, g.damage(a, d, dmg))
@@ -190,6 +191,8 @@ func (g *Game) attackFacing(e *Entity) {
 	if e.stats.Gear.Ranged {
 		if t := g.autoTarget(e, &bowShot); t != nil {
 			e.NextAttack = g.Now + e.stats.AttackMs*1.3
+			e.Facing = world.DirTowards(e.Pos, t.Pos)
+			e.Swings++
 			castProjectile(g, e, &bowShot, t)
 			return
 		}
@@ -573,6 +576,7 @@ func castStrike(g *Game, c *Entity, a *content.AbilityDef, target *Entity) bool 
 		return false
 	}
 	c.Facing = world.DirTowards(c.Pos, target.Pos)
+	c.Swings++
 	hits := max(1, a.Count)
 	weaponK := 1.0
 	if hits > 1 {

@@ -18,6 +18,7 @@ import (
 	"ratas/internal/content"
 	"ratas/internal/game"
 	"ratas/internal/gen"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 	"ratas/internal/world"
 )
@@ -34,14 +35,21 @@ const (
 var zoomLevels = []float64{32, 48, 64}
 
 type entState struct {
-	x, y   float64
-	tx, ty int
-	hop    float64
+	x, y   float64 // drawn position (cells), gliding between the server's cells
+	vx, vy float64 // drawn velocity (cells per second)
+	tx, ty int     // the last cell the server reported
+	seg    segment // the curve being followed
+	moveAt float64 // when the last step started
+	stepS  float64 // seconds per step at the creature's pace
+	walk   float64 // distance walked: drives walking frames and bobbing
+	alpha  float64 // fades in and out of sight
+	fx, fy float64 // facing direction
+	swing  uint8   // last seen attack counter
+	lunge  float64 // attack animation, 1 → 0
 	flash  float64
 	trail  [][2]float64
 	gen    int
 	left   bool // facing left (sprites are mirrored)
-	step   int  // steps taken, alternates the walking frame
 }
 
 type floatText struct {
@@ -84,6 +92,10 @@ type worldRenderer struct {
 	levelID    string
 	camX, camY float64
 	camOK      bool
+	zoomCur    float64   // tile size now (glides to the chosen zoom level)
+	dt         float64   // length of the last frame
+	darkCur    []float32 // darkness of every tile, fading to its target
+	darkID     string    // level of darkCur
 	texts      []floatText
 	parts      []particle
 	lights     []flashLight
@@ -123,7 +135,13 @@ func (r *worldRenderer) zoom(dir float64) {
 	r.faces = map[string]*text.GoTextFace{}
 }
 
-func (r *worldRenderer) tileSize() int { return int(math.Round(zoomLevels[r.zoomIdx] * r.scale)) }
+func (r *worldRenderer) tileSize() int {
+	z := r.zoomCur
+	if z == 0 {
+		z = zoomLevels[r.zoomIdx]
+	}
+	return int(math.Round(z * r.scale))
+}
 
 func (r *worldRenderer) face(src *text.GoTextFaceSource, name string, size float64) *text.GoTextFace {
 	key := name + strconv.Itoa(int(size))
@@ -159,24 +177,18 @@ func (r *worldRenderer) update(dt float64, sc *client.Scene, fx []proto.FX) {
 		r.texts, r.parts, r.lights, r.ambient = nil, nil, nil, nil
 	}
 	if sc != r.lastScene {
-		r.syncEnts(sc)
+		// new steps start where the creatures were drawn last frame
+		r.syncEnts(sc, r.t-dt)
 		r.lastScene = sc
 	}
-	k := 1 - math.Exp(-dt*18)
-	kp := 1 - math.Exp(-dt*32)
-	for _, st := range r.ents {
-		kk := k
-		if st.trail != nil {
-			kk = kp
-			st.trail = append(st.trail, [2]float64{st.x, st.y})
-			if len(st.trail) > 7 {
-				st.trail = st.trail[1:]
-			}
-		}
-		st.x += (float64(st.tx) - st.x) * kk
-		st.y += (float64(st.ty) - st.y) * kk
-		st.hop = math.Max(0, st.hop-dt/0.17)
-		st.flash = math.Max(0, st.flash-dt)
+	r.dt = dt
+	r.animate(dt, sc)
+	// zoom glides between levels
+	want := zoomLevels[r.zoomIdx]
+	if r.zoomCur == 0 || math.Abs(want-r.zoomCur) < 0.25 {
+		r.zoomCur = want
+	} else {
+		r.zoomCur += (want - r.zoomCur) * (1 - math.Exp(-dt*12))
 	}
 	tx, ty := float64(sc.Self.X), float64(sc.Self.Y)
 	if me := r.ents[sc.YouID]; me != nil {
@@ -195,43 +207,6 @@ func (r *worldRenderer) update(dt float64, sc *client.Scene, fx []proto.FX) {
 	r.statusParticles(dt, sc)
 	r.updateEffects(dt)
 	r.updateAmbient(dt, sc.Level, sc.TimeOfDay)
-}
-
-func (r *worldRenderer) syncEnts(sc *client.Scene) {
-	r.gen++
-	for _, e := range sc.Entities {
-		st := r.ents[e.ID]
-		if st == nil {
-			st = &entState{x: float64(e.X), y: float64(e.Y), tx: e.X, ty: e.Y}
-			if e.Kind == kindProjectile {
-				st.trail = [][2]float64{}
-			}
-			r.ents[e.ID] = st
-		} else if st.tx != e.X || st.ty != e.Y {
-			if e.X != st.tx {
-				st.left = e.X < st.tx
-			}
-			if abs(st.tx-e.X)+abs(st.ty-e.Y) > 3 && e.Kind != kindProjectile {
-				st.x, st.y = float64(e.X), float64(e.Y)
-			} else if e.Kind != kindProjectile && e.Kind != kindItem {
-				st.hop = 1
-				st.step++
-			}
-			st.tx, st.ty = e.X, e.Y
-		}
-		switch world.Dir(e.Facing) {
-		case world.DirLeft:
-			st.left = true
-		case world.DirRight:
-			st.left = false
-		}
-		st.gen = r.gen
-	}
-	for id, st := range r.ents {
-		if st.gen != r.gen {
-			delete(r.ents, id)
-		}
-	}
 }
 
 func (r *worldRenderer) burst(x, y float64, n int, c color.RGBA, speed, grav, size float64, glow bool) {
@@ -429,6 +404,26 @@ func (r *worldRenderer) drawImg(dst, img *ebiten.Image, x, y, scale float64, mem
 	dst.DrawImage(img, op)
 }
 
+// swaying trees bend in the wind by this much (shear of the crown).
+var swaying = map[string]float64{
+	"tree": 0.035, "pine": 0.025, "snow_pine": 0.02, "palm": 0.05, "dead_tree": 0.015,
+	"twisted_tree": 0.02, "charred_tree": 0.01,
+}
+
+// drawSway draws a tall object sheared around its foot.
+func (r *worldRenderer) drawSway(dst, img *ebiten.Image, x, y, scale float64, memory bool, shear float64) {
+	h := float64(img.Bounds().Dy()) * scale
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(0, -h)
+	op.GeoM.Skew(shear, 0)
+	op.GeoM.Translate(x, y+h)
+	if memory {
+		op.ColorScale.Scale(memoryTint[0], memoryTint[1], memoryTint[2], 1)
+	}
+	dst.DrawImage(img, op)
+}
+
 // notBase are ground tiles that are details rather than the floor itself.
 var notBase = map[string]bool{
 	"road": true, "bridge": true, "carpet": true, "web": true, "rubble": true, "bones": true, "magma_crack": true,
@@ -503,12 +498,20 @@ func (r *worldRenderer) drawTiles(dst *ebiten.Image, v *view, rowEntities func(r
 			if !v.explored_(i) {
 				continue
 			}
-			ss := r.spriteFor(content.Tile(l.Tiles[i]))
+			def := content.Tile(l.Tiles[i])
+			ss := r.spriteFor(def)
 			if ss.object == nil || !ss.tall {
 				continue
 			}
 			px, py := v.px(float64(x), float64(y))
-			r.drawImg(dst, ss.object[tileHash(x, y)%len(ss.object)], px, py-ts/2, k, !v.visible(i))
+			img := ss.object[tileHash(x, y)%len(ss.object)]
+			if amp := swaying[def.Key]; amp > 0 && l.Lit {
+				// wind: a slow wave rolls over the woods, each tree a little out of step
+				w := math.Sin(r.t*1.1-float64(x)*0.32-float64(y)*0.18) + 0.35*math.Sin(r.t*2.9+float64(tileHash(x, y)%17))
+				r.drawSway(dst, img, px, py-ts/2, k, !v.visible(i), amp*w)
+				continue
+			}
+			r.drawImg(dst, img, px, py-ts/2, k, !v.visible(i))
 		}
 		if rowEntities != nil {
 			rowEntities(y)
@@ -551,15 +554,17 @@ func (r *worldRenderer) draw(dst *ebiten.Image, sc *client.Scene, area image.Rec
 	rows := map[int][]proto.EntityView{}
 	var projectiles []proto.EntityView
 	for _, e := range sc.Entities {
-		if !l.In(e.X, e.Y) || !v.vis[e.Y*l.W+e.X] {
+		if !l.In(e.X, e.Y) {
 			continue
 		}
 		if e.Kind == kindProjectile {
-			projectiles = append(projectiles, e)
+			if v.vis[e.Y*l.W+e.X] {
+				projectiles = append(projectiles, e)
+			}
 			continue
 		}
 		st := r.ents[e.ID]
-		if st == nil {
+		if st == nil || st.alpha < 0.02 {
 			continue
 		}
 		row := int(math.Floor(st.y + 0.5))
@@ -616,16 +621,19 @@ func (r *worldRenderer) drawEntity(dst *ebiten.Image, v *view, sc *client.Scene,
 	st := r.ents[e.ID]
 	ts := float64(v.ts)
 	c := hex(e.Color)
-	cx, cy := v.px(st.x+0.5, st.y+0.5)
+	al := st.alpha // fading in and out of sight
+	frame, bob, lx, ly := st.pose()
+	cx, cy := v.px(st.x+0.5+lx, st.y+0.5+ly)
 	if e.Kind == kindItem {
 		bob := math.Sin(r.t*3+float64(e.ID)) * ts * 0.05
-		r.shadow(dst, cx, cy+ts*0.3, ts*0.5, ts*0.18, 0.35)
-		r.glow(dst, cx, cy+bob, ts*0.42, c, 0.3)
+		r.shadow(dst, cx, cy+ts*0.3, ts*0.5, ts*0.18, 0.35*al)
+		r.glow(dst, cx, cy+bob, ts*0.42, c, 0.3*al)
 		icon := r.icon(e.Glyph, c, e.Def)
 		k := ts / spx * 0.85
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(k, k)
 		op.GeoM.Translate(math.Round(cx-float64(icon.Bounds().Dx())*k/2), math.Round(cy+bob-float64(icon.Bounds().Dy())*k/2))
+		op.ColorScale.ScaleAlpha(float32(al))
 		dst.DrawImage(icon, op)
 		return
 	}
@@ -638,32 +646,28 @@ func (r *worldRenderer) drawEntity(dst *ebiten.Image, v *view, sc *client.Scene,
 		r.drawBody(dst, m.frames[0], cx, cy+ts*0.44, k, ts)
 		return
 	}
-	frame := 0
-	if st.hop > 0.05 {
-		frame = st.step % 2
-	}
 	img := m.frames[frame]
 	w, h := float64(img.Bounds().Dx())*k, float64(img.Bounds().Dy())*k
 	feet := cy + ts*0.44
-	lift := math.Sin(st.hop*math.Pi) * ts * 0.1
+	lift := bob * ts * 0.07 // a small hop with every footfall
 	if m.float {
 		lift = ts*0.16 + math.Sin(r.t*2.6+float64(e.ID))*ts*0.06
 	}
 	hidden := e.Status&proto.StatusStealth != 0
 	illusion := e.Status&proto.StatusIllusion != 0
 	if !hidden {
-		r.shadow(dst, cx, feet-ts*0.04, math.Max(ts*0.55, w*0.8)*(1-st.hop*0.15), ts*0.24, 0.5)
+		r.shadow(dst, cx, feet-ts*0.04, math.Max(ts*0.55, w*0.8)*(1-bob*0.12), ts*0.24, 0.5*al)
 	}
 	switch {
 	case e.ID == sc.YouID:
-		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.04), pre(color.RGBA{255, 214, 110, 255}, 0.8))
+		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.04), pre(color.RGBA{255, 214, 110, 255}, 0.8*al))
 	case e.Ally:
 		// party members and own summons: a green ring
-		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(color.RGBA{110, 230, 120, 255}, 0.85))
+		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(color.RGBA{110, 230, 120, 255}, 0.85*al))
 	case e.Kind == kindPlayer && e.Hostile && !illusion:
-		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(color.RGBA{240, 80, 70, 255}, 0.8))
+		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(color.RGBA{240, 80, 70, 255}, 0.8*al))
 	case e.Kind == kindPlayer:
-		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(c, 0.8))
+		ellipse(dst, cx, feet-ts*0.04, ts*0.36, ts*0.12, math.Max(1, ts*0.035), pre(c, 0.8*al))
 	}
 	if e.Boss {
 		r.glow(dst, cx, feet-h*0.45, math.Max(w, h)*0.9, c, 0.16+0.06*math.Sin(r.t*3))
@@ -686,6 +690,7 @@ func (r *worldRenderer) drawEntity(dst *ebiten.Image, v *view, sc *client.Scene,
 	case e.Status&proto.StatusPoisoned != 0:
 		op.ColorScale.Scale(0.8, 1.06, 0.72, 1)
 	}
+	op.ColorScale.ScaleAlpha(float32(al))
 	switch {
 	case hidden:
 		// in stealth: a faint shimmer only allies can see
@@ -802,7 +807,11 @@ func (r *worldRenderer) darkness(v *view, sc *client.Scene, x, y int) float64 {
 		return 0.62
 	}
 	vision := math.Max(1, float64(sc.Self.Vision))
-	d := math.Hypot(float64(x-sc.Self.X), float64(y-sc.Self.Y)) / vision
+	sx, sy := float64(sc.Self.X), float64(sc.Self.Y)
+	if me := r.ents[sc.YouID]; me != nil {
+		sx, sy = me.x, me.y // the light moves with the hero, not by cells
+	}
+	d := math.Hypot(float64(x)-sx, float64(y)-sy) / vision
 	if l.Lit {
 		night := 1 - daylight(v.tod)
 		return night * (0.18 + 0.6*d*d)
@@ -846,9 +855,25 @@ func (r *worldRenderer) drawLighting(dst *ebiten.Image, v *view, sc *client.Scen
 		r.dark = ebiten.NewImage(dw, dh)
 		r.darkPix = make([]byte, dw*dh*4)
 	}
+	if r.darkID != l.ID || len(r.darkCur) != l.W*l.H {
+		r.darkID = l.ID
+		r.darkCur = make([]float32, l.W*l.H)
+		for i := range r.darkCur {
+			r.darkCur[i] = -1
+		}
+	}
+	ease := float32(1 - math.Exp(-r.dt*7)) // the edge of sight glides, tiles fade in
 	for yy := 0; yy < dh; yy++ {
 		for xx := 0; xx < dw; xx++ {
-			a := r.darkness(v, sc, x0+xx, y0+yy)
+			x, y := x0+xx, y0+yy
+			a := float32(r.darkness(v, sc, x, y))
+			if l.In(x, y) {
+				i := y*l.W + x
+				if cur := r.darkCur[i]; cur >= 0 {
+					a = cur + (a-cur)*ease
+				}
+				r.darkCur[i] = a
+			}
 			r.darkPix[(yy*dw+xx)*4+3] = uint8(255 * a)
 		}
 	}
@@ -936,6 +961,7 @@ func (r *worldRenderer) drawLighting(dst *ebiten.Image, v *view, sc *client.Scen
 }
 
 func drawCentered(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, c color.RGBA, outline bool) {
+	s = i18n.T(s)
 	w := text.Advance(s, face)
 	m := face.Metrics()
 	tx, ty := x-w/2, y-(m.HAscent+m.HDescent)/2
@@ -978,7 +1004,7 @@ func (r *worldRenderer) drawOverlays(dst *ebiten.Image, v *view, sc *client.Scen
 	label := r.face(r.fonts.bold, "label", ts*0.3)
 	// health bars and names
 	for _, e := range sc.Entities {
-		if !l.In(e.X, e.Y) || !v.visible(e.Y*l.W+e.X) || e.Kind == kindItem || e.Kind == kindProjectile {
+		if !l.In(e.X, e.Y) || !r.seen(e.ID) || e.Kind == kindItem || e.Kind == kindProjectile {
 			continue
 		}
 		st := r.ents[e.ID]
@@ -1048,14 +1074,14 @@ func (r *worldRenderer) drawOverlays(dst *ebiten.Image, v *view, sc *client.Scen
 	// speech bubbles
 	bub := r.face(r.fonts.regular, "speech", math.Max(11*r.scale, ts*0.32))
 	for _, e := range sc.Entities {
-		if e.Speech == "" || !l.In(e.X, e.Y) || !v.visible(e.Y*l.W+e.X) {
+		if e.Speech == "" || !l.In(e.X, e.Y) || !r.seen(e.ID) {
 			continue
 		}
 		st := r.ents[e.ID]
 		if st == nil {
 			continue
 		}
-		lines := wrapWords(e.Speech, 30)
+		lines := wrapWords(i18n.T(e.Speech), 30)
 		if len(lines) > 4 {
 			lines = lines[:4]
 		}
@@ -1114,7 +1140,7 @@ func (r *worldRenderer) drawOverlays(dst *ebiten.Image, v *view, sc *client.Scen
 	}
 	// boss health bar
 	for _, e := range sc.Entities {
-		if !e.Boss || !l.In(e.X, e.Y) || !v.visible(e.Y*l.W+e.X) {
+		if !e.Boss || !l.In(e.X, e.Y) || !r.seen(e.ID) {
 			continue
 		}
 		bw := math.Min(float64(area.Dx())*0.5, 520*r.scale)
@@ -1251,4 +1277,10 @@ func star(dst *ebiten.Image, cx, cy, rad float64, c color.RGBA) {
 	op.ColorScale.Reset()
 	op.ColorScale.ScaleWithColor(c)
 	vector.FillPath(dst, &p, nil, op)
+}
+
+// seen: the creature is (mostly) in sight, so its bars and words are shown.
+func (r *worldRenderer) seen(id uint32) bool {
+	st := r.ents[id]
+	return st != nil && st.alpha > 0.5
 }

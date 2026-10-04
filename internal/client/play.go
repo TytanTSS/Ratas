@@ -9,6 +9,7 @@ import (
 
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 	"ratas/internal/server"
 	"ratas/internal/world"
@@ -134,7 +135,7 @@ func (p *play) run() {
 			}
 		}
 	}()
-	p.send(proto.ClientMsg{Hello: &proto.Hello{Name: p.name, Class: p.class, Version: proto.Version}})
+	p.send(proto.ClientMsg{Hello: &proto.Hello{Name: p.name, Class: p.class, Version: proto.Version, Lang: i18n.Lang()}})
 	defer func() {
 		close(p.done)
 		close(p.outq)

@@ -85,6 +85,7 @@ type Entity struct {
 
 	NextMove    float64            `json:"next_move"`
 	NextAttack  float64            `json:"next_attack"`
+	Swings      uint8              `json:"-"` // counts attacks, so clients can animate swings
 	Cooldowns   map[string]float64 `json:"cooldowns,omitempty"`
 	Buffs       []Buff             `json:"buffs,omitempty"`
 	Speech      string             `json:"-"`

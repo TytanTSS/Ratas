@@ -11,6 +11,7 @@ import (
 
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 )
 
@@ -255,9 +256,10 @@ func (p *play) drawMap(L layout) {
 		}
 		rise := int(age / float64(f.Ms) * 2.5)
 		ty := sy - 1 - rise
-		tx := sx - runeLen(f.Text)/2
+		text := i18n.T(f.Text)
+		tx := sx - runeLen(text)/2
 		if ty >= oy && ty < oy+L.mapH {
-			for i, r := range []rune(f.Text) {
+			for i, r := range []rune(text) {
 				if tx+i >= 0 && tx+i < L.mapW {
 					c.put(tx+i, ty, r, col(f.Color), cBlack)
 				}
@@ -517,7 +519,7 @@ func (p *play) drawResists(x, y, w, maxY int, res map[string]int) int {
 			if !ok || (v > 0) != good {
 				continue
 			}
-			items = append(items, fmt.Sprintf("%s %d%%", dt.Short, v))
+			items = append(items, fmt.Sprintf("%s %d%%", i18n.T(dt.Short), v))
 			colors = append(colors, col(dt.Color))
 		}
 		if len(items) == 0 || y >= maxY {

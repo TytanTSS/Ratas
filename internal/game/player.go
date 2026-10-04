@@ -48,6 +48,7 @@ type Quest struct {
 
 type PlayerState struct {
 	Account     string                  `json:"account"`
+	Lang        string                  `json:"lang,omitempty"` // the player's language (AI characters answer in it)
 	Class       string                  `json:"class"`
 	Level       int                     `json:"level"`
 	XP          int                     `json:"xp"`

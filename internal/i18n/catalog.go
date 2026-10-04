@@ -171,13 +171,33 @@ func (c *catalog) segment(s string, depth int) (string, bool) {
 	return "", false
 }
 
+// fallback handles text without a translation: proper names (every word
+// capitalised: people, villages) are transliterated, free text (chat, lines
+// of AI characters) is left as written.
 func (c *catalog) fallback(s string) string {
 	c.mu.Lock()
 	if len(c.misses) < 5000 {
 		c.misses[s] = true
 	}
 	c.mu.Unlock()
+	if !isName(s) {
+		return s
+	}
 	return Translit(s)
+}
+
+func isName(s string) bool {
+	words := 0
+	for _, w := range strings.FieldsFunc(s, func(r rune) bool { return !unicode.IsLetter(r) && r != '-' }) {
+		if !hasCyrillic(w) {
+			continue
+		}
+		words++
+		if !isUpperFirst(w) || words > 4 {
+			return false
+		}
+	}
+	return words > 0
 }
 
 // splitSpace separates leading and trailing white space.

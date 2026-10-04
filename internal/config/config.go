@@ -15,6 +15,7 @@ type Config struct {
 	Model      string `json:"model"`
 	AIEnabled  bool   `json:"ai_enabled"`
 	ASCIIOnly  bool   `json:"ascii_only"`
+	Language   string `json:"language,omitempty"` // ru or en; empty means ru
 }
 
 // Home is the data directory: $RATAS_HOME or ~/.ratas.

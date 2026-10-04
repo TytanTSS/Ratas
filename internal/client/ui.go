@@ -4,11 +4,12 @@
 package client
 
 import (
-	"ratas/internal/i18n"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
+
+	"ratas/internal/i18n"
 )
 
 var colorCache = map[string]tcell.Color{}
@@ -196,7 +197,8 @@ func wrap(s string, w int) []string {
 	return out
 }
 
-func runeLen(s string) int { return utf8.RuneCountInString(s) }
+// runeLen is the width of a text as it will be shown (translated).
+func runeLen(s string) int { return utf8.RuneCountInString(i18n.T(s)) }
 
 // layoutKey maps Cyrillic (ЙЦУКЕН) keys to their QWERTY positions so hotkeys
 // work with a Russian keyboard layout active.

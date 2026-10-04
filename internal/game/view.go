@@ -274,6 +274,7 @@ func (g *Game) Snapshot(e *Entity) *proto.Snapshot {
 			Kind: uint8(o.Kind), Name: o.Name, Hostile: hostile || (o.Faction == FMonster && o.Kind != KProjectile),
 			Status: statusOf(o), Facing: uint8(o.Facing), Dead: o.Dead,
 			Ally: o != e && (g.sameParty(e, o) || o.Owner == e.ID),
+			Step: stepMs(o, g.Levels[o.Level]), Swing: o.Swings,
 		}
 		switch {
 		case o.Monster != nil && o.Monster.Def == "illusion" && g.Entities[o.Owner] != nil:
@@ -484,4 +485,18 @@ func upperFirst(s string) string {
 		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
 	}
 	return string(r)
+}
+
+// stepMs is how long the entity's next step takes: its pace on its ground.
+func stepMs(e *Entity, l *world.Level) uint16 {
+	ms := e.stats.MoveMs
+	switch {
+	case e.Proj != nil:
+		ms = e.Proj.StepMs
+	case l != nil && l.In(e.Pos.X, e.Pos.Y):
+		if c := l.Def(e.Pos.X, e.Pos.Y).MoveCost; c > 0 {
+			ms *= c
+		}
+	}
+	return uint16(math.Max(30, math.Min(3000, ms)))
 }

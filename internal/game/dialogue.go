@@ -590,6 +590,7 @@ func (g *Game) talkAI(p *Entity, text string) {
 		NPCName: n.PName, Village: n.Village, World: g.WorldName, TimeOfDay: g.TimeName(),
 		PlayerName: p.Name, PlayerLevel: pl.Level, Message: text, Purse: n.Gold,
 		Facts: g.worldFacts(npc), TimesMet: max(0, n.Met[p.Name]-1), Mood: g.moodLine(npc),
+		Lang: pl.Lang,
 	}
 	if req.Village == "" {
 		req.Village = "the wilds"

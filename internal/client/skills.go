@@ -10,6 +10,7 @@ import (
 
 	"ratas/internal/content"
 	"ratas/internal/game"
+	"ratas/internal/i18n"
 	"ratas/internal/proto"
 )
 
@@ -53,7 +54,7 @@ func (p *play) skillTabs() []skillTab {
 	}
 	for _, cv := range p.sheet.Classes {
 		if c := content.Class(cv.Key); c != nil {
-			tabs = append(tabs, skillTab{kind: "class", class: c.Key, name: fmt.Sprintf("%s %d", c.Name, cv.Level), color: c.Color})
+			tabs = append(tabs, skillTab{kind: "class", class: c.Key, name: fmt.Sprintf("%s %d", i18n.T(c.Name), cv.Level), color: c.Color})
 		}
 	}
 	for _, b := range content.Branches() {
