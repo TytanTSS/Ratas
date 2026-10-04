@@ -260,12 +260,16 @@ func (g *Game) scheduleSpot(e *Entity) world.Pos {
 // walkToward takes one step along a path to the target.
 func (g *Game) walkToward(e *Entity, to world.Pos) bool {
 	l := g.Levels[e.Level]
-	path := world.FindPath(l.W, l.H, e.Pos, to, 600, func(x, y int) float64 {
-		if (x != to.X || y != to.Y) && !l.Free(x, y) {
+	path := world.FindPath(l.W, l.H, e.Pos, to, 4000, func(x, y int) float64 {
+		if x == to.X && y == to.Y {
+			return 1 // the spot itself may be a door or taken
+		}
+		def := l.Def(x, y)
+		if !def.Walkable || def.Interact != "" || def.Damage > 0 {
 			return -1
 		}
-		if def := l.Def(x, y); def.Interact != "" || def.Damage > 0 {
-			return -1
+		if !l.Free(x, y) {
+			return 6 // go around other people, but a crowd does not block the way
 		}
 		return 1
 	})
