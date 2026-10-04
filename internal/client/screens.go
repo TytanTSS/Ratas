@@ -470,6 +470,9 @@ func (p *play) drawWorldMap() {
 				c.put(ox+pl.X/scale, oy+pl.Y/scale, '!', col("#ffd24a"), col("#602020"))
 			case pl.Kind == "village":
 				c.text(max(1, ox+pl.X/scale-runeLen(pl.Name)/2), oy+pl.Y/scale-1, pl.Name, col("#ffe0a0"), cPanel)
+			case pl.Kind == "city":
+				name := "[" + pl.Name + "]"
+				c.text(max(1, ox+pl.X/scale-runeLen(name)/2), oy+pl.Y/scale-1, name, col("#ffffff"), col("#5a4a2a"))
 			}
 		}
 	}

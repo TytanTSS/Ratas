@@ -741,3 +741,83 @@ fg = "#9a948a"
 bg = "#2a2826"
 walkable = false
 transparent = false
+
+# ---- Города (добавлять новые тайлы только в конец: сохранения хранят номера тайлов) ----
+
+[[tiles]]
+key = "cobblestone"
+name = "Мостовая"
+glyph = "."
+fg = "#a8a090"
+bg = "#2a2824"
+walkable = true
+transparent = true
+move_cost = 0.8
+biome = "plains"
+
+[[tiles]]
+key = "city_wall"
+name = "Крепостная стена"
+glyph = "#"
+fg = "#b0a898"
+bg = "#3a3630"
+walkable = false
+transparent = false
+
+[[tiles]]
+key = "city_gate"
+name = "Городские ворота"
+glyph = "+"
+fg = "#c09060"
+bg = "#3a2a1a"
+walkable = true
+transparent = true
+biome = "plains"
+
+[[tiles]]
+key = "fountain"
+name = "Фонтан"
+glyph = "0"
+fg = "#7ac0ff"
+bg = "#2a3a4a"
+walkable = false
+transparent = true
+light = "#80c0ff"
+
+[[tiles]]
+key = "market_stall"
+name = "Прилавок"
+glyph = "="
+fg = "#e0a050"
+bg = "#3a2a1a"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "lamp_post"
+name = "Фонарь"
+glyph = "!"
+fg = "#ffd88a"
+bg = "#2a2418"
+walkable = false
+transparent = true
+light = "#ffc870"
+
+[[tiles]]
+key = "statue"
+name = "Статуя"
+glyph = "&"
+fg = "#d8d8d0"
+bg = "#3a3a38"
+walkable = false
+transparent = true
+
+[[tiles]]
+key = "garden"
+name = "Клумба"
+glyph = "\""
+fg = "#80d060"
+bg = "#1a2a14"
+walkable = true
+transparent = true
+biome = "plains"

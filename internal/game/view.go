@@ -370,7 +370,11 @@ func (g *Game) places(e *Entity) []proto.Place {
 	bs := e.Player.Explored["overworld"]
 	seen := func(p world.Pos) bool { return ow != nil && bs.Get(p.Y*ow.W+p.X) }
 	for _, v := range g.Villages {
-		out = append(out, proto.Place{Name: v.Name, Kind: "village", X: v.Center.X, Y: v.Center.Y})
+		kind := "village"
+		if v.City {
+			kind = "city"
+		}
+		out = append(out, proto.Place{Name: v.Name, Kind: kind, X: v.Center.X, Y: v.Center.Y})
 	}
 	for _, en := range g.Entrances {
 		if seen(en.Pos) {

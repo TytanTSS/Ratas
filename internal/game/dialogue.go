@@ -43,6 +43,7 @@ func (g *Game) dialogueOptions(p, npc *Entity) []dialogueOption {
 	if role != nil && role.Trader {
 		opts = append(opts, dialogueOption{"Покажи товары", "trade"})
 	}
+	opts = append(opts, g.serviceOptions(p, npc)...)
 	return append(opts, dialogueOption{"Прощай", "bye"})
 }
 
@@ -208,6 +209,8 @@ func (g *Game) talkOption(p *Entity, idx int) {
 		text = g.finishUniqueQuest(p, u)
 	case "thanks":
 		text = g.pick(npc, []string{"Это я должен благодарить тебя.", "Ступай со светом. Наши пути ещё пересекутся.", fmt.Sprintf("Мир тесен, %s. Ещё увидимся.", p.Name)})
+	case "rest", "upgrade", "song", "bless":
+		text = g.service(p, npc, opts[idx].action)
 	case "bye":
 		g.closeDialogue(p, true)
 		return
@@ -426,44 +429,7 @@ func (g *Game) cannedQuest(p, npc *Entity) string {
 
 // ---- trade ----
 
-func (g *Game) tradeList(npc *Entity) []proto.TradeItem {
-	role := content.NPCRole(npc.NPC.Role)
-	if role == nil || !role.Trader {
-		return nil
-	}
-	var out []proto.TradeItem
-	for _, key := range role.Goods {
-		st := ItemStack{Key: key, Qty: 1}
-		out = append(out, proto.TradeItem{Item: ItemViewOf(st), Price: st.Value()})
-	}
-	return out
-}
-
 func SellPrice(st ItemStack) int { return max(1, st.Value()*2/5) }
-
-func (g *Game) buy(p *Entity, key string) {
-	npc := g.talkingTo(p)
-	if npc == nil {
-		return
-	}
-	role := content.NPCRole(npc.NPC.Role)
-	if role == nil || !role.Trader || !slices.Contains(role.Goods, key) {
-		return
-	}
-	st := ItemStack{Key: key, Qty: 1}
-	price := st.Value()
-	if p.Player.Gold < price {
-		g.Log(p, "#ff8080", "Не хватает золота (нужно %d).", price)
-		return
-	}
-	if !g.addItem(p, st) {
-		g.Log(p, "#ff8080", "Инвентарь полон!")
-		return
-	}
-	p.Player.Gold -= price
-	npc.NPC.Gold += price / 4
-	g.Log(p, "#ffd700", "Куплено: %s за %d золота.", st.Name(), price)
-}
 
 func (g *Game) sell(p *Entity, idx int) {
 	npc := g.talkingTo(p)

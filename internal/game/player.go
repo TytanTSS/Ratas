@@ -859,7 +859,7 @@ func (g *Game) Command(e *Entity, c proto.Command) {
 	case "talk_close":
 		g.closeDialogue(e, false)
 	case "buy":
-		g.buy(e, c.Key)
+		g.buy(e, c.Key, c.Index)
 	case "sell":
 		g.sell(e, c.Index)
 	case "chat":

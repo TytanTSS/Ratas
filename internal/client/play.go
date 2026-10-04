@@ -646,7 +646,7 @@ func (p *play) keyTrade(ev *tcell.EventKey) {
 		}
 	case tcell.KeyEnter:
 		if p.tradeCol == 0 && p.sel < len(d.Trade) {
-			p.cmd("buy", d.Trade[p.sel].Item.Key, 0)
+			p.cmd("buy", d.Trade[p.sel].Item.Key, p.sel)
 		} else if p.tradeCol == 1 && p.sel < inv {
 			p.cmd("sell", "", p.sel)
 			if p.sel == inv-1 && p.sel > 0 && p.sheet.Inventory[p.sel].Qty <= 1 {

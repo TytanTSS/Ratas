@@ -239,6 +239,16 @@ type NPCRoleDef struct {
 	Combat     string   `json:"combat,omitempty" toml:"combat,omitempty"`   // ally monster definition: the NPC fights monsters
 	World      bool     `json:"world,omitempty" toml:"world,omitempty"`     // wanders the open world instead of living in a village
 	Stories    []string `json:"stories,omitempty" toml:"stories,omitempty"` // "tell me about yourself"
+	// Cities: how many live in a city, the building they work in (temple,
+	// townhall, tavern, armory, smithy, magic, alchemy, jewelry, barracks).
+	CityCount [2]int `json:"city_count,omitempty" toml:"city_count,omitempty"`
+	Building  string `json:"building,omitempty" toml:"building,omitempty"`
+	// Stock is how many random items of StockKinds (item kinds or weapon
+	// types) a trader also sells, rolled with rarities and renewed every day.
+	Stock      int      `json:"stock,omitempty" toml:"stock,omitempty"`
+	StockKinds []string `json:"stock_kinds,omitempty" toml:"stock_kinds,omitempty"`
+	// Services offered in conversation: rest, upgrade, song, bless.
+	Services []string `json:"services,omitempty" toml:"services,omitempty"`
 }
 
 // SquadDef is a mixed group of monsters that fight together: the frontline

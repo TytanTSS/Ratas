@@ -164,6 +164,9 @@ type NPCState struct {
 	Said        map[string]bool    `json:"-"`                // lines already told (avoid repeating)
 	Travel      world.Pos          `json:"travel,omitempty"`
 	TravelUntil float64            `json:"-"`
+	Night       world.Pos          `json:"night,omitempty"`     // citizens: where to spend the night
+	Stock       []ItemStack        `json:"stock,omitempty"`     // city traders: today's rare goods
+	StockDay    int                `json:"stock_day,omitempty"` // the day the stock was laid out
 }
 
 type ProjState struct {

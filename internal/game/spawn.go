@@ -32,7 +32,8 @@ func (g *Game) spawnNPC(n gen.NPCSpawn, village string, r *rand.Rand) {
 	if !l.Free(p.X, p.Y) {
 		p = findFree(l, p)
 	}
-	g.makeNPC(role, n.Name, village, p, g.overworldLevelAt(p, false)+1, 30+r.IntN(70))
+	e := g.makeNPC(role, n.Name, village, p, g.overworldLevelAt(p, false)+1, 30+r.IntN(70))
+	e.NPC.Night = n.Night
 }
 
 // pickMonster chooses a weighted random non-boss monster matching theme and depth.

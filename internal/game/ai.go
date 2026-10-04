@@ -726,14 +726,24 @@ func (g *Game) updateNPC(e *Entity) {
 			}
 		}
 	}
-	if role.World || role.Wander <= 0 || g.Now < e.NextMove || !g.chance(55) {
+	if role.World || role.Wander <= 0 || g.Now < e.NextMove {
+		return
+	}
+	// citizens keep a schedule: back to their spot when far from it
+	if spot := g.scheduleSpot(e); e.Pos.Dist(spot) > role.Wander+1 {
+		n.NextThink = g.Now + 300
+		if g.walkToward(e, spot) {
+			return
+		}
+	}
+	if !g.chance(55) {
 		return
 	}
 	l := g.Levels[e.Level]
 	d := world.AllDirs[g.rng.IntN(4)]
 	to := e.Pos.Add(d.Delta())
 	def := l.Def(to.X, to.Y)
-	if l.Free(to.X, to.Y) && def.Interact == "" && to.Dist(n.Home) <= role.Wander {
+	if l.Free(to.X, to.Y) && def.Interact == "" && to.Dist(g.scheduleSpot(e)) <= role.Wander {
 		e.Facing = d
 		g.moveEntity(e, to)
 		e.NextMove = g.Now + e.stats.MoveMs

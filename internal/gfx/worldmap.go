@@ -509,6 +509,8 @@ func (r *worldRenderer) drawWorldMap(dst *ebiten.Image, sc *client.Scene, area i
 		switch {
 		case p.Kind == "village", p.Kind == "quest":
 			return p.Kind
+		case p.Kind == "city":
+			return "village"
 		case strings.HasPrefix(p.Kind, "dungeon"):
 			return "dungeon"
 		case strings.HasPrefix(p.Kind, "region:"):
@@ -618,7 +620,11 @@ func (r *worldRenderer) drawWorldMap(dst *ebiten.Image, sc *client.Scene, area i
 	for _, p := range places {
 		if kindOf(p) == "village" {
 			x, y := at(p.X, p.Y)
-			markVillage(dst, x, y, ms*1.2)
+			size := ms * 1.2
+			if p.Kind == "city" {
+				size = ms * 1.9 // a walled city is the biggest mark on the map
+			}
+			markVillage(dst, x, y, size)
 		}
 	}
 	for _, p := range places {

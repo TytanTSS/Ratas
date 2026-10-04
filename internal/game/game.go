@@ -26,6 +26,7 @@ type VillageInfo struct {
 	Name   string    `json:"name"`
 	Center world.Pos `json:"center"`
 	Area   gen.Rect  `json:"area"`
+	City   bool      `json:"city,omitempty"` // a big walled stone city
 }
 
 // Outbox collects per-player messages produced during a tick.
@@ -102,7 +103,7 @@ func New(seed int64, brain *llm.Brain) *Game {
 	g.Regions, g.RegionMap, g.Landmarks = ow.Regions, ow.RegionMap, ow.Landmarks
 	r := gen.RNG(seed, "population")
 	for _, v := range ow.Villages {
-		g.Villages = append(g.Villages, VillageInfo{Name: v.Name, Center: v.Center, Area: v.Area})
+		g.Villages = append(g.Villages, VillageInfo{Name: v.Name, Center: v.Center, Area: v.Area, City: v.City})
 		for _, n := range v.NPCs {
 			g.spawnNPC(n, v.Name, r)
 		}

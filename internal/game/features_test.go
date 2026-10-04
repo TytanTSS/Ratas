@@ -388,3 +388,102 @@ func TestNewSecretClasses(t *testing.T) {
 		run(g, 20)
 	}
 }
+
+func TestCityLife(t *testing.T) {
+	g := setup(t)
+	p, _, _ := g.Join("Тест", "warrior")
+	var city *VillageInfo
+	for i := range g.Villages {
+		if g.Villages[i].City {
+			city = &g.Villages[i]
+		}
+	}
+	if city == nil {
+		t.Fatal("no city in the world")
+	}
+	find := func(role string) *Entity {
+		for _, e := range g.Entities {
+			if e.NPC != nil && e.NPC.Role == role && e.NPC.Village == city.Name {
+				return e
+			}
+		}
+		t.Fatalf("no %s in %s", role, city.Name)
+		return nil
+	}
+	// the armorer lays out a daily stock of rare things
+	arm := find("armorer")
+	g.MoveForTest(p, arm)
+	g.OpenDialogueForTest(p, arm)
+	list := g.tradeList(arm)
+	role := content.NPCRole("armorer")
+	if len(list) != len(role.Goods)+role.Stock {
+		t.Fatalf("trade list %d, want %d goods + %d stock", len(list), len(role.Goods), role.Stock)
+	}
+	last := list[len(list)-1]
+	if last.Item.Rarity < int8(Uncommon) || last.Price <= 0 {
+		t.Fatalf("stock item %+v", last)
+	}
+	p.Player.Gold = 100000
+	g.buy(p, last.Item.Key, len(list)-1)
+	if len(arm.NPC.Stock) != role.Stock-1 {
+		t.Fatal("the bought stock item is still for sale")
+	}
+	bought := p.Player.Inventory[len(p.Player.Inventory)-1]
+	if bought.Key != last.Item.Key || bought.ItemRarity() != Rarity(last.Item.Rarity) {
+		t.Fatalf("bought %+v, wanted %+v", bought, last.Item)
+	}
+	// a new day, a new stock
+	g.Now += DayMs
+	g.tradeList(arm)
+	if len(arm.NPC.Stock) != role.Stock {
+		t.Fatal("the stock was not renewed")
+	}
+
+	// services
+	smith := find("smith")
+	g.MoveForTest(p, smith)
+	g.OpenDialogueForTest(p, smith)
+	before := p.Player.Equip[SlotMain].ItemRarity()
+	idx := slices.IndexFunc(g.dialogueOptions(p, smith), func(o dialogueOption) bool { return o.action == "upgrade" })
+	if idx < 0 {
+		t.Fatal("the city smith offers no upgrade")
+	}
+	g.talkOption(p, idx)
+	if p.Player.Equip[SlotMain].ItemRarity() != before+1 {
+		t.Fatalf("upgrade: %v -> %v", before, p.Player.Equip[SlotMain].ItemRarity())
+	}
+	inn := find("innkeeper")
+	g.MoveForTest(p, inn)
+	g.OpenDialogueForTest(p, inn)
+	p.HP = 1
+	idx = slices.IndexFunc(g.dialogueOptions(p, inn), func(o dialogueOption) bool { return o.action == "rest" })
+	g.talkOption(p, idx)
+	if p.HP != p.MaxHP || !slices.ContainsFunc(p.Buffs, func(b Buff) bool { return b.Def.Key == "rested" }) {
+		t.Fatal("no rest at the inn")
+	}
+	// village smiths have no services
+	for _, e := range g.Entities {
+		if e.NPC != nil && e.NPC.Role == "smith" && !g.isCity(e.NPC.Village) && len(g.serviceOptions(p, e)) > 0 {
+			t.Fatal("a village smith offers city services")
+		}
+	}
+
+	// townsfolk walk to the tavern at night
+	var walker *Entity
+	for _, e := range g.Entities {
+		if e.NPC != nil && e.NPC.Role == "villager" && e.NPC.Village == city.Name && e.NPC.Night != (world.Pos{}) {
+			walker = e
+			break
+		}
+	}
+	if walker == nil {
+		t.Fatal("no townsfolk with a night spot")
+	}
+	g.PlaceForTest(p, "overworld", world.Pos{X: 5, Y: 5})
+	g.Admin(p, "/time night")
+	start := walker.Pos.Dist(walker.NPC.Night)
+	run(g, 1200)
+	if d := walker.Pos.Dist(walker.NPC.Night); d > max(10, start/2) {
+		t.Fatalf("at night the citizen is still %d tiles from the tavern (was %d)", d, start)
+	}
+}

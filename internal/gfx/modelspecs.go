@@ -97,6 +97,38 @@ var modelDefs = map[string]modelDef{
 		return hum{skin: cSkin, outfit: "plate", top: hex("#9aa0b0"), trim: hex("#4a6aaa"), pants: cIron,
 			head: "helmet", headCol: hex("#9aa0b0"), weapon: "spear", shield: hex("#4a6aaa"), shieldMark: cWhite}
 	}),
+	"mayor": hero(func(c color.RGBA) hum {
+		return hum{build: "big", skin: cSkin, hair: hairGrey, beard: hairGrey, outfit: "robe", top: hex("#7a1e2a"), trim: cGold,
+			boots: hex("#3a1a1a"), head: "cap", headCol: hex("#2a1a3a"), cape: hex("#e8e0d0")}
+	}),
+	"captain": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkinTan, beard: hex("#5a3a2a"), outfit: "plate", top: hex("#b0b8c8"), trim: cGold, pants: cIron,
+			head: "helmet", headCol: hex("#c8d0e0"), cape: hex("#2a4a9a"), weapon: "sword", shield: hex("#2a4a9a"), shieldMark: cGold}
+	}),
+	"innkeeper": hero(func(c color.RGBA) hum {
+		return hum{build: "big", skin: cSkin, hair: hex("#8a4a2a"), beard: hex("#8a4a2a"), outfit: "tunic", top: hex("#e8e0d0"),
+			trim: hex("#8a5a3a"), pants: hex("#4a3a2a")}
+	}),
+	"bard": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hairBlond, hairStyle: "long", outfit: "tunic", top: hex("#c03a8a"), trim: cGold,
+			pants: hex("#3a2a5a"), head: "feathers", headCol: hex("#ff80c0"), cape: hex("#5a2a7a")}
+	}),
+	"armorer": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkinTan, hair: hairBlack, beard: hairBlack, outfit: "plate", top: hex("#8a909a"), pants: hex("#3a3a40"),
+			weapon: "hammer", weaponCol: cIron, shield: hex("#6a7080"), shieldForm: "round"}
+	}),
+	"enchanter": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#e0e0f0"), hairStyle: "long", outfit: "robe", top: hex("#4a2a8a"), trim: hex("#c0a0ff"),
+			boots: hex("#2a1a4a"), head: "circlet", headCol: hex("#c0a0ff"), weapon: "wand", weaponCol: hex("#e0c0ff"), offhand: "orb", offCol: hex("#b090ff")}
+	}),
+	"alchemist": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hex("#4a3a2a"), hairStyle: "wild", outfit: "leather", top: hex("#5a6a4a"), trim: hex("#80e0a0"),
+			pants: hex("#3a3a2a"), mask: hex("#6a6a5a"), offhand: "orb", offCol: hex("#80e0a0")}
+	}),
+	"jeweler": hero(func(c color.RGBA) hum {
+		return hum{skin: cSkin, hair: hairGrey, beard: hairGrey, outfit: "robe", top: hex("#3a2a5a"), trim: cGold, boots: hex("#2a1a3a"),
+			head: "cap", headCol: hex("#8a2a4a")}
+	}),
 	"villager": {variants: 6, hum: func(c color.RGBA, v int) hum {
 		tops := []string{"#8a6a4a", "#6a8a5a", "#a05a4a", "#5a6a9a", "#9a8a5a", "#7a5a7a"}
 		hairs := []color.RGBA{hairBrown, hairBlond, hairBlack, hex("#8a4a2a"), hairGrey, hairBrown}
