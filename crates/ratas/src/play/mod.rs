@@ -88,6 +88,7 @@ pub struct Session {
     hello_sent: bool,
     debug_move: Option<[i8; 2]>,
     debug_cmds: bool,
+    debug_interact: bool,
 }
 
 impl Session {
@@ -133,6 +134,7 @@ impl Session {
             hello_sent: false,
             debug_move: None,
             debug_cmds: false,
+            debug_interact: false,
         }
     }
 
@@ -187,11 +189,24 @@ impl Session {
         if !cmds.is_empty() && !self.debug_cmds && self.snap.is_some() {
             self.debug_cmds = true;
             for c in cmds.split('|') {
-                self.cmd_text("admin", c.trim());
+                match c.trim() {
+                    // "!e" interacts with what is near (after the commands)
+                    "!e" => self.debug_interact = true,
+                    c => {
+                        self.cmd_text("admin", c);
+                    }
+                }
             }
         }
         if let Some((x, y)) = mv.split_once(',') {
             self.debug_move = Some([x.trim().parse().unwrap_or(0), y.trim().parse().unwrap_or(0)]);
+        }
+        if late && self.debug_interact {
+            self.debug_interact = false;
+            self.conn.send(ClientMsg::Input(Input {
+                interact: true,
+                ..Default::default()
+            }));
         }
         if late && self.mode == Mode::Game && self.snap.is_some() {
             self.mode = match window {
