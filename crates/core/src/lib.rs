@@ -3,7 +3,10 @@
 
 pub mod content;
 pub mod gen;
+pub mod game;
 pub mod i18n;
+pub mod llm;
+pub mod proto;
 pub mod rng;
 pub mod world;
 
