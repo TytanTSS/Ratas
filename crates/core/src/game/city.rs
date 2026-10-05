@@ -60,8 +60,7 @@ impl Game {
         self.ents[&npc]
             .npc
             .as_ref()
-            .map(|n| !n.village.is_empty() && self.is_city(&n.village))
-            .unwrap_or(false)
+            .is_some_and(|n| !n.village.is_empty() && self.is_city(&n.village))
     }
 
     /// Renews the daily stock of a city trader: random equipment of its

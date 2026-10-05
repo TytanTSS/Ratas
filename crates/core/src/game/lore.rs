@@ -463,11 +463,7 @@ pub(crate) fn build_lore(key: &str, req: &LoreRequest, r: &LoreReply) -> Result<
                 } else {
                     foe
                 };
-                let dungeon = LANDS
-                    .iter()
-                    .find(|l| l.0 == land)
-                    .map(|l| l.1)
-                    .unwrap_or("crypt");
+                let dungeon = LANDS.iter().find(|l| l.0 == land).map_or("crypt", |l| l.1);
                 content.items.push(ItemDef {
                     key: rkey.clone(),
                     name: relic,
@@ -927,7 +923,7 @@ pub(crate) mod tests {
             "The Chronicle of the Ash Crown"
         );
         // Russian place names left in English texts get their English names
-        let world = g.world_name.clone();
+        let world = g.world_name;
         let world_en = crate::i18n::tr_in("en", &world);
         assert!(req.world.contains(&format!("({world_en})")));
         let mut r2 = sample(&req);

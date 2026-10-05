@@ -89,8 +89,7 @@ pub fn deed_progress(p: &PlayerState, sd: &SkillDef) -> i32 {
         "level" => p.level,
         "classlevel" => db()
             .branch(&sd.branch)
-            .map(|b| class_level(p, &b.class))
-            .unwrap_or(0),
+            .map_or(0, |b| class_level(p, &b.class)),
         "landmarks" => p.found.len() as i32,
         d => p.deeds.get(d).copied().unwrap_or(0),
     }
@@ -103,8 +102,7 @@ pub fn hidden_for(p: &PlayerState, sd: &SkillDef) -> bool {
         return false;
     }
     db().branch(&sd.branch)
-        .map(|b| b.class.is_empty() || p.has_class(&b.class))
-        .unwrap_or(false)
+        .is_some_and(|b| b.class.is_empty() || p.has_class(&b.class))
 }
 
 impl Game {
@@ -199,7 +197,7 @@ impl Game {
                 self.deed(p, "elites", 1);
             }
         }
-        if self.levels.get(&m.level).map(|l| l.lit).unwrap_or(false) && self.is_night() {
+        if self.levels.get(&m.level).is_some_and(|l| l.lit) && self.is_night() {
             self.deed(p, "night", 1);
         }
         let pe = &self.ents[&p];

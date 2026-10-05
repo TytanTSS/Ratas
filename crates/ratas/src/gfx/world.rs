@@ -1,6 +1,8 @@
 //! The world view: tiles in 3/4 perspective, creatures gliding with their
 //! real-time positions, light and darkness, particles, floating numbers,
-//! speech bubbles and the boss bar.
+//! speech bubbles and the boss bar. Abilities are drawn by `spells`.
+
+mod spells;
 
 use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
@@ -56,7 +58,6 @@ struct EntState {
     swing: u8,
     lunge: f32,
     flash: f32,
-    trail: Vec<(f32, f32)>,
     facing: f32,
     hp: u8,
     /// the last view of the entity (kept while it fades out)
@@ -217,6 +218,7 @@ pub struct WorldRenderer {
     lights: Vec<Flash>,
     beams: Vec<Beam>,
     ambient: Vec<Particle>,
+    spells: spells::Spells,
     rng: Rng,
     vis: Vis,
     vis_key: (u64, i32, i32, i32, bool, usize),
@@ -253,6 +255,7 @@ impl WorldRenderer {
             lights: vec![],
             beams: vec![],
             ambient: vec![],
+            spells: spells::Spells::default(),
             rng: Rng::new(1, 2),
             vis: Vis::default(),
             vis_key: (u64::MAX, 0, 0, 0, false, 0),
@@ -334,13 +337,19 @@ impl WorldRenderer {
             self.lights.clear();
             self.beams.clear();
             self.ambient.clear();
+            self.spells.clear();
             self.last_tick = u64::MAX;
         }
         if sc.snap.tick != self.last_tick {
             self.last_tick = sc.snap.tick;
             self.sync(sc);
             for f in &sc.snap.fx {
-                self.spawn_fx(f);
+                if f.part != 0 {
+                    // a moment of an ability, in its own look
+                    self.spells.spawn(f, &self.ents);
+                } else {
+                    self.spawn_fx(f);
+                }
             }
         }
         self.animate(dt, sc);
@@ -364,6 +373,7 @@ impl WorldRenderer {
         }
         self.status_particles(dt, sc);
         self.update_effects(dt);
+        self.spells.update(dt, &self.ents, self.cam);
         self.update_ambient(dt, sc.level.lit, sc.snap.time_of_day);
     }
 
@@ -399,18 +409,11 @@ impl WorldRenderer {
             }
             st.hp = e.hp;
             st.facing = e.facing;
-            if e.kind == KIND_PROJECTILE {
-                st.trail.push((st.x, st.y));
-                if st.trail.len() > 6 {
-                    st.trail.remove(0);
-                }
-            }
             st.view = e.clone();
             // a jump (teleport, stairs) is not animated
             if (st.x - e.x).abs() + (st.y - e.y).abs() > 3.0 {
                 st.x = e.x;
                 st.y = e.y;
-                st.trail.clear();
             }
         }
     }
@@ -782,6 +785,7 @@ impl WorldRenderer {
         v: &View,
         vis: Option<&Vis>,
         explored: Option<&Bitset>,
+        on_ground: impl FnOnce(&mut Gfx),
         mut row_entities: impl FnMut(&mut Gfx, i32),
     ) {
         let db = content::db();
@@ -866,6 +870,7 @@ impl WorldRenderer {
                 }
             }
         }
+        on_ground(g);
         for y in v.ty0..=v.ty1 {
             for x in v.tx0..=v.tx1 {
                 let i = (y * l.w + x) as usize;
@@ -918,18 +923,19 @@ impl WorldRenderer {
     pub fn draw(&mut self, g: &mut Gfx, sc: &Scene, area: Rect) {
         let l = sc.level;
         self.tops.clear();
-        let v = self.make_view(l, self.cam, area, g.s);
+        self.spells.prepare(g);
+        let mut v = self.make_view(l, self.cam, area, g.s);
+        // heavy blows shake the world
+        let (sx, sy) = self.spells.shake_offset(v.ts);
+        v.ox += sx.round();
+        v.oy += sy.round();
         self.view = v;
         let vis = self.visible(sc).clone();
         // creatures by row for depth sorting
         let mut rows: HashMap<i32, Vec<u32>> = HashMap::new();
-        let mut projectiles = vec![];
         for (id, st) in &self.ents {
-            if st.alpha < 0.02 {
-                continue;
-            }
-            if st.view.kind == KIND_PROJECTILE {
-                projectiles.push(*id);
+            // projectiles are drawn by the looks of their abilities
+            if st.alpha < 0.02 || st.view.kind == KIND_PROJECTILE {
                 continue;
             }
             rows.entry(st.y.floor() as i32).or_default().push(*id);
@@ -955,32 +961,27 @@ impl WorldRenderer {
         let ents = std::mem::take(&mut self.ents);
         let mut tops = HashMap::new();
         let t = self.t;
-        self.draw_tiles(g, l, &v, Some(&vis), Some(sc.explored), |g, row| {
-            if let Some(list) = rows.get(&row) {
-                for id in list {
-                    if let Some(top) = draw_entity(g, &v, sc, &ents[id], t) {
-                        tops.insert(*id, top);
+        let spells = &self.spells;
+        self.draw_tiles(
+            g,
+            l,
+            &v,
+            Some(&vis),
+            Some(sc.explored),
+            |g| spells.draw_ground(g, &v),
+            |g, row| {
+                if let Some(list) = rows.get(&row) {
+                    for id in list {
+                        tops.insert(*id, draw_entity(g, &v, sc, &ents[id], t));
                     }
                 }
-            }
-        });
+            },
+        );
         self.ents = ents;
         self.tops = tops;
         let ts = v.ts;
-        // projectiles with glowing trails
-        for id in projectiles {
-            let st = &self.ents[&id];
-            let c = col(&st.view.color);
-            let n = st.trail.len();
-            for (i, p) in st.trail.iter().enumerate() {
-                let k = (i + 1) as f32 / (n + 1) as f32;
-                let (x, y) = v.px(p.0, p.1);
-                g.glow(x, y, ts * 0.18 * k, c, 0.5 * k * st.alpha);
-            }
-            let (x, y) = v.px(st.x, st.y);
-            g.glow(x, y, ts * 0.32, c, 0.9 * st.alpha);
-            g.glow(x, y, ts * 0.12, WHITE, 0.9 * st.alpha);
-        }
+        // smoke, debris and the bodies of projectiles
+        self.spells.draw_world(g, &v, &self.ents);
         // beams
         for b in &self.beams {
             let a = 1.0 - b.t / b.life;
@@ -1015,12 +1016,13 @@ impl WorldRenderer {
         self.draw_overlays(g, &v, sc, area);
     }
 
+    /// How dark a tile is: unexplored, remembered, or by the distance from
+    /// the eye (sx, sy) in units of vision, at the time of day.
     fn darkness(
-        &self,
         l: &Level,
         vis: &Vis,
         explored: &Bitset,
-        sc: &Scene,
+        eye: (f32, f32, f32),
         x: i32,
         y: i32,
         tod: f64,
@@ -1035,11 +1037,7 @@ impl WorldRenderer {
         if !vis.get(x, y) {
             return 0.62;
         }
-        let vision = (sc.snap.you.vision as f32).max(1.0);
-        let (sx, sy) = match self.ents.get(&sc.you) {
-            Some(me) => (me.x, me.y),
-            None => (sc.snap.you.x, sc.snap.you.y),
-        };
+        let (sx, sy, vision) = eye;
         let d = ((x as f32 + 0.5 - sx).hypot(y as f32 + 0.5 - sy)) / vision;
         if l.lit {
             let night = 1.0 - daylight(tod) as f32;
@@ -1110,10 +1108,15 @@ impl WorldRenderer {
         }
         self.dark_buf.resize((dw * dh * 4) as usize, 0);
         let ease = 1.0 - (-self.dt * 7.0).exp();
+        let (ex, ey) = match self.ents.get(&sc.you) {
+            Some(me) => (me.x, me.y),
+            None => (sc.snap.you.x, sc.snap.you.y),
+        };
+        let eye = (ex, ey, (sc.snap.you.vision as f32).max(1.0));
         for yy in 0..dh {
             for xx in 0..dw {
                 let (x, y) = (x0 + xx, y0 + yy);
-                let mut a = self.darkness(l, vis, sc.explored, sc, x, y, tod);
+                let mut a = Self::darkness(l, vis, sc.explored, eye, x, y, tod);
                 if l.inside(x, y) {
                     let i = (y * l.w + x) as usize;
                     let cur = self.dark_cur[i];
@@ -1259,12 +1262,6 @@ impl WorldRenderer {
                 self.parts.push(p);
             }
         }
-        for st in self.ents.values() {
-            if st.view.kind == KIND_PROJECTILE && st.alpha > 0.1 {
-                let (x, y) = v.px(st.x, st.y);
-                g.glow(x, y, ts * 2.2, col(&st.view.color), 0.45 * st.alpha);
-            }
-        }
         for fl in &self.lights {
             let (x, y) = v.px(fl.x, fl.y);
             let k = fl.t / fl.life;
@@ -1289,6 +1286,7 @@ impl WorldRenderer {
                 g.glow(x, y, fl.radius * ts, fl.col, 0.6 * (1.0 - k));
             }
         }
+        self.spells.draw_light(g, v, &self.ents);
         for p in &self.ambient {
             let (x, y) = v.px(p.x, p.y);
             let blink = 0.5 + 0.5 * (p.t * 3.0 + p.x).sin();
@@ -1316,11 +1314,7 @@ impl WorldRenderer {
                 continue;
             }
             let (cx, cy) = v.px(st.x, st.y);
-            let mut top = self
-                .tops
-                .get(id)
-                .map(|t| t - ts * 0.06)
-                .unwrap_or(cy - ts * 0.62);
+            let mut top = self.tops.get(id).map_or(cy - ts * 0.62, |t| t - ts * 0.06);
             if e.dead {
                 if e.kind == KIND_PLAYER {
                     g.text_center(
@@ -1539,7 +1533,7 @@ impl WorldRenderer {
             l.h as f32 / 2.0 + (t * 0.033 + 1.0).sin() * l.h as f32 * 0.25,
         );
         let v = self.make_view(l, cam, Rect::new(0.0, 0.0, w, h), g.s);
-        self.draw_tiles(g, l, &v, None, None, |_, _| {});
+        self.draw_tiles(g, l, &v, None, None, |_| {}, |_, _| {});
         let day = daylight(((0.32 + t as f64 * 0.006) % 1.0).abs());
         draw_rectangle(
             0.0,
@@ -1554,7 +1548,7 @@ impl WorldRenderer {
 }
 
 /// Draws one creature or item; returns the screen y of its top.
-fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> Option<f32> {
+fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 {
     let e = &st.view;
     let ts = v.ts;
     let mut c = col(&e.color);
@@ -1635,7 +1629,7 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> Opti
                 true,
             ),
         }
-        return Some(cy - ts * 0.5);
+        return cy - ts * 0.5;
     }
     let name = resolve(&e.model, &e.def, e.glyph, e.kind);
     let nv = variants(&name);
@@ -1668,7 +1662,7 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> Opti
                 ..Default::default()
             },
         );
-        return Some(feet - w);
+        return feet - w;
     }
     let mut lift = bob * ts * 0.07;
     if float {
@@ -1820,5 +1814,5 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> Opti
             );
         }
     }
-    Some(top)
+    top
 }

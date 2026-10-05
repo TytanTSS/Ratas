@@ -151,7 +151,7 @@ impl Game {
 
     pub(crate) fn send_dialogue(&mut self, p: Id, npc: Id, text: &str, trade: bool, waiting: bool) {
         let (name, role) = self.npc_title(npc);
-        let ai = self.brain.as_ref().map(|b| b.enabled()).unwrap_or(false);
+        let ai = self.brain.as_ref().is_some_and(|b| b.enabled());
         let mut d = Dialogue {
             npc,
             name,
@@ -173,7 +173,7 @@ impl Game {
     }
 
     pub(crate) fn open_dialogue(&mut self, p: Id, npc: Id) {
-        if self.ents.get(&npc).map(|n| n.npc.is_none()).unwrap_or(true)
+        if self.ents.get(&npc).is_none_or(|n| n.npc.is_none())
             || self.ents[&p].dead
             || self.hostile(p, npc)
         {
@@ -271,14 +271,14 @@ impl Game {
         let n = self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap();
         let mut fresh: Vec<&str> = lines
             .iter()
-            .map(|l| l.as_ref())
+            .map(|s| s.as_ref())
             .filter(|l| !n.said.contains(*l))
             .collect();
         if fresh.is_empty() {
             for l in lines {
                 n.said.remove(l.as_ref());
             }
-            fresh = lines.iter().map(|l| l.as_ref()).collect();
+            fresh = lines.iter().map(|s| s.as_ref()).collect();
         }
         let l = fresh[self.rng.usize_n(fresh.len())].to_string();
         self.ents
@@ -365,7 +365,7 @@ impl Game {
     /// How the NPC feels, depending on what goes on around.
     pub(crate) fn mood_line(&mut self, npc: Id) -> String {
         let ne = &self.ents[&npc];
-        let threats = self.on_level(&ne.level).into_iter().filter(|o| {
+        let threats = self.near(&ne.level, ne.pos, 25.0).into_iter().filter(|o| {
             let oe = &self.ents[o];
             oe.faction == Faction::Monster && oe.kind == Kind::Monster && oe.dist(ne) <= 25.0
         });
@@ -623,8 +623,7 @@ impl Game {
         };
         let trader = db()
             .npc_role(&self.ents[&npc].npc.as_ref().unwrap().role)
-            .map(|r| r.trader)
-            .unwrap_or(false);
+            .is_some_and(|r| r.trader);
         if !trader {
             return;
         }
@@ -740,7 +739,7 @@ impl Game {
         }
         let n = self.ents[&npc].npc.as_ref().unwrap();
         let role = db().npc_role(&n.role);
-        let enabled = self.brain.as_ref().map(|b| b.enabled()).unwrap_or(false);
+        let enabled = self.brain.as_ref().is_some_and(|b| b.enabled());
         if !enabled {
             let line = match role.filter(|r| !r.lines.is_empty()) {
                 Some(r) => self.rng.pick(&r.lines).clone(),
@@ -887,7 +886,7 @@ impl Game {
             .collect();
         if let Some(role) = db().npc_role(&self.ents[&npc].npc.as_ref().unwrap().role) {
             for k in &role.goods {
-                if db().item(k).map(|d| d.value <= 30).unwrap_or(false) && !keys.contains(k) {
+                if db().item(k).is_some_and(|d| d.value <= 30) && !keys.contains(k) {
                     keys.push(k.clone());
                 }
             }
@@ -999,7 +998,7 @@ impl Game {
                 }
             }
             "offer_quest" => {
-                if role.map(|r| r.quest_giver).unwrap_or(false)
+                if role.is_some_and(|r| r.quest_giver)
                     && self
                         .quest_monsters()
                         .iter()
@@ -1008,7 +1007,7 @@ impl Game {
                     let _ = self.add_quest(p, npc, &r.quest_monster, r.quest_count);
                 }
             }
-            "trade" => trade = role.map(|r| r.trader).unwrap_or(false),
+            "trade" => trade = role.is_some_and(|r| r.trader),
             "hostile" => {
                 if self.ents[&p].p().talking == npc {
                     self.send_dialogue(p, npc, &say, false, false);

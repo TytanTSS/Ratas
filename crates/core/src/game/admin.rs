@@ -72,6 +72,11 @@ pub const ADMIN_COMMANDS: &[AdminCommand] = &[
         desc: "список монстров",
     },
     AdminCommand {
+        name: "/cast",
+        args: "умение",
+        desc: "применить любое умение без изучения, маны и перезарядки",
+    },
+    AdminCommand {
         name: "/kill",
         args: "[радиус]",
         desc: "убить врагов вокруг (по умолчанию 12)",
@@ -261,6 +266,7 @@ impl Game {
                 self.admin_list(id, args, &all);
             }
             "spawn" => self.admin_spawn(id, args),
+            "cast" => self.admin_cast(id, args),
             "monsters" => {
                 let all: Vec<String> = db()
                     .b
@@ -275,7 +281,7 @@ impl Game {
                 let e = &self.ents[&id];
                 let (level, pos) = (e.level.clone(), e.pos);
                 let mut n = 0;
-                for o in self.on_level(&level) {
+                for o in self.near(&level, pos, r) {
                     let Some(oe) = self.ents.get(&o) else {
                         continue;
                     };
@@ -309,7 +315,7 @@ impl Game {
                     let where_ = self
                         .ents
                         .values()
-                        .find(|o| o.npc.as_ref().map(|n| n.unique == u.key).unwrap_or(false))
+                        .find(|o| o.npc.as_ref().is_some_and(|n| n.unique == u.key))
                         .map(|o| format!("({},{})", o.cell().x, o.cell().y))
                         .unwrap_or_else(|| "нет в этом мире".into());
                     say(
@@ -342,7 +348,7 @@ impl Game {
                 say(self, "Карта уровня открыта.".into());
             }
             "time" => {
-                let target = match args.first().map(|s| s.as_str()) {
+                let target = match args.first().map(String::as_str) {
                     None | Some("day") => 0.5,
                     Some("night") => 0.0,
                     _ => (num(0, 12) % 24) as f64 / 24.0,
@@ -395,6 +401,19 @@ impl Game {
         }
         if n == 0 {
             self.say_admin(id, "Ничего не найдено.".into());
+        }
+    }
+
+    /// Uses any ability, as if learned, at the nearest enemy.
+    pub(crate) fn admin_cast(&mut self, id: Id, args: &[String]) {
+        let q = args.join(" ");
+        let Some(a) = find_def(&db().b.abilities, |t| &t.key, |t| &t.name, &q) else {
+            self.say_admin(id, format!("Нет такого умения: {q:?}."));
+            return;
+        };
+        let target = self.auto_target(id, a);
+        if !combat::cast(self, id, a, target) {
+            self.say_admin(id, format!("«{}» не удалось применить.", a.name));
         }
     }
 
@@ -555,7 +574,7 @@ impl Game {
         if let Some(o) = self
             .ents
             .iter()
-            .find(|(_, o)| o.npc.as_ref().map(|n| n.unique == u.key).unwrap_or(false))
+            .find(|(_, o)| o.npc.as_ref().is_some_and(|n| n.unique == u.key))
             .map(|(i, _)| *i)
         {
             self.move_next_to(id, o);
@@ -597,7 +616,7 @@ impl Game {
             r.extend(
                 d.b.skills
                     .iter()
-                    .filter(|s| d.branch(&s.branch).map(|b| b.secret).unwrap_or(false))
+                    .filter(|s| d.branch(&s.branch).is_some_and(|b| b.secret))
                     .map(|s| format!("skill:{}", s.key)),
             );
             r

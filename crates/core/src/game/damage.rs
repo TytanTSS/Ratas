@@ -74,9 +74,7 @@ impl Damage {
 }
 
 fn is_physical(t: &str) -> bool {
-    db().damage_type(t)
-        .map(|d| d.group == "physical")
-        .unwrap_or(true)
+    db().damage_type(t).is_none_or(|d| d.group == "physical")
 }
 
 /// Positive armor has diminishing returns, broken (negative) armor makes
@@ -131,29 +129,26 @@ impl Game {
     /// A weapon hit without the critical roll.
     pub(crate) fn melee_damage(&mut self, a: Id) -> Damage {
         let e = &self.ents[&a];
-        let s = e.stats.clone();
-        let is_player = e.player.is_some();
-        let mut dmg = self.roll(s.weapon_dmg[0], s.weapon_dmg[1]);
-        if is_player {
+        let s = &e.stats;
+        let rng = &mut self.rng;
+        let k = (1.0 + s.melee_pct / 100.0).max(0.0);
+        let mut dmg = rng.roll(s.weapon_dmg[0], s.weapon_dmg[1]);
+        if e.player.is_some() {
             dmg += s.str_ * 0.6;
         }
-        dmg *= (1.0 + s.melee_pct / 100.0).max(0.0);
         let mut d = Damage {
             leech: s.life_leech,
             ..Default::default()
         };
-        d.add(&s.weapon_type, dmg);
+        d.add(&s.weapon_type, dmg * k);
         if s.gear.dual {
             // the second weapon strikes along at half strength
-            let v =
-                self.roll(s.off_dmg[0], s.off_dmg[1]) * 0.5 * (1.0 + s.melee_pct / 100.0).max(0.0);
-            d.add(&s.off_type, v);
+            d.add(&s.off_type, rng.roll(s.off_dmg[0], s.off_dmg[1]) * 0.5 * k);
         }
         for t in &db().b.damage_types {
             let v = s.m(&format!("add_{}", t.key));
             if v > 0.0 {
-                let k = self.roll(0.8, 1.2);
-                d.add(&t.key, v * k);
+                d.add(&t.key, v * rng.roll(0.8, 1.2));
             }
         }
         self.type_bonus(a, &mut d);
@@ -194,9 +189,8 @@ impl Game {
 
     /// The damage of an ability without the critical roll.
     pub(crate) fn ability_damage(&mut self, c: Id, a: &AbilityDef) -> Damage {
-        let s = self.ents[&c].stats.clone();
         let mut d = Damage {
-            leech: a.leech + s.life_leech,
+            leech: a.leech + self.ents[&c].stats.life_leech,
             backstab: a.backstab,
             ..Default::default()
         };
@@ -212,9 +206,11 @@ impl Game {
             }
         }
         // bows and crossbows put their own strength into every arrow
+        let e = &self.ents[&c];
+        let s = &e.stats;
         if (a.equip == "bow" || a.key == "bow_shot") && s.gear.ranged {
-            let mut v = self.roll(s.weapon_dmg[0], s.weapon_dmg[1]);
-            if self.ents[&c].player.is_some() {
+            let mut v = self.rng.roll(s.weapon_dmg[0], s.weapon_dmg[1]);
+            if e.player.is_some() {
                 v += s.dex * 0.5;
             }
             d.add(&s.weapon_type, v * (1.0 + s.ranged_pct / 100.0).max(0.0));
@@ -233,7 +229,7 @@ impl Game {
         if !de.alive() || d.parts.is_empty() {
             return 0.0;
         }
-        if de.player.as_ref().map(|p| p.god).unwrap_or(false) {
+        if de.player.as_ref().is_some_and(|p| p.god) {
             self.provoke(src, dst);
             return 0.0;
         }
@@ -246,23 +242,25 @@ impl Game {
         }
         let mut mult = 1.0;
         if let (false, Some(s)) = (d.dot, src) {
-            let as_ = self.ents[&s].stats.clone();
+            let st = &self.ents[&s].stats;
+            let (ambush_pct, stealthed, duel_pct, fury) =
+                (st.ambush_pct, st.stealthed, st.duel_pct, st.fury);
             if self.ambush(s, dst) {
-                let k = (1.0 + as_.ambush_pct / 100.0) * d.backstab.max(1.0);
+                let k = (1.0 + ambush_pct / 100.0) * d.backstab.max(1.0);
                 if k > 1.05 {
                     mult *= k;
                     self.fx(&level, pos, "в спину!", '\0', "#c08aff", 700);
                 }
             }
-            if as_.stealthed {
+            if stealthed {
                 self.break_stealth(s);
             }
-            if as_.duel_pct > 0.0 && self.alone(s, dst) {
-                mult *= 1.0 + as_.duel_pct / 100.0;
+            if duel_pct > 0.0 && self.alone(s, dst) {
+                mult *= 1.0 + duel_pct / 100.0;
             }
             let se = &self.ents[&s];
-            if as_.fury > 0.0 && se.max_hp > 0.0 {
-                mult *= 1.0 + as_.fury / 100.0 * (1.0 - se.hp / se.max_hp).max(0.0);
+            if fury > 0.0 && se.max_hp > 0.0 {
+                mult *= 1.0 + fury / 100.0 * (1.0 - se.hp / se.max_hp).max(0.0);
             }
         }
         let block = self.ents[&dst].stats.block;
@@ -271,7 +269,7 @@ impl Game {
             self.fx(&level, pos, "блок", '\0', "#a0c0ff", 600);
             self.deed(dst, "block", 1);
         }
-        let ds = self.ents[&dst].stats.clone();
+        let ds = &self.ents[&dst].stats;
         let mut total = 0.0;
         let mut immune = true;
         let mut dealt_by_type = Vec::new();
@@ -389,7 +387,7 @@ impl Game {
         }
         let keep = self.ents[&dst].player.as_ref().map(|p| {
             let t = p.target;
-            self.ents.get(&t).map(|t| t.alive()).unwrap_or(false) && now - p.target_at <= 4000.0
+            self.ents.get(&t).is_some_and(|e| e.alive()) && now - p.target_at <= 4000.0
         });
         if keep == Some(false) {
             let p = self.ents.get_mut(&dst).unwrap().pm();
@@ -415,13 +413,9 @@ impl Game {
     /// No other enemy of src stands near it (duels).
     pub(crate) fn alone(&self, src: Id, dst: Id) -> bool {
         let se = &self.ents[&src];
-        !self.on_level(&se.level).into_iter().any(|o| {
+        !self.near(&se.level, se.pos, 4.0).into_iter().any(|o| {
             o != dst
-                && self
-                    .ents
-                    .get(&o)
-                    .map(|oe| oe.dist(se) <= 4.0)
-                    .unwrap_or(false)
+                && self.ents.get(&o).is_some_and(|oe| oe.dist(se) <= 4.0)
                 && self.hostile(src, o)
         })
     }
@@ -459,18 +453,17 @@ impl Game {
         if dealt <= 0.0 || !self.ents.contains_key(&a) {
             return;
         }
-        let s = self.ents[&a].stats.clone();
-        if let Some(b) = &s.weapon_on_hit {
-            if self.alive(d) && self.chance(s.on_hit_pct) {
-                self.apply_buff(d, b, a);
+        let s = &self.ents[&a].stats;
+        let effects = [
+            s.weapon_on_hit.clone().map(|b| (b, s.on_hit_pct)),
+            s.off_on_hit.clone().map(|b| (b, s.off_pct)),
+        ];
+        for (b, pct) in effects.into_iter().flatten() {
+            if self.alive(d) && self.chance(pct) {
+                self.apply_buff(d, &b, a);
             }
         }
-        if let Some(b) = &s.off_on_hit {
-            if self.alive(d) && self.chance(s.off_pct) {
-                self.apply_buff(d, b, a);
-            }
-        }
-        let thorns = self.ents.get(&d).map(|e| e.stats.thorns).unwrap_or(0.0);
+        let thorns = self.ents.get(&d).map_or(0.0, |e| e.stats.thorns);
         if thorns > 0.0 && self.alive(a) {
             let mut th = Damage::single("pierce", thorns);
             th.dot = true;

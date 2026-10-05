@@ -122,7 +122,7 @@ fn rust_strings(text: &str) -> Vec<(String, usize)> {
                         Some('\n') => {
                             line += 1;
                             j += 1;
-                            while chars.get(j).map(|c| c.is_whitespace()).unwrap_or(false) {
+                            while chars.get(j).is_some_and(|c| c.is_whitespace()) {
                                 if chars[j] == '\n' {
                                     line += 1;
                                 }

@@ -2,6 +2,7 @@
 //! finding, circle movement with sliding) shared by server and client.
 
 mod fov;
+pub mod packed;
 mod path;
 
 pub use fov::*;
@@ -43,6 +44,17 @@ impl Pos {
     }
     pub fn is_zero(&self) -> bool {
         self.x == 0 && self.y == 0
+    }
+    /// The cells at Chebyshev distance r, row by row: searching rings of
+    /// growing r finds the nearest cells first without visiting any twice.
+    pub fn ring(self, r: i32) -> impl Iterator<Item = Pos> {
+        (-r..=r).flat_map(move |dy| {
+            // the top and bottom rows whole, of the others only both ends
+            let step = if dy.abs() == r { 1 } else { 2 * r };
+            (-r..=r)
+                .step_by(step as usize)
+                .map(move |dx| Pos::new(self.x + dx, self.y + dy))
+        })
     }
 }
 
@@ -157,6 +169,7 @@ pub struct Level {
     pub name: String,
     pub w: i32,
     pub h: i32,
+    #[serde(with = "packed")]
     pub tiles: Vec<u8>,
     /// 0 = overworld
     pub depth: i32,
@@ -168,6 +181,9 @@ pub struct Level {
     pub down: Pos,
     /// affected by daylight
     pub lit: bool,
+    /// grows with every change of a tile (not saved)
+    #[serde(skip)]
+    pub ver: u64,
 }
 
 impl Level {
@@ -194,6 +210,7 @@ impl Level {
     pub fn set(&mut self, x: i32, y: i32, t: u8) {
         if self.inside(x, y) {
             self.tiles[(y * self.w + x) as usize] = t;
+            self.ver += 1;
         }
     }
     pub fn def(&self, x: i32, y: i32) -> &'static TileDef {
@@ -295,7 +312,7 @@ pub fn circle_hits(p: Vec2, r: f32, blocked: &dyn Fn(i32, i32) -> bool) -> bool 
 
 /// A compact boolean grid used for explored-map memory.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct Bitset(pub Vec<u8>);
+pub struct Bitset(#[serde(with = "packed")] pub Vec<u8>);
 
 impl Bitset {
     pub fn new(n: usize) -> Bitset {
@@ -322,6 +339,20 @@ impl Bitset {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rings_go_round() {
+        let c = Pos::new(5, 5);
+        assert_eq!(c.ring(0).collect::<Vec<_>>(), vec![c]);
+        for r in 1..4 {
+            let ring: Vec<Pos> = c.ring(r).collect();
+            assert_eq!(ring.len(), 8 * r as usize);
+            assert!(ring.iter().all(|p| p.dist(c) == r));
+            let mut sorted = ring.clone();
+            sorted.sort_by_key(|p| (p.y, p.x));
+            assert_eq!(ring, sorted, "row by row");
+        }
+    }
 
     #[test]
     fn slide_along_walls() {

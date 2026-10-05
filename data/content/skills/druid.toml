@@ -1,0 +1,656 @@
+# Друид: подклассы Хранитель рощи и Оборотень; секретный подкласс Хранитель луны;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "grove_keeper"
+name = "Хранитель рощи"
+class = "druid"
+color = "#7ae07a"
+desc = "Лечит союзников, призывает древня и обрушивает на врагов гнев природы."
+
+[[subclasses]]
+key = "shapeshifter"
+name = "Оборотень"
+class = "druid"
+color = "#c0904a"
+desc = "Принимает облик медведя или волка и рвёт врагов в ближнем бою."
+
+[[branches]]
+key = "druid"
+name = "Друид"
+color = "#5ec05e"
+desc = "Корни, шипы и дыхание леса."
+class = "druid"
+
+[[branches]]
+key = "grove_keeper"
+name = "Хранитель рощи"
+color = "#7ae07a"
+desc = "Исцеление и гнев природы."
+class = "druid"
+subclass = "grove_keeper"
+
+[[branches]]
+key = "shapeshifter"
+name = "Оборотень"
+color = "#c0904a"
+desc = "Облики медведя и волка."
+class = "druid"
+subclass = "shapeshifter"
+
+# ---- Навыки: Друид ----
+
+[[skills]]
+key = "nature_attunement"
+name = "Голос леса"
+branch = "druid"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Яд и лечение сильнее."
+stats = { poison_pct = 6, heal_pct = 3 }
+
+[[skills]]
+key = "bark_skin"
+name = "Кора"
+branch = "druid"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Кожа грубеет, как кора старого дуба."
+stats = { armor = 1, res_poison = 3 }
+
+[[skills]]
+key = "entangle"
+name = "Цепкие корни"
+branch = "druid"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["nature_attunement"]
+grants = "entangling_roots"
+desc = "Корни опутывают врагов вокруг: яд и сильное замедление."
+
+[[skills]]
+key = "rejuvenation"
+name = "Омоложение"
+branch = "druid"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["bark_skin"]
+grants = "rejuvenation"
+desc = "Вы и союзники рядом восстанавливаете здоровье ещё 8 секунд."
+
+[[skills]]
+key = "wild_growth"
+name = "Буйный рост"
+branch = "druid"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["entangle"]
+desc = "Здоровье и его восстановление."
+stats = { max_hp = 8, hp_regen = 0.3 }
+
+[[skills]]
+key = "grove_heart"
+name = "Сердце рощи"
+branch = "grove_keeper"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Лечение и яд сильнее."
+stats = { heal_pct = 6, poison_pct = 4 }
+
+[[skills]]
+key = "summon_treant"
+name = "Зов древня"
+branch = "grove_keeper"
+tier = 1
+max_rank = 1
+level = 5
+grants = "summon_treant"
+desc = "Древний древень встаёт на вашу защиту."
+
+[[skills]]
+key = "thorn_aura"
+name = "Шипастая аура"
+branch = "grove_keeper"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["grove_heart"]
+grants = "thorn_aura"
+desc = "Вы и союзники рядом ранят шипами тех, кто бьёт в ближнем бою."
+
+[[skills]]
+key = "wrath_of_nature"
+name = "Гнев природы"
+branch = "grove_keeper"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["thorn_aura"]
+grants = "wrath_of_nature"
+desc = "Земля вздымается корнями: огромный урон ядом и оглушение вокруг."
+
+[[skills]]
+key = "feral_instinct"
+name = "Звериное чутьё"
+branch = "shapeshifter"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон в ближнем бою и скорость атаки."
+stats = { melee_pct = 5, attack_speed = 3 }
+
+[[skills]]
+key = "bear_form"
+name = "Облик медведя"
+branch = "shapeshifter"
+tier = 1
+max_rank = 1
+level = 5
+grants = "bear_form"
+desc = "Вы становитесь медведем: много брони и здоровья, сильные удары, но медленнее бег."
+
+[[skills]]
+key = "wolf_form"
+name = "Облик волка"
+branch = "shapeshifter"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["feral_instinct"]
+grants = "wolf_form"
+desc = "Вы становитесь волком: быстрый бег, быстрые и точные укусы."
+
+[[skills]]
+key = "savage_maul"
+name = "Растерзание"
+branch = "shapeshifter"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["wolf_form"]
+grants = "savage_maul"
+desc = "Три яростных удара по одной цели, вызывающих кровотечение."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "thorn_whip"
+name = "Терновая плеть"
+kind = "projectile"
+mana = 3
+cooldown_ms = 900
+dmg_type = "poison"
+damage = [4, 8]
+scale = "int"
+scale_k = 1.0
+range = 7
+speed_ms = 30
+glyph = "~"
+color = "#6ac04a"
+fx = "nature"
+desc = "Колючая лоза хлещет врага и отравляет его."
+[abilities.on_hit]
+key = "thorn_poison"
+name = "Яд шипов"
+duration_ms = 3000
+dot_per_sec = 2
+dmg_type = "poison"
+color = "#6ac04a"
+
+[[abilities]]
+key = "entangling_roots"
+name = "Цепкие корни"
+kind = "nova"
+mana = 12
+cooldown_ms = 9000
+radius = 3
+dmg_type = "poison"
+damage = [5, 9]
+scale = "int"
+scale_k = 0.8
+glyph = "%"
+color = "#5a9a3a"
+fx = "nature"
+desc = "Корни в радиусе 3: яд и замедление бега на 60% на 4 с."
+[abilities.on_hit]
+key = "rooted"
+name = "Корни"
+duration_ms = 4000
+stats = { move_speed = -60 }
+color = "#5a9a3a"
+
+[[abilities]]
+key = "rejuvenation"
+name = "Омоложение"
+kind = "buff"
+mana = 14
+cooldown_ms = 12000
+radius = 4
+color = "#8ae08a"
+fx = "nature"
+desc = "Вам и союзникам в радиусе 4: восстановление 5 здоровья в секунду на 8 с."
+[abilities.buff]
+key = "rejuvenation"
+name = "Омоложение"
+duration_ms = 8000
+dot_per_sec = -5
+color = "#8ae08a"
+
+[[abilities]]
+key = "summon_treant"
+name = "Зов древня"
+kind = "summon"
+mana = 24
+cooldown_ms = 40000
+count = 1
+summon = "treant_minion"
+duration_ms = 40000
+color = "#6a9a3a"
+fx = "nature"
+desc = "Древень сражается за вас 40 с."
+
+[[abilities]]
+key = "thorn_aura"
+name = "Шипастая аура"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+radius = 4
+color = "#7ae07a"
+fx = "nature"
+desc = "Вам и союзникам в радиусе 4: +12 шипов и +4 брони на 15 с."
+[abilities.buff]
+key = "thorn_aura"
+name = "Шипастая аура"
+duration_ms = 15000
+stats = { thorns = 12, armor = 4 }
+color = "#7ae07a"
+
+[[abilities]]
+key = "wrath_of_nature"
+name = "Гнев природы"
+kind = "nova"
+mana = 32
+cooldown_ms = 16000
+radius = 4
+dmg_type = "poison"
+damage = [18, 28]
+scale = "int"
+scale_k = 1.6
+glyph = "%"
+color = "#4ac04a"
+fx = "nature"
+desc = "Корни и шипы в радиусе 4: урон ядом и оглушение на 1,5 с."
+[abilities.on_hit]
+key = "nature_stun"
+name = "Оплетён корнями"
+duration_ms = 1500
+stun = true
+color = "#4ac04a"
+
+[[abilities]]
+key = "bear_form"
+name = "Облик медведя"
+kind = "buff"
+mana = 15
+cooldown_ms = 30000
+color = "#a0703a"
+fx = "form beast"
+desc = "20 с: +10 брони, +60 здоровья, +25% урона в ближнем бою, бег медленнее на 10%."
+[abilities.buff]
+key = "bear_form"
+name = "Облик медведя"
+duration_ms = 20000
+stats = { armor = 10, max_hp = 60, melee_pct = 25, move_speed = -10 }
+color = "#a0703a"
+
+[[abilities]]
+key = "wolf_form"
+name = "Облик волка"
+kind = "buff"
+mana = 15
+cooldown_ms = 30000
+color = "#c0b090"
+fx = "form beast"
+desc = "20 с: +30% скорости бега, +25% скорости атаки, +10% крит. шанса."
+[abilities.buff]
+key = "wolf_form"
+name = "Облик волка"
+duration_ms = 20000
+stats = { move_speed = 30, attack_speed = 25, crit = 10 }
+color = "#c0b090"
+
+[[abilities]]
+key = "savage_maul"
+name = "Растерзание"
+kind = "strike"
+mana = 14
+cooldown_ms = 7000
+count = 3
+dmg_type = "slash"
+damage = [5, 9]
+scale = "str"
+scale_k = 0.8
+glyph = "x"
+color = "#c04a3a"
+fx = "beast"
+desc = "Три удара по одной цели и кровотечение."
+[abilities.on_hit]
+key = "mauled"
+name = "Кровотечение"
+duration_ms = 5000
+dot_per_sec = 4
+dmg_type = "slash"
+color = "#c04a3a"
+
+# ---- Призванные союзники ----
+
+[[monsters]]
+key = "treant_minion"
+name = "Древень-защитник"
+glyph = "T"
+color = "#7aaa4a"
+hp = 180
+damage = [8, 14]
+armor = 6
+dmg_type = "blunt"
+move_ms = 280
+attack_ms = 1400
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+model = "treant"
+resist = { pierce = 50, poison = 50, cold = 25, fire = -50 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+# >>> contentgen: secret_path
+# ---- Хранитель луны (друид) ----
+
+[[subclasses]]
+key = "moonkeeper"
+name = "Хранитель луны"
+class = "druid"
+color = "#a0b0ff"
+desc = "Лунный свет и звездопад: тайная магия и холод ночи."
+secret = true
+
+[[branches]]
+key = "moonkeeper"
+name = "Хранитель луны"
+color = "#a0b0ff"
+desc = "Свет луны."
+class = "druid"
+subclass = "moonkeeper"
+
+[[skills]]
+key = "mk_moonlight"
+name = "Лунный свет"
+branch = "moonkeeper"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон тайной магией и холодом."
+stats = { arcane_pct = 5, cold_pct = 5 }
+
+[[skills]]
+key = "mk_moonbeam"
+name = "Лунный луч"
+branch = "moonkeeper"
+tier = 1
+max_rank = 1
+level = 5
+grants = "mk_moonbeam"
+desc = "Холодный луч луны замедляет врага."
+
+[[abilities]]
+key = "mk_moonbeam"
+name = "Лунный луч"
+kind = "projectile"
+mana = 8
+cooldown_ms = 3000
+damage = [10, 15]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1.1
+range = 9
+speed_ms = 15
+glyph = "|"
+color = "#a0b0ff"
+fx = "lance star"
+desc = "Тайная магия и замедление на 40% на 4 с."
+[abilities.on_hit]
+key = "moonbeam_chill"
+name = "Лунный холод"
+duration_ms = 4000
+stats = { move_speed = -40 }
+color = "#a0b0ff"
+
+[[skills]]
+key = "mk_starfall"
+name = "Звездопад"
+branch = "moonkeeper"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["mk_moonbeam"]
+grants = "mk_starfall"
+desc = "Звёзды падают на врагов."
+
+[[abilities]]
+key = "mk_starfall"
+name = "Звездопад"
+kind = "projectile"
+mana = 20
+cooldown_ms = 9000
+damage = [16, 24]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1.4
+range = 10
+radius = 3
+speed_ms = 50
+glyph = "*"
+color = "#e0e8ff"
+fx = "rain star"
+desc = "Тайная магия в радиусе 3."
+
+[[skills]]
+key = "mk_lunar_eclipse"
+name = "Лунное затмение"
+branch = "moonkeeper"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["mk_starfall"]
+grants = "mk_lunar_eclipse"
+desc = "Затмение лишает врагов магии."
+
+[[abilities]]
+key = "mk_lunar_eclipse"
+name = "Лунное затмение"
+kind = "nova"
+mana = 32
+cooldown_ms = 18000
+damage = [18, 28]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1.5
+radius = 5
+glyph = "o"
+color = "#6a7aff"
+fx = "eclipse"
+desc = "Тайная магия в радиусе 5 и печать молчания на 3 с."
+[abilities.on_hit]
+key = "eclipse_silence"
+name = "Затмение"
+duration_ms = 3000
+silence = true
+color = "#6a7aff"
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Друид ----
+
+[[branches]]
+key = "druid_hidden"
+name = "Скрытые навыки: Друид"
+color = "#5ec05e"
+desc = "Навыки, которые открываются сами за деяния."
+class = "druid"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hdr_forest_heart"
+name = "Сердце леса"
+branch = "druid_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:forest"
+deed_count = 200
+desc = "Лес делится с вами силой."
+stats = { max_hp = 15, hp_regen = 0.8 }
+
+[[skills]]
+key = "hdr_bear_strength"
+name = "Медвежья сила"
+branch = "druid_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:bear"
+deed_count = 20
+desc = "Сила медведя в ваших руках."
+stats = { str = 3, armor = 3 }
+
+[[skills]]
+key = "hdr_wolf_agility"
+name = "Волчья прыть"
+branch = "druid_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:wolf"
+deed_count = 40
+desc = "Вы бегаете, как волк."
+stats = { move_speed = 6, attack_speed = 5 }
+
+[[skills]]
+key = "hdr_toxin"
+name = "Древний яд"
+branch = "druid_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:poison"
+deed_count = 10000
+desc = "Яды леса в ваших жилах."
+stats = { poison_pct = 12 }
+
+[[skills]]
+key = "hdr_mender"
+name = "Целитель рощи"
+branch = "druid_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "heal"
+deed_count = 8000
+desc = "Раны затягиваются от вашего прикосновения."
+stats = { heal_pct = 10 }
+
+[[skills]]
+key = "hdr_wanderer"
+name = "Странник лесов"
+branch = "druid_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "steps"
+deed_count = 25000
+desc = "Тропы сами ложатся под ноги."
+stats = { move_speed = 6, dodge = 2 }
+
+[[skills]]
+key = "hdr_swamp_dweller"
+name = "Болотный житель"
+branch = "druid_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:swamp"
+deed_count = 120
+desc = "Болота вас не тронут."
+stats = { res_poison = 15 }
+
+[[skills]]
+key = "hdr_summoner"
+name = "Зов дикой природы"
+branch = "druid_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "summons"
+deed_count = 40
+desc = "Природа приходит на зов."
+stats = { spell_pct = 6 }
+
+[[skills]]
+key = "hdr_treant_brother"
+name = "Брат древней"
+branch = "druid_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "kill:treant"
+deed_count = 5
+desc = "Древни признали в вас родню."
+stats = { armor = 5, res_all = 3 }
+
+[[skills]]
+key = "hdr_world_tree"
+name = "Мировое древо"
+branch = "druid_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hdr_world_tree"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути друида: сила Мирового древа."
+
+[[abilities]]
+key = "hdr_world_tree"
+name = "Мировое древо"
+kind = "buff"
+mana = 26
+cooldown_ms = 60000
+radius = 6
+color = "#5ec05e"
+fx = "nature"
+desc = "Вам и союзникам в радиусе 6: восстановление 10 здоровья в секунду и +10% сопротивления всему на 12 с."
+[abilities.buff]
+key = "world_tree"
+name = "Мировое древо"
+duration_ms = 12000
+stats = { res_all = 10 }
+dot_per_sec = -10
+color = "#5ec05e"
+# <<< contentgen: hidden

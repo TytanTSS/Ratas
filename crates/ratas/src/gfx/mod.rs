@@ -268,10 +268,8 @@ impl Gfx {
             return t.clone();
         }
         let d = content::db().ability(key);
-        let c = d
-            .map(|a| art::hex(&a.color))
-            .unwrap_or(art::rgb(160, 160, 160));
-        let kind = d.map(|a| a.kind.as_str()).unwrap_or("");
+        let c = d.map_or(art::rgb(160, 160, 160), |a| art::hex(&a.color));
+        let kind = d.map_or("", |a| a.kind.as_str());
         let p = paint_ability(c, kind, key);
         let t = texture(&p);
         self.ability_icons.insert(key.to_string(), t.clone());
@@ -407,7 +405,7 @@ impl Gfx {
             }
             out.push(line);
         }
-        while out.last().is_some_and(|l| l.is_empty()) && out.len() > 1 {
+        while out.last().is_some_and(String::is_empty) && out.len() > 1 {
             out.pop();
         }
         out

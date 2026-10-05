@@ -101,3 +101,7 @@
 "Редкий!" = "Rare!"
 "Эпический!" = "Epic!"
 "Легендарный!" = "Legendary!"
+"применить любое умение без изучения, маны и перезарядки" = "use any ability without learning it, mana or cooldowns"
+"умение" = "ability"
+"Нет такого умения: %q." = "No such ability: %q."
+"«%s» не удалось применить." = "“%s” could not be used."

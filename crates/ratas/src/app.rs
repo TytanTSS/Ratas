@@ -429,8 +429,9 @@ impl App {
 
     async fn run(&mut self) {
         prevent_quit();
-        // RATAS_AUTOSHOT="file.png;seconds;window;dx,dy" takes a screenshot
-        // after a while and quits (used to check the graphics headless)
+        // RATAS_AUTOSHOT="file.png;seconds;window;dx,dy;cmd|>N cmd" takes a
+        // screenshot after a while and quits (used to check the graphics
+        // headless); admin commands run at once or N seconds before the shot
         let auto: Vec<String> = std::env::var("RATAS_AUTOSHOT")
             .map(|v| v.split(';').map(String::from).collect())
             .unwrap_or_default();
@@ -460,10 +461,10 @@ impl App {
             if !auto.is_empty() {
                 if let Screen::Play(sess) = &mut self.screen {
                     sess.debug(
-                        auto.get(2).map(|s| s.as_str()).unwrap_or(""),
-                        auto.get(3).map(|s| s.as_str()).unwrap_or(""),
-                        auto.get(4).map(|s| s.as_str()).unwrap_or(""),
-                        self.t > auto_at - 1.5,
+                        auto.get(2).map_or("", String::as_str),
+                        auto.get(3).map_or("", String::as_str),
+                        auto.get(4).map_or("", String::as_str),
+                        auto_at - self.t,
                     );
                 }
             }
@@ -492,8 +493,7 @@ impl App {
         let _ = std::fs::create_dir_all(&dir);
         let secs = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+            .map_or(0, |d| d.as_secs());
         let path = dir.join(format!("ratas-{secs}.png"));
         save_screen(&path.to_string_lossy());
         let msg = format!("Снимок экрана: {}", path.display());
@@ -1315,7 +1315,7 @@ impl App {
                     if self.cfg.ai_director { 0 } else { 1 },
                     "",
                 ),
-                Field::choice("Масштаб интерфейса", scales.iter().map(|s| s.to_string()).collect(), vec![], si, "Размер текста и панелей."),
+                Field::choice("Масштаб интерфейса", scales.iter().map(ToString::to_string).collect(), vec![], si, "Размер текста и панелей."),
                 Field::choice(
                     "Полный экран",
                     vec![tr("Выключен"), tr("Включён")],

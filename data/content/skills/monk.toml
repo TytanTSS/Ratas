@@ -1,0 +1,830 @@
+# Монах: подклассы Путь ветра, Железное тело и Путь духа; секретные подклассы Пьяный мастер и Кулак дракона;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# >>> contentgen: class
+# ---- Монах ----
+
+[[subclasses]]
+key = "way_of_wind"
+name = "Путь ветра"
+class = "monk"
+color = "#c0f0ff"
+desc = "Скорость, рывки и шквал ударов."
+
+[[subclasses]]
+key = "iron_body"
+name = "Железное тело"
+class = "monk"
+color = "#c0a080"
+desc = "Каменная стойка и алмазное тело: неприступная защита."
+
+[[subclasses]]
+key = "way_of_spirit"
+name = "Путь духа"
+class = "monk"
+color = "#e0c0ff"
+desc = "Волны ци и просветление: тайная магия в ударах."
+
+[[branches]]
+key = "monk"
+name = "Монах"
+color = "#f0a050"
+desc = "Дисциплина тела и духа."
+class = "monk"
+
+[[branches]]
+key = "way_of_wind"
+name = "Путь ветра"
+color = "#c0f0ff"
+desc = "Скорость и рывки."
+class = "monk"
+subclass = "way_of_wind"
+
+[[branches]]
+key = "iron_body"
+name = "Железное тело"
+color = "#c0a080"
+desc = "Несокрушимость."
+class = "monk"
+subclass = "iron_body"
+
+[[branches]]
+key = "way_of_spirit"
+name = "Путь духа"
+color = "#e0c0ff"
+desc = "Сила ци."
+class = "monk"
+subclass = "way_of_spirit"
+
+[[skills]]
+key = "mnk_discipline"
+name = "Дисциплина"
+branch = "monk"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Уклонение и скорость атаки."
+stats = { dodge = 1.5, attack_speed = 2 }
+
+[[skills]]
+key = "mnk_inner_strength"
+name = "Внутренняя сила"
+branch = "monk"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Здоровье и восстановление маны."
+stats = { max_hp = 5, mp_regen = 0.15 }
+
+[[skills]]
+key = "mnk_flurry"
+name = "Шквал ударов"
+branch = "monk"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["mnk_discipline"]
+grants = "mnk_flurry"
+desc = "Четыре быстрых удара по одной цели."
+
+[[skills]]
+key = "mnk_meditation"
+name = "Медитация"
+branch = "monk"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["mnk_inner_strength"]
+grants = "mnk_meditation"
+desc = "Исцеление и быстрое восстановление маны."
+
+[[skills]]
+key = "mnk_balance"
+name = "Равновесие"
+branch = "monk"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["mnk_flurry"]
+desc = "Уклонение и крит. шанс."
+stats = { dodge = 2, crit = 2 }
+
+[[skills]]
+key = "mnk_wind_step"
+name = "Шаг ветра"
+branch = "way_of_wind"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Скорость бега и уклонение."
+stats = { move_speed = 3, dodge = 1.5 }
+
+[[skills]]
+key = "mnk_wind_dash"
+name = "Порыв ветра"
+branch = "way_of_wind"
+tier = 1
+max_rank = 1
+level = 5
+grants = "mnk_wind_dash"
+desc = "Рывок с ударом всего на пути."
+
+[[skills]]
+key = "mnk_cyclone_kick"
+name = "Вихревой удар"
+branch = "way_of_wind"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["mnk_wind_step"]
+grants = "mnk_cyclone_kick"
+desc = "Круговой удар ногой по всем рядом."
+
+[[skills]]
+key = "mnk_storm_of_palms"
+name = "Буря ладоней"
+branch = "way_of_wind"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["mnk_cyclone_kick"]
+grants = "mnk_storm_of_palms"
+desc = "Семь стремительных ударов."
+
+[[skills]]
+key = "mnk_iron_flesh"
+name = "Железная плоть"
+branch = "iron_body"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Броня и стойкость к физическому урону."
+stats = { armor = 2, res_physical = 2 }
+
+[[skills]]
+key = "mnk_stone_stance"
+name = "Каменная стойка"
+branch = "iron_body"
+tier = 1
+max_rank = 1
+level = 5
+grants = "mnk_stone_stance"
+desc = "Броня и шипы ценой скорости."
+
+[[skills]]
+key = "mnk_earth_palm"
+name = "Ладонь земли"
+branch = "iron_body"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["mnk_iron_flesh"]
+grants = "mnk_earth_palm"
+desc = "Удар о землю оглушает врагов рядом."
+
+[[skills]]
+key = "mnk_diamond_body"
+name = "Алмазное тело"
+branch = "iron_body"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["mnk_earth_palm"]
+grants = "mnk_diamond_body"
+desc = "Тело твёрже алмаза."
+
+[[skills]]
+key = "mnk_chi_flow"
+name = "Поток ци"
+branch = "way_of_spirit"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Тайная магия сильнее, маны больше."
+stats = { arcane_pct = 6, max_mp = 4 }
+
+[[skills]]
+key = "mnk_chi_blast"
+name = "Волна ци"
+branch = "way_of_spirit"
+tier = 1
+max_rank = 1
+level = 5
+grants = "mnk_chi_blast"
+desc = "Сгусток внутренней силы летит во врага."
+
+[[skills]]
+key = "mnk_spirit_palm"
+name = "Духовная ладонь"
+branch = "way_of_spirit"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["mnk_chi_flow"]
+grants = "mnk_spirit_palm"
+desc = "Удар, похищающий жизнь."
+
+[[skills]]
+key = "mnk_transcendence"
+name = "Просветление"
+branch = "way_of_spirit"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["mnk_spirit_palm"]
+grants = "mnk_transcendence"
+desc = "Волна ци ранит и лишает врагов магии."
+
+[[abilities]]
+key = "mnk_palm_strike"
+name = "Удар ладонью"
+kind = "strike"
+mana = 3
+cooldown_ms = 1500
+damage = [5, 9]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 0.9
+glyph = "!"
+color = "#f0c080"
+fx = "chi"
+desc = "Удар, сбивающий ритм врага: −20% скорости атаки на 3 с."
+[abilities.on_hit]
+key = "staggered"
+name = "Сбит с ритма"
+duration_ms = 3000
+stats = { attack_speed = -20 }
+color = "#f0c080"
+
+[[abilities]]
+key = "mnk_flurry"
+name = "Шквал ударов"
+kind = "strike"
+mana = 10
+cooldown_ms = 5000
+damage = [3, 6]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 0.5
+count = 4
+glyph = "!"
+color = "#f0a050"
+fx = "chi"
+desc = "Четыре удара по одной цели."
+
+[[abilities]]
+key = "mnk_meditation"
+name = "Медитация"
+kind = "heal"
+mana = 0
+cooldown_ms = 25000
+damage = [15, 22]
+scale = "int"
+scale_k = 1.2
+glyph = "+"
+color = "#e0d0ff"
+fx = "chi"
+desc = "Исцеление и +3 к восстановлению маны на 10 с."
+[abilities.buff]
+key = "meditation"
+name = "Медитация"
+duration_ms = 10000
+stats = { mp_regen = 3 }
+color = "#e0d0ff"
+
+[[abilities]]
+key = "mnk_wind_dash"
+name = "Порыв ветра"
+kind = "dash"
+mana = 8
+cooldown_ms = 5000
+damage = [8, 14]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 1
+range = 5
+glyph = "~"
+color = "#c0f0ff"
+fx = "wind"
+desc = "Рывок на 5 клеток, удар по первому на пути."
+
+[[abilities]]
+key = "mnk_cyclone_kick"
+name = "Вихревой удар"
+kind = "cleave"
+mana = 12
+cooldown_ms = 6000
+damage = [8, 13]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 1
+radius = 1
+glyph = "*"
+color = "#c0f0ff"
+fx = "whirlwind wind"
+desc = "Удар по всем вокруг."
+
+[[abilities]]
+key = "mnk_storm_of_palms"
+name = "Буря ладоней"
+kind = "strike"
+mana = 22
+cooldown_ms = 12000
+damage = [4, 7]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 0.6
+count = 7
+glyph = "!"
+color = "#a0e0ff"
+fx = "chi"
+desc = "Семь ударов по одной цели."
+
+[[abilities]]
+key = "mnk_stone_stance"
+name = "Каменная стойка"
+kind = "buff"
+mana = 10
+cooldown_ms = 20000
+color = "#c0a080"
+fx = "shield earth"
+desc = "10 с: +15 брони и +10 шипов, бег медленнее на 20%."
+[abilities.buff]
+key = "stone_stance"
+name = "Каменная стойка"
+duration_ms = 10000
+stats = { armor = 15, thorns = 10, move_speed = -20 }
+color = "#c0a080"
+
+[[abilities]]
+key = "mnk_earth_palm"
+name = "Ладонь земли"
+kind = "nova"
+mana = 14
+cooldown_ms = 9000
+damage = [10, 16]
+dmg_type = "blunt"
+scale = "str"
+scale_k = 1
+radius = 2
+glyph = "*"
+color = "#a08060"
+desc = "Удар в радиусе 2 и оглушение на 1 с."
+[abilities.on_hit]
+key = "earth_stun"
+name = "Оглушение"
+duration_ms = 1000
+stun = true
+color = "#a08060"
+
+[[abilities]]
+key = "mnk_diamond_body"
+name = "Алмазное тело"
+kind = "buff"
+mana = 20
+cooldown_ms = 40000
+color = "#e0f0ff"
+fx = "shield chi"
+desc = "10 с: +30% сопротивления всему и +5 к восстановлению здоровья."
+[abilities.buff]
+key = "diamond_body"
+name = "Алмазное тело"
+duration_ms = 10000
+stats = { res_all = 30, hp_regen = 5 }
+color = "#e0f0ff"
+
+[[abilities]]
+key = "mnk_chi_blast"
+name = "Волна ци"
+kind = "projectile"
+mana = 6
+cooldown_ms = 2000
+damage = [8, 13]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1
+range = 8
+speed_ms = 30
+glyph = "o"
+color = "#e0c0ff"
+fx = "chi"
+desc = "Тайная магия во врага."
+
+[[abilities]]
+key = "mnk_spirit_palm"
+name = "Духовная ладонь"
+kind = "strike"
+mana = 12
+cooldown_ms = 6000
+damage = [12, 18]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1.1
+leech = 40
+glyph = "!"
+color = "#d0b0ff"
+fx = "chi"
+desc = "Удар тайной магией: 40% урона возвращается здоровьем."
+
+[[abilities]]
+key = "mnk_transcendence"
+name = "Просветление"
+kind = "nova"
+mana = 30
+cooldown_ms = 16000
+damage = [18, 28]
+dmg_type = "arcane"
+scale = "int"
+scale_k = 1.5
+radius = 4
+glyph = "o"
+color = "#f0e0ff"
+fx = "chi"
+desc = "Тайная магия в радиусе 4 и печать молчания на 3 с."
+[abilities.on_hit]
+key = "enlightened_silence"
+name = "Безмолвие"
+duration_ms = 3000
+silence = true
+color = "#f0e0ff"
+# <<< contentgen: class
+
+# >>> contentgen: secret_path
+# ---- Пьяный мастер (монах) ----
+
+[[subclasses]]
+key = "drunken_master"
+name = "Пьяный мастер"
+class = "monk"
+color = "#e0b060"
+desc = "Шатается, как пьяный, но не пропускает ни удара; плюётся огненным вином."
+secret = true
+
+[[branches]]
+key = "drunken_master"
+name = "Пьяный мастер"
+color = "#e0b060"
+desc = "Пьяный кулак."
+class = "monk"
+subclass = "drunken_master"
+
+[[skills]]
+key = "dm_stagger"
+name = "Пошатывание"
+branch = "drunken_master"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Уклонение и крит. шанс."
+stats = { dodge = 3, crit = 2 }
+
+[[skills]]
+key = "dm_drunken_flail"
+name = "Пьяный шквал"
+branch = "drunken_master"
+tier = 1
+max_rank = 1
+level = 5
+grants = "dm_drunken_flail"
+desc = "Пять беспорядочных, но метких ударов."
+
+[[abilities]]
+key = "dm_drunken_flail"
+name = "Пьяный шквал"
+kind = "strike"
+mana = 12
+cooldown_ms = 6000
+damage = [4, 8]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 0.6
+count = 5
+glyph = "!"
+color = "#e0b060"
+desc = "Пять ударов по одной цели."
+
+[[skills]]
+key = "dm_sway"
+name = "Качка"
+branch = "drunken_master"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["dm_drunken_flail"]
+grants = "dm_sway"
+desc = "Вас невозможно задеть."
+
+[[abilities]]
+key = "dm_sway"
+name = "Качка"
+kind = "buff"
+mana = 10
+cooldown_ms = 25000
+color = "#f0d080"
+fx = "wind"
+desc = "10 с: +40% уклонения."
+[abilities.buff]
+key = "sway"
+name = "Качка"
+duration_ms = 10000
+stats = { dodge = 40 }
+color = "#f0d080"
+
+[[skills]]
+key = "dm_fire_spit"
+name = "Огненный плевок"
+branch = "drunken_master"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["dm_sway"]
+grants = "dm_fire_spit"
+desc = "Глоток крепкого вина — и струя огня."
+
+[[abilities]]
+key = "dm_fire_spit"
+name = "Огненный плевок"
+kind = "projectile"
+mana = 18
+cooldown_ms = 9000
+damage = [12, 18]
+dmg_type = "fire"
+scale = "dex"
+scale_k = 1.1
+range = 5
+count = 3
+speed_ms = 25
+glyph = "*"
+color = "#ff8a3a"
+desc = "Три струи огня веером."
+
+
+# ---- Кулак дракона (монах) ----
+
+[[subclasses]]
+key = "dragon_fist"
+name = "Кулак дракона"
+class = "monk"
+color = "#ff5a3a"
+desc = "Ци дракона: огненные удары и взлёт дракона."
+secret = true
+
+[[branches]]
+key = "dragon_fist"
+name = "Кулак дракона"
+color = "#ff5a3a"
+desc = "Дух дракона."
+class = "monk"
+subclass = "dragon_fist"
+
+[[skills]]
+key = "df_dragon_spirit"
+name = "Дух дракона"
+branch = "dragon_fist"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон в ближнем бою и огнём."
+stats = { melee_pct = 5, fire_pct = 5 }
+
+[[skills]]
+key = "df_dragon_palm"
+name = "Ладонь дракона"
+branch = "dragon_fist"
+tier = 1
+max_rank = 1
+level = 5
+grants = "df_dragon_palm"
+desc = "Огненный удар, оставляющий ожог."
+
+[[abilities]]
+key = "df_dragon_palm"
+name = "Ладонь дракона"
+kind = "strike"
+mana = 10
+cooldown_ms = 4000
+damage = [12, 18]
+split = ["fire", "blunt"]
+scale = "str"
+scale_k = 1.1
+glyph = "!"
+color = "#ff5a3a"
+fx = "fire"
+desc = "Огонь и дробящий урон пополам, горение на 4 с."
+[abilities.on_hit]
+key = "dragon_burn"
+name = "Горение"
+duration_ms = 4000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ff5a3a"
+
+[[skills]]
+key = "df_dragon_dash"
+name = "Бросок дракона"
+branch = "dragon_fist"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["df_dragon_palm"]
+grants = "df_dragon_dash"
+desc = "Огненный рывок сквозь врагов."
+
+[[abilities]]
+key = "df_dragon_dash"
+name = "Бросок дракона"
+kind = "dash"
+mana = 12
+cooldown_ms = 7000
+damage = [12, 18]
+dmg_type = "fire"
+scale = "str"
+scale_k = 1.1
+range = 5
+glyph = "~"
+color = "#ff7a3a"
+desc = "Рывок на 5 клеток с огненным ударом."
+
+[[skills]]
+key = "df_dragon_ascend"
+name = "Взлёт дракона"
+branch = "dragon_fist"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["df_dragon_dash"]
+grants = "df_dragon_ascend"
+desc = "Вы взмываете вверх в столбе пламени."
+
+[[abilities]]
+key = "df_dragon_ascend"
+name = "Взлёт дракона"
+kind = "nova"
+mana = 30
+cooldown_ms = 16000
+damage = [22, 32]
+dmg_type = "fire"
+scale = "str"
+scale_k = 1.6
+radius = 4
+glyph = "^"
+color = "#ff3a1a"
+fx = "eruption"
+desc = "Огонь в радиусе 4 и оглушение на 1,5 с."
+[abilities.on_hit]
+key = "ascent_stun"
+name = "Оглушение"
+duration_ms = 1500
+stun = true
+color = "#ff3a1a"
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Монах ----
+
+[[branches]]
+key = "monk_hidden"
+name = "Скрытые навыки: Монах"
+color = "#f0a050"
+desc = "Навыки, которые открываются сами за деяния."
+class = "monk"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hmo_slippery"
+name = "Ускользающий"
+branch = "monk_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dodge"
+deed_count = 300
+desc = "Удары скользят мимо."
+stats = { dodge = 6 }
+
+[[skills]]
+key = "hmo_vital_points"
+name = "Жизненные точки"
+branch = "monk_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "crits"
+deed_count = 300
+desc = "Вы знаете, где у врага слабые точки."
+stats = { crit = 4, crit_mult = 0.2 }
+
+[[skills]]
+key = "hmo_stone_fist"
+name = "Каменный кулак"
+branch = "monk_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:blunt"
+deed_count = 20000
+desc = "Ваш удар крошит камень."
+stats = { melee_pct = 10 }
+
+[[skills]]
+key = "hmo_long_road"
+name = "Долгий путь"
+branch = "monk_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "steps"
+deed_count = 30000
+desc = "Путь — это и есть цель."
+stats = { move_speed = 8 }
+
+[[skills]]
+key = "hmo_inner_peace"
+name = "Внутренний покой"
+branch = "monk_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "casts"
+deed_count = 500
+desc = "Сила течёт ровно и спокойно."
+stats = { mp_regen = 0.8 }
+
+[[skills]]
+key = "hmo_blade_dance"
+name = "Танец на лезвии"
+branch = "monk_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "lowhp"
+deed_count = 15
+desc = "Чем ближе смерть, тем спокойнее вы."
+stats = { hp_regen = 2, dodge = 3 }
+
+[[skills]]
+key = "hmo_pilgrim"
+name = "Паломник"
+branch = "monk_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:temple"
+deed_count = 100
+desc = "Древние храмы научили вас стойкости."
+stats = { res_all = 3, sight = 1 }
+
+[[skills]]
+key = "hmo_blows"
+name = "Тысяча ударов"
+branch = "monk_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "kills"
+deed_count = 400
+desc = "Руки двигаются быстрее мысли."
+stats = { attack_speed = 8 }
+
+[[skills]]
+key = "hmo_sage"
+name = "Странствующий мудрец"
+branch = "monk_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "landmarks"
+deed_count = 8
+desc = "Чудеса мира наполнили вас мудростью."
+stats = { max_mp = 15, int = 2 }
+
+[[skills]]
+key = "hmo_hundred_fists"
+name = "Сто кулаков"
+branch = "monk_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hmo_hundred_fists"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути монаха: сто ударов за один вдох."
+
+[[abilities]]
+key = "hmo_hundred_fists"
+name = "Сто кулаков"
+kind = "strike"
+mana = 20
+cooldown_ms = 25000
+damage = [4, 7]
+dmg_type = "blunt"
+scale = "dex"
+scale_k = 0.6
+count = 12
+glyph = "!"
+color = "#ffc070"
+fx = "chi"
+desc = "Двенадцать ударов по одной цели."
+# <<< contentgen: hidden

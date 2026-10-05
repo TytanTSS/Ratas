@@ -165,7 +165,7 @@ impl Game {
             s += &format!(", in the dungeon {} (floor {})", l.name, l.depth);
         }
         let foes = self
-            .on_level(&e.level)
+            .near(&e.level, e.pos, 12.0)
             .into_iter()
             .filter(|&o| {
                 self.ents

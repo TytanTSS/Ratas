@@ -1,4 +1,76 @@
-# Жрец: базовая ветка и подклассы Судья, Святой, Воитель и секретный Вестник смерти.
+# Жрец: подклассы Судья, Святой и Воитель; секретные подклассы Вестник смерти, Оракул и Инквизитор;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "judge"
+name = "Судья"
+class = "priest"
+color = "#ffd86a"
+desc = "Исцеление и усиление, а также кара: средний урон святым светом."
+
+[[subclasses]]
+key = "saint"
+name = "Святой"
+class = "priest"
+color = "#fff4c8"
+desc = "Сильнейшее лечение и благословения, воскрешение павших союзников в течение минуты."
+
+[[subclasses]]
+key = "templar"
+name = "Воитель"
+class = "priest"
+color = "#f0c060"
+desc = "Ближний бой с благословлённым оружием и удары святым светом."
+
+[[subclasses]]
+key = "deathbringer"
+name = "Вестник смерти"
+class = "priest"
+color = "#8a5aff"
+desc = "Отрёкся от света ради тьмы: урон тьмой, ослабление сопротивлений и приговор, убивающий всех существ слабее вас."
+secret = true
+
+[[branches]]
+key = "priest"
+name = "Жрец"
+color = "#ffe08a"
+desc = "Молитвы, исцеление и благословения."
+class = "priest"
+
+[[branches]]
+key = "judge"
+name = "Судья"
+color = "#ffd86a"
+desc = "Суд света над нечистью."
+class = "priest"
+subclass = "judge"
+
+[[branches]]
+key = "saint"
+name = "Святой"
+color = "#fff4c8"
+desc = "Исцеление, защита и воскрешение."
+class = "priest"
+subclass = "saint"
+
+[[branches]]
+key = "templar"
+name = "Воитель"
+color = "#f0c060"
+desc = "Благословлённое оружие."
+class = "priest"
+subclass = "templar"
+
+[[branches]]
+key = "deathbringer"
+name = "Вестник смерти"
+color = "#8a5aff"
+desc = "Тьма, порча и смертный приговор."
+class = "priest"
+subclass = "deathbringer"
 
 # ---- Жрец ----
 
@@ -366,6 +438,7 @@ scale = "int"
 scale_k = 1.0
 glyph = "+"
 color = "#a0ffa0"
+fx = "holy"
 desc = "Лечит вас."
 
 [[abilities]]
@@ -380,6 +453,7 @@ scale = "int"
 scale_k = 1.5
 glyph = "+"
 color = "#80ff80"
+fx = "holy"
 desc = "Лечит вас и союзников рядом."
 
 [[abilities]]
@@ -390,6 +464,7 @@ mana = 12
 cooldown_ms = 30000
 radius = 4
 color = "#fff0b0"
+fx = "holy"
 desc = "Вам и союзникам в радиусе 4: +20 к здоровью и +1 к его восстановлению на 30 с."
 [abilities.buff]
 key = "blessing"
@@ -406,6 +481,7 @@ mana = 12
 cooldown_ms = 20000
 radius = 3
 color = "#ffe08a"
+fx = "shield holy"
 desc = "Вам и союзникам в радиусе 3: +20% сопротивления всему урону и +4 брони на 8 с."
 [abilities.buff]
 key = "divine_shield"
@@ -428,6 +504,7 @@ range = 9
 speed_ms = 40
 glyph = "+"
 color = "#fff0a0"
+fx = "pillars"
 desc = "Цель на 8 с теряет 40% сопротивления свету и 20% тьме."
 [abilities.on_hit]
 key = "branded"
@@ -493,6 +570,7 @@ scale = "int"
 scale_k = 1.6
 glyph = "+"
 color = "#fff6c0"
+fx = "pillars"
 desc = "Мощный удар светом в радиусе 3 с оглушением."
 [abilities.on_hit]
 key = "stun"
@@ -513,6 +591,7 @@ scale = "int"
 scale_k = 1.2
 glyph = "+"
 color = "#80e0ff"
+fx = "rain water"
 desc = "Лечит вас и союзников в радиусе 5."
 
 [[abilities]]
@@ -523,6 +602,7 @@ mana = 14
 cooldown_ms = 12000
 radius = 5
 color = "#a0ffc0"
+fx = "nature"
 desc = "Вы и союзники в радиусе 5 восстанавливаете по 6 здоровья в секунду 10 с."
 [abilities.buff]
 key = "renew"
@@ -539,6 +619,7 @@ mana = 16
 cooldown_ms = 25000
 radius = 5
 color = "#fff4c8"
+fx = "holy"
 desc = "Вам и союзникам в радиусе 5: +15% сопротивления всему и +3 брони на 10 с."
 [abilities.buff]
 key = "sanctuary"
@@ -556,6 +637,7 @@ cooldown_ms = 30000
 range = 3
 glyph = "+"
 color = "#ffffe0"
+fx = "holy"
 desc = "Воскрешает павшего союзника рядом с 40% здоровья, если тот ещё не вернулся в деревню."
 
 [[abilities]]
@@ -570,6 +652,7 @@ scale = "int"
 scale_k = 2.0
 glyph = "+"
 color = "#ffffc0"
+fx = "holy"
 desc = "Огромное исцеление вас и всех союзников в радиусе 6."
 
 [[abilities]]
@@ -594,6 +677,7 @@ kind = "buff"
 mana = 10
 cooldown_ms = 20000
 color = "#ffe08a"
+fx = "holy"
 desc = "+8 урона светом к каждому удару оружием на 20 с."
 [abilities.buff]
 key = "consecrated_weapon"
@@ -636,6 +720,7 @@ scale_k = 1.4
 range = 1
 glyph = "+"
 color = "#fff6c0"
+fx = "hammer"
 desc = "Удар оружием и светом с оглушением на 1,2 с."
 [abilities.on_hit]
 key = "stun"
@@ -643,22 +728,6 @@ name = "Оглушение"
 duration_ms = 1200
 stun = true
 color = "#ffe080"
-
-[[abilities]]
-key = "shadow_bolt"
-name = "Стрела тьмы"
-kind = "projectile"
-mana = 4
-cooldown_ms = 900
-dmg_type = "shadow"
-damage = [5, 9]
-scale = "int"
-scale_k = 1.1
-range = 9
-speed_ms = 40
-glyph = "*"
-color = "#a07aff"
-desc = "Сгусток тьмы в ближайшего врага."
 
 [[abilities]]
 key = "curse_weakness"
@@ -670,6 +739,7 @@ radius = 3
 damage = [0, 0]
 glyph = "%"
 color = "#b05aff"
+fx = "shadow"
 desc = "Враги вокруг на 8 с теряют 20% сопротивления всему урону и четверть силы ударов."
 [abilities.on_hit]
 key = "weakness"
@@ -711,4 +781,409 @@ cooldown_ms = 60000
 radius = 5
 glyph = "%"
 color = "#6a2aff"
+fx = "shadow"
 desc = "Все существа в радиусе 5 с уровнем ниже вашего умирают. Боссы теряют четверть здоровья."
+
+# >>> contentgen: secret_path
+# ---- Оракул (жрец) ----
+
+[[subclasses]]
+key = "oracle"
+name = "Оракул"
+class = "priest"
+color = "#c0e0ff"
+desc = "Видит будущее: пророчества, цепи света и рок."
+secret = true
+
+[[branches]]
+key = "oracle"
+name = "Оракул"
+color = "#c0e0ff"
+desc = "Предвидение."
+class = "priest"
+subclass = "oracle"
+
+[[skills]]
+key = "or_foresight"
+name = "Предвидение"
+branch = "oracle"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Уклонение и крит. шанс."
+stats = { dodge = 3, crit = 2 }
+
+[[skills]]
+key = "or_prophecy"
+name = "Пророчество"
+branch = "oracle"
+tier = 1
+max_rank = 1
+level = 5
+grants = "or_prophecy"
+desc = "Вы и союзники видите удары врагов заранее."
+
+[[abilities]]
+key = "or_prophecy"
+name = "Пророчество"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+radius = 5
+color = "#c0e0ff"
+fx = "star"
+desc = "Вам и союзникам в радиусе 5: +15% уклонения и +10% крит. шанса на 15 с."
+[abilities.buff]
+key = "prophecy"
+name = "Пророчество"
+duration_ms = 15000
+stats = { dodge = 15, crit = 10 }
+color = "#c0e0ff"
+
+[[skills]]
+key = "or_divine_chain"
+name = "Цепь света"
+branch = "oracle"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["or_prophecy"]
+grants = "or_divine_chain"
+desc = "Свет перескакивает с врага на врага."
+
+[[abilities]]
+key = "or_divine_chain"
+name = "Цепь света"
+kind = "chain"
+mana = 14
+cooldown_ms = 6000
+damage = [10, 15]
+dmg_type = "holy"
+scale = "int"
+scale_k = 1.2
+range = 8
+count = 5
+glyph = "+"
+color = "#fff8c0"
+desc = "Свет перескакивает на 5 врагов."
+
+[[skills]]
+key = "or_fate"
+name = "Предначертание"
+branch = "oracle"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["or_divine_chain"]
+grants = "or_fate"
+desc = "Судьба настигает всех врагов вокруг."
+
+[[abilities]]
+key = "or_fate"
+name = "Предначертание"
+kind = "nova"
+mana = 30
+cooldown_ms = 18000
+damage = [18, 28]
+dmg_type = "holy"
+scale = "int"
+scale_k = 1.5
+radius = 4
+glyph = "*"
+color = "#e0f0ff"
+fx = "time"
+desc = "Свет в радиусе 4 и оглушение на 2 с."
+[abilities.on_hit]
+key = "fated"
+name = "Предначертание"
+duration_ms = 2000
+stun = true
+color = "#e0f0ff"
+# <<< contentgen: secret_path
+
+# ---- Секретный подкласс: Инквизитор ----
+
+[[subclasses]]
+key = "inquisitor"
+name = "Инквизитор"
+class = "priest"
+color = "#ff9a3a"
+desc = "Очищающее пламя: урон светом и огнём разом, приговор нечисти и костёр вокруг."
+secret = true
+
+[[branches]]
+key = "inquisitor"
+name = "Инквизитор"
+color = "#ff9a3a"
+desc = "Очищающее пламя."
+class = "priest"
+subclass = "inquisitor"
+
+# ---- Навыки: Инквизитор ----
+
+[[skills]]
+key = "inq_zeal"
+name = "Пыл инквизитора"
+branch = "inquisitor"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон светом и огнём."
+stats = { holy_pct = 5, fire_pct = 5 }
+
+[[skills]]
+key = "purging_flame"
+name = "Очищающее пламя"
+branch = "inquisitor"
+tier = 1
+max_rank = 1
+level = 5
+grants = "purging_flame"
+desc = "Сгусток святого огня: урон светом и огнём и горение."
+
+[[skills]]
+key = "inq_verdict"
+name = "Вердикт инквизитора"
+branch = "inquisitor"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["inq_zeal"]
+equip = "weapon"
+grants = "inq_verdict"
+desc = "Удар святым светом, беспощадный к раненым."
+
+[[skills]]
+key = "witch_hunt"
+name = "Охота на ведьм"
+branch = "inquisitor"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Защита от тёмной и тайной магии."
+stats = { res_magic = 5, res_shadow = 4 }
+
+[[skills]]
+key = "pyre"
+name = "Костёр"
+branch = "inquisitor"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["purging_flame"]
+grants = "pyre"
+desc = "Столп святого огня сжигает всех врагов вокруг."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "purging_flame"
+name = "Очищающее пламя"
+kind = "projectile"
+mana = 9
+cooldown_ms = 2500
+damage = [9, 14]
+split = ["holy", "fire"]
+scale = "int"
+scale_k = 1.2
+range = 9
+speed_ms = 35
+glyph = "*"
+color = "#ffb050"
+fx = "sun"
+desc = "Урон светом и огнём пополам и горение на 4 с."
+[abilities.on_hit]
+key = "holy_fire"
+name = "Святой огонь"
+duration_ms = 4000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ffb050"
+
+[[abilities]]
+key = "inq_verdict"
+name = "Вердикт инквизитора"
+kind = "strike"
+mana = 14
+cooldown_ms = 7000
+dmg_type = "holy"
+damage = [10, 16]
+scale = "str"
+scale_k = 1.0
+execute = 1.5
+equip = "weapon"
+glyph = "!"
+color = "#ffe080"
+fx = "pillars"
+desc = "Удар светом: +1,5% урона за каждый процент недостающего здоровья цели."
+
+[[abilities]]
+key = "pyre"
+name = "Костёр"
+kind = "nova"
+mana = 34
+cooldown_ms = 16000
+radius = 4
+damage = [20, 30]
+split = ["holy", "fire"]
+scale = "int"
+scale_k = 1.6
+glyph = "^"
+color = "#ff9a3a"
+fx = "eruption"
+desc = "Огонь и свет в радиусе 4 и горение на 5 с."
+[abilities.on_hit]
+key = "pyre_burn"
+name = "Костёр"
+duration_ms = 5000
+dot_per_sec = 6
+dmg_type = "fire"
+color = "#ff9a3a"
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Жрец ----
+
+[[branches]]
+key = "priest_hidden"
+name = "Скрытые навыки: Жрец"
+color = "#ffe08a"
+desc = "Навыки, которые открываются сами за деяния."
+class = "priest"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hpr_healings"
+name = "Тысяча исцелений"
+branch = "priest_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "heal"
+deed_count = 15000
+desc = "Ваши руки помнят каждую рану."
+stats = { heal_pct = 12 }
+
+[[skills]]
+key = "hpr_undead_scourge"
+name = "Бич нежити"
+branch = "priest_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:crypt"
+deed_count = 200
+desc = "Нежить склепов дрожит при вашем имени."
+stats = { holy_pct = 12, res_shadow = 5 }
+
+[[skills]]
+key = "hpr_necro_bane"
+name = "Враг некромантов"
+branch = "priest_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:necromancer"
+deed_count = 15
+desc = "Некроманты — ваша личная забота."
+stats = { holy_pct = 6, res_shadow = 10 }
+
+[[skills]]
+key = "hpr_hand_of_light"
+name = "Светоносная длань"
+branch = "priest_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:holy"
+deed_count = 15000
+desc = "Свет течёт сквозь вас."
+stats = { holy_pct = 10 }
+
+[[skills]]
+key = "hpr_wanderers_friend"
+name = "Друг странников"
+branch = "priest_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "uniques"
+deed_count = 3
+desc = "Уникальные мастера мира считают вас своим."
+stats = { max_hp = 15, res_all = 3 }
+
+[[skills]]
+key = "hpr_returned"
+name = "Вернувшийся"
+branch = "priest_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 3
+desc = "Вы видели свет по ту сторону."
+stats = { hp_regen = 1.5 }
+
+[[skills]]
+key = "hpr_servant"
+name = "Слуга народа"
+branch = "priest_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "quests"
+deed_count = 10
+desc = "Люди благодарны за вашу помощь."
+stats = { heal_pct = 5, gold_find = 10 }
+
+[[skills]]
+key = "hpr_demonbane"
+name = "Изгоняющий демонов"
+branch = "priest_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:fortress"
+deed_count = 100
+desc = "Демоны цитадели узнали силу света."
+stats = { res_fire = 10, res_shadow = 10 }
+
+[[skills]]
+key = "hpr_light_in_dark"
+name = "Свет во тьме"
+branch = "priest_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "night"
+deed_count = 80
+desc = "Ночью ваша вера светит ярче."
+stats = { sight = 1, holy_pct = 6 }
+
+[[skills]]
+key = "hpr_miracle"
+name = "Чудо"
+branch = "priest_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hpr_miracle"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути жреца: настоящее чудо."
+
+[[abilities]]
+key = "hpr_miracle"
+name = "Чудо"
+kind = "heal"
+mana = 30
+cooldown_ms = 90000
+damage = [60, 90]
+scale = "int"
+scale_k = 3
+radius = 6
+glyph = "+"
+color = "#fff8c0"
+fx = "holy"
+desc = "Огромное исцеление вас и союзников в радиусе 6."
+# <<< contentgen: hidden

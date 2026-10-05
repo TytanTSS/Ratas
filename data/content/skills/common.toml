@@ -1,0 +1,210 @@
+# Общие навыки, не привязанные к классу: ветка «Выживание» (доступна всем)
+# и «Тайные знания», которым учат лишь уникальные мастера мира (см. masters.toml).
+
+# ---- Ветки ----
+
+[[branches]]
+key = "survival"
+name = "Выживание"
+color = "#e0c060"
+desc = "Общие умения любого странника, доступны всем."
+
+[[branches]]
+key = "secret"
+name = "Тайные знания"
+color = "#ff80ff"
+desc = "Навыки, которым учат лишь уникальные мастера этого мира."
+secret = true
+
+# ---- Тайные навыки ----
+
+[[skills]]
+key = "iron_skin"
+name = "Железная кожа"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+desc = "Удары отскакивают, как от скалы."
+stats = { armor = 8, res_physical = 10, block = 5 }
+
+[[skills]]
+key = "eagle_eye"
+name = "Глаз орла"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+desc = "Вы видите дальше и бьёте точнее."
+stats = { sight = 2, crit = 6, ranged_pct = 15 }
+
+[[skills]]
+key = "void_step"
+name = "Шаг сквозь марево"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+grants = "void_step"
+desc = "Мгновенный перенос на несколько шагов вперёд."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "void_step"
+name = "Шаг сквозь марево"
+kind = "dash"
+mana = 8
+cooldown_ms = 6000
+range = 5
+glyph = "~"
+color = "#e0d0a0"
+fx = "void"
+desc = "Мгновенный рывок на 5 клеток в сторону взгляда (с мышью — к курсору)."
+
+# ---- Тайные знания (только от уникальных мастеров) ----
+
+[[skills]]
+key = "word_of_power"
+name = "Слово силы"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+grants = "word_of_power"
+desc = "Древнее слово, от которого падают враги вокруг."
+
+[[skills]]
+key = "shadow_walk"
+name = "Шаг сквозь тень"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+desc = "Вы двигаетесь как тень: скорость и уклонение."
+stats = { move_speed = 15, dodge = 8 }
+
+[[skills]]
+key = "titan_blood"
+name = "Кровь титана"
+branch = "secret"
+tier = 1
+max_rank = 1
+level = 1
+desc = "Кровь древних великанов: много здоровья и его восстановление."
+stats = { max_hp = 60, hp_regen = 1 }
+
+# ---- Выживание (доступно всем) ----
+
+[[skills]]
+key = "vigor"
+name = "Живучесть"
+branch = "survival"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Немного здоровья и его восстановления."
+stats = { max_hp = 6, hp_regen = 0.15 }
+
+[[skills]]
+key = "scavenger"
+name = "Мародёр"
+branch = "survival"
+tier = 1
+max_rank = 3
+level = 2
+desc = "Больше золота с врагов."
+stats = { gold_find = 20 }
+
+[[skills]]
+key = "night_eye"
+name = "Ночное зрение"
+branch = "survival"
+tier = 2
+max_rank = 2
+level = 4
+requires = ["vigor"]
+desc = "Дальность обзора."
+stats = { sight = 2 }
+
+[[skills]]
+key = "weathered"
+name = "Закалка стихиями"
+branch = "survival"
+tier = 2
+max_rank = 4
+level = 3
+requires = ["vigor"]
+desc = "Жар пустынь и стужа севера уже не так страшны."
+stats = { res_fire = 5, res_cold = 5, res_lightning = 5 }
+
+[[skills]]
+key = "venom_tolerance"
+name = "Привычка к ядам"
+branch = "survival"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["vigor"]
+desc = "Понемногу яда каждый день — и укус змеи не страшен."
+stats = { res_poison = 10 }
+
+[[skills]]
+key = "second_wind"
+name = "Второе дыхание"
+branch = "survival"
+tier = 3
+max_rank = 1
+level = 7
+requires = ["night_eye"]
+grants = "second_wind"
+desc = "Мгновенно восстанавливает часть здоровья без маны."
+
+[[skills]]
+key = "veteran"
+name = "Шрамы ветерана"
+branch = "survival"
+tier = 3
+max_rank = 3
+level = 7
+requires = ["weathered"]
+desc = "Опыт сотен схваток: сопротивление любому урону."
+stats = { res_all = 3 }
+
+# ---- Умения ----
+
+[[abilities]]
+key = "word_of_power"
+name = "Слово силы"
+kind = "nova"
+mana = 18
+cooldown_ms = 15000
+radius = 3
+dmg_type = "arcane"
+damage = [10, 16]
+scale = "int"
+scale_k = 1.0
+glyph = "*"
+color = "#ff80ff"
+fx = "rune"
+desc = "Тайная магия в радиусе 3 и оглушение на 2 с."
+[abilities.on_hit]
+key = "stun"
+name = "Оглушение"
+duration_ms = 2000
+stun = true
+color = "#ffe080"
+
+[[abilities]]
+key = "second_wind"
+name = "Второе дыхание"
+kind = "heal"
+mana = 0
+cooldown_ms = 45000
+damage = [25, 35]
+scale = "vit"
+scale_k = 2.0
+glyph = "+"
+color = "#e0ff80"
+fx = "wind"
+desc = "Быстро восстанавливает здоровье."

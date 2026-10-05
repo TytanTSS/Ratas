@@ -377,11 +377,11 @@ impl Game {
 
     /// Hands out the reward of a completed unique quest.
     pub(crate) fn finish_unique_quest(&mut self, p: Id, u: &UniqueDef) -> String {
-        let Some(_) = self.unique_quest(p, &u.key) else {
+        let Some(qi) = self.unique_quest(p, &u.key) else {
             return String::new();
         };
+        // recounting relics updates the quests in place
         self.update_relics(p);
-        let qi = self.unique_quest(p, &u.key).unwrap();
         let pe = &self.ents[&p];
         let q = pe.p().quests[qi].clone();
         if !q.done {

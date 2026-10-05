@@ -94,16 +94,16 @@ fn scaled(m: &crate::content::Stats, k: f64) -> crate::content::Stats {
         .collect()
 }
 
-/// Formats a number like Go's %g for the small values of stats.
 /// How far from the start villages are common knowledge (about the span of
 /// the classic world).
 const HOME_LANDS: i32 = 350;
 
+/// Formats the small values of stats: "3", "0.5", "1.25".
 pub fn num(v: f64) -> String {
     if v == v.trunc() {
         format!("{}", v as i64)
     } else {
-        let s = format!("{:.2}", v);
+        let s = format!("{v:.2}");
         s.trim_end_matches('0').trim_end_matches('.').to_string()
     }
 }
@@ -216,7 +216,7 @@ impl Game {
         let l = &self.levels[&e.level];
         let mut best = None;
         let mut bd = f32::MAX;
-        for o in self.on_level(&e.level) {
+        for o in self.near(&e.level, e.pos, vision) {
             let oe = &self.ents[&o];
             if oe.monster.is_none() || !self.hostile(id, o) || !self.can_see(id, o) {
                 continue;
@@ -243,7 +243,7 @@ impl Game {
         }
         if let Some(m) = &te.monster {
             v.level = m.lvl;
-            v.boss = db().monster(&m.def).map(|d| d.boss).unwrap_or(false);
+            v.boss = db().monster(&m.def).is_some_and(|d| d.boss);
         }
         for dt in &db().b.damage_types {
             let r = te.stats.resist(&dt.key).round() as i32;
@@ -276,7 +276,7 @@ impl Game {
             vision: self.vision(e),
             attr_points: p.attr_points,
             skill_points: p.skill_points,
-            speed: e.speed(level.map(|l| l.def_at(e.cell()).move_cost).unwrap_or(1.0)),
+            speed: e.speed(level.map_or(1.0, |l| l.def_at(e.cell()).move_cost)),
             ..Default::default()
         };
         if e.dead {
@@ -352,7 +352,8 @@ impl Game {
 
         let mut ents = Vec::new();
         let me_pos = e.pos;
-        for oid in self.on_level(&e.level) {
+        // what the client shows: 60 steps to the sides, 40 up and down
+        for oid in self.near(&e.level, me_pos, 60.0) {
             let o = &self.ents[&oid];
             let (dx, dy) = (o.pos.x - me_pos.x, o.pos.y - me_pos.y);
             if dx.abs() > 60.0 || dy.abs() > 40.0 {
@@ -385,13 +386,12 @@ impl Game {
                 ..Default::default()
             };
             let d = db();
-            if let Some(m) = o
+            let illusion = o
                 .monster
                 .as_ref()
-                .filter(|m| m.def == "illusion" && self.ents.contains_key(&o.owner))
-            {
+                .is_some_and(|m| m.def == "illusion" && self.ents.contains_key(&o.owner));
+            if illusion {
                 // illusions look like their maker
-                let _ = m;
                 let own = &self.ents[&o.owner];
                 v.kind = own.kind as u8;
                 v.status |= STATUS_ILLUSION;
@@ -433,7 +433,7 @@ impl Game {
                 v.hp = (100.0 * o.hp / o.max_hp).clamp(0.0, 100.0) as u8;
             }
             if let Some(m) = &o.monster {
-                v.boss = d.monster(&m.def).map(|md| md.boss).unwrap_or(false);
+                v.boss = d.monster(&m.def).is_some_and(|md| md.boss);
             }
             if o.speech_until > now {
                 v.speech = o.speech.clone();
@@ -458,18 +458,14 @@ impl Game {
     ///
     /// Villages within HOME_LANDS steps of the start are known from the first
     /// day, the rest once seen.
-    pub(crate) fn places(&mut self, id: Id) -> Vec<Place> {
-        let centers = self.region_centers();
+    pub(crate) fn places(&self, id: Id) -> Vec<Place> {
         let e = &self.ents[&id];
         let p = e.p();
         let mut out = Vec::new();
         let ow = self.levels.get("overworld");
         let empty = crate::world::Bitset::default();
         let bs = p.explored.get("overworld").unwrap_or(&empty);
-        let seen = |q: Pos| {
-            ow.map(|l| l.inside(q.x, q.y) && bs.get(l.idx(q)))
-                .unwrap_or(false)
-        };
+        let seen = |q: Pos| ow.is_some_and(|l| l.inside(q.x, q.y) && bs.get(l.idx(q)));
         // cities are famous; villages are known around home and once seen
         for v in &self.villages {
             if !v.city && v.center.manhattan(self.start) > HOME_LANDS && !seen(v.center) {
@@ -502,13 +498,14 @@ impl Game {
                 });
             }
         }
-        for (i, c) in centers.iter().enumerate() {
-            if seen(*c) {
+        // a region is labelled at its most central cell
+        for r in &self.regions {
+            if seen(r.at) {
                 out.push(Place {
-                    name: self.regions[i].name.clone(),
-                    kind: format!("region:{}", self.regions[i].kind),
-                    x: c.x,
-                    y: c.y,
+                    name: r.name.clone(),
+                    kind: format!("region:{}", r.kind),
+                    x: r.at.x,
+                    y: r.at.y,
                 });
             }
         }
@@ -523,11 +520,6 @@ impl Game {
             }
         }
         out
-    }
-
-    /// A labelled point inside each region (its most central cell).
-    pub(crate) fn region_centers(&self) -> Vec<Pos> {
-        self.regions.iter().map(|r| r.at).collect()
     }
 
     /// Works out where region names go for saves made before regions kept
@@ -649,16 +641,26 @@ impl Game {
         sh
     }
 
-    /// The current level of a player for transmission.
-    pub fn level_data(&self, id: Id) -> LevelData {
+    /// The current level of a player for transmission. The packed tiles of
+    /// a level are kept until a tile changes: the overworld takes a while.
+    pub fn level_data(&mut self, id: Id) -> LevelData {
         let e = &self.ents[&id];
         let l = &self.levels[&e.level];
+        let tiles = match self.packed_tiles.get(&l.id) {
+            Some((ver, data)) if *ver == l.ver => data.clone(),
+            _ => {
+                let data = compress(&l.tiles);
+                self.packed_tiles
+                    .insert(l.id.clone(), (l.ver, data.clone()));
+                data
+            }
+        };
         LevelData {
             id: l.id.clone(),
             name: l.name.clone(),
             w: l.w,
             h: l.h,
-            tiles: compress(&l.tiles),
+            tiles,
             explored: e
                 .p()
                 .explored

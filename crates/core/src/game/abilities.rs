@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::content::AbilityDef;
+use crate::proto::{FX_ALLY, FX_AREA, FX_BEAM, FX_CAST, FX_HIT, FX_SUMMON};
 use crate::world::DIRS8;
 
 impl Game {
@@ -53,7 +54,8 @@ pub(crate) fn cast_taunt(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let ce = &g.ents[&c];
     let (level, pos) = (ce.level.clone(), ce.pos);
     let now = g.now;
-    for o in g.on_level(&level) {
+    g.fx_spell(&level, a, FX_AREA, pos, pos, r + 0.5);
+    for o in g.near(&level, pos, r + 0.5) {
         if !g.hostile(c, o) || g.ents[&o].pos.dist(pos) > r + 0.5 {
             continue;
         }
@@ -92,18 +94,9 @@ pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
         .unwrap_or(1);
     // a new call replaces the old summons of the same kind
     for o in g.on_level(&level) {
-        let mine = g
-            .ents
-            .get(&o)
-            .map(|oe| {
-                oe.owner == c
-                    && oe
-                        .monster
-                        .as_ref()
-                        .map(|m| m.def == def.key)
-                        .unwrap_or(false)
-            })
-            .unwrap_or(false);
+        let mine = g.ents.get(&o).is_some_and(|oe| {
+            oe.owner == c && oe.monster.as_ref().is_some_and(|m| m.def == def.key)
+        });
         if mine {
             g.remove(o);
         }
@@ -132,7 +125,7 @@ pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
             me.name = format!("{} ({cname})", def.name);
         }
         let mp = me.pos;
-        g.fx(&level, mp, "", '*', &a.color, 400);
+        g.fx_spell(&level, a, FX_SUMMON, mp, pos, 0.0);
         made.push(m);
     }
     if made.is_empty() {
@@ -141,13 +134,12 @@ pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     g.index_levels();
     if a.kind == "decoy" {
         // enemies who were after the caster turn to the illusions
-        for o in g.on_level(&level) {
+        for o in g.near(&level, pos, 8.0) {
             let turn = g
                 .ents
                 .get(&o)
                 .and_then(|oe| oe.monster.as_ref().map(|m| (m.target, oe.pos)))
-                .map(|(t, op)| (t == c || t == 0) && op.dist(pos) <= 8.0)
-                .unwrap_or(false);
+                .is_some_and(|(t, op)| (t == c || t == 0) && op.dist(pos) <= 8.0);
             if turn && g.hostile(o, c) {
                 let pick = made[g.rng.usize_n(made.len())];
                 g.ents.get_mut(&o).unwrap().monster.as_mut().unwrap().target = pick;
@@ -158,7 +150,7 @@ pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
 }
 
 /// Copies an ability of the nearest enemy.
-pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
+pub(crate) fn cast_mimic(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool {
     let Some(t) = target.filter(|t| g.ents.contains_key(t)) else {
         g.log(c, "#808080", "Некого копировать.".into());
         return false;
@@ -173,7 +165,7 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
             let mut all = vec![def.ability.clone()];
             all.extend(def.abilities.iter().cloned());
             for k in all {
-                if db().ability(&k).map(copyable).unwrap_or(false) {
+                if db().ability(&k).is_some_and(copyable) {
                     key = k;
                     break;
                 }
@@ -184,7 +176,7 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
         let opts: Vec<String> = p
             .abilities
             .iter()
-            .filter(|k| db().ability(k).map(copyable).unwrap_or(false))
+            .filter(|k| db().ability(k).is_some_and(copyable))
             .cloned()
             .collect();
         if !opts.is_empty() {
@@ -192,7 +184,7 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
         }
         lvl = p.level;
     }
-    let (tname, tlevel, tpos) = (te.name.clone(), te.level.clone(), te.pos);
+    let (tname, tpos) = (te.name.clone(), te.pos);
     if key.is_empty() {
         g.log(
             c,
@@ -225,7 +217,7 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
         "#ff8ad8",
         1500,
     );
-    g.fx(&tlevel, tpos, "", '*', "#ff8ad8", 400);
+    g.fx_spell(&level, a, FX_BEAM, tpos, pos, 0.0);
     true
 }
 
@@ -234,9 +226,12 @@ pub(crate) fn cast_revive(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let r = a.range.max(1) as f32 + 0.5;
     let ce = &g.ents[&c];
     let (level, pos) = (ce.level.clone(), ce.pos);
-    for o in g.on_level(&level) {
+    for o in g.near(&level, pos, r) {
         let oe = &g.ents[&o];
-        if oe.player.is_some() && oe.dead && o != c && oe.pos.dist(pos) <= r && g.revive(o, c) {
+        let op = oe.pos;
+        if oe.player.is_some() && oe.dead && o != c && op.dist(pos) <= r && g.revive(o, c) {
+            g.fx_spell(&level, a, FX_CAST, pos, op, 0.0);
+            g.fx_spell(&level, a, FX_ALLY, op, pos, 0.0);
             return true;
         }
     }
@@ -251,18 +246,21 @@ pub(crate) fn cast_revive(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
 /// Kills every creature around weaker than the caster.
 pub(crate) fn cast_death_sentence(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let ce = &g.ents[&c];
-    let lvl = ce.player.as_ref().map(|p| p.level).unwrap_or(1);
+    let lvl = ce.player.as_ref().map_or(1, |p| p.level);
     let r = a.radius.max(1) as f32 + 0.5;
     let (level, pos) = (ce.level.clone(), ce.pos);
-    g.fx_area(&level, pos, r, glyph_of(a, '%'), &a.color, 260);
-    for o in g.on_level(&level) {
+    g.fx_spell(&level, a, FX_AREA, pos, pos, r);
+    for o in g.near(&level, pos, r) {
         let Some(oe) = g.ents.get(&o) else { continue };
         let Some(m) = &oe.monster else { continue };
         if !g.hostile(c, o) || oe.pos.dist(pos) > r {
             continue;
         }
-        let boss = db().monster(&m.def).map(|d| d.boss).unwrap_or(false);
-        let op = oe.pos;
+        let boss = db().monster(&m.def).is_some_and(|d| d.boss);
+        let (op, weaker) = (oe.pos, m.lvl < lvl);
+        if boss || weaker {
+            g.fx_spell(&level, a, FX_HIT, op, pos, 0.0);
+        }
         if boss {
             let oe = g.ents.get_mut(&o).unwrap();
             oe.hp -= oe.max_hp * 0.25;
@@ -272,7 +270,7 @@ pub(crate) fn cast_death_sentence(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
             if dead {
                 g.kill(o, Some(c));
             }
-        } else if m.lvl < lvl {
+        } else if weaker {
             g.fx(&level, op, "смерть", '\0', &a.color, 1000);
             g.ents.get_mut(&o).unwrap().hp = 0.0;
             g.kill(o, Some(c));
@@ -280,5 +278,3 @@ pub(crate) fn cast_death_sentence(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     }
     true
 }
-
-use super::combat::glyph_of;

@@ -311,8 +311,7 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
     ];
     let night = by_kind
         .get("tavern")
-        .map(|b| b.door)
-        .unwrap_or(Pos::new(c.x, c.y + 2));
+        .map_or(Pos::new(c.x, c.y + 2), |b| b.door);
     let mut guards = 0;
     for role in &db().b.npcs {
         let cnt = r.range(role.city_count[0], role.city_count[1]);

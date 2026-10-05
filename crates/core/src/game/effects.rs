@@ -132,8 +132,7 @@ impl Game {
             let secret = d
                 .skill(&k)
                 .and_then(|s| d.branch(&s.branch))
-                .map(|b| b.secret)
-                .unwrap_or(false);
+                .is_some_and(|b| b.secret);
             if secret {
                 kept.insert(k, r);
             } else {

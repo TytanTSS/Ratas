@@ -198,7 +198,7 @@ pub fn trade(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     };
     let r = centered(980.0 * s, 620.0 * s);
     let inner = panel(g, r, &format!("{} — {}", tr("Торговля"), tr(&d.name)));
-    let gold = p.snap.as_ref().map(|s| s.you.gold).unwrap_or(0);
+    let gold = p.snap.as_ref().map_or(0, |s| s.you.gold);
     if inp.take(KeyCode::Tab) || inp.take(KeyCode::Left) || inp.take(KeyCode::Right) {
         p.trade_col = 1 - p.trade_col;
         p.sel = 0;

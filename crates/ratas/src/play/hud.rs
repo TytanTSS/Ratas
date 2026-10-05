@@ -71,12 +71,11 @@ pub fn draw(
 }
 
 fn me_facing(p: &Session) -> f32 {
-    let you = p.welcome.as_ref().map(|w| w.you_id).unwrap_or(0);
+    let you = p.welcome.as_ref().map_or(0, |w| w.you_id);
     p.snap
         .as_ref()
         .and_then(|s| s.entities.iter().find(|e| e.id == you))
-        .map(|e| e.facing)
-        .unwrap_or(0.0)
+        .map_or(0.0, |e| e.facing)
 }
 
 fn top_bar(p: &Session, g: &Gfx, w: f32, s: f32, local_ai: Option<local::State>) {
@@ -156,7 +155,7 @@ fn hero_frame(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, s: f32) -> bool {
         6.0 * s,
         Color::from_rgba(30, 28, 44, 255),
     );
-    let you = p.welcome.as_ref().map(|w| w.you_id).unwrap_or(0);
+    let you = p.welcome.as_ref().map_or(0, |w| w.you_id);
     if let Some(e) = snap.entities.iter().find(|e| e.id == you) {
         let name = crate::art::specs::resolve(&e.model, &e.def, e.glyph, e.kind);
         let tex = g.model(&name, &e.color, 0, &e.gear).frames[0].clone();

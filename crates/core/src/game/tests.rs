@@ -290,7 +290,7 @@ fn mouse_aim() {
     );
     run(&mut g, 30);
     assert!(
-        g.ents.get(&far).map(|f| f.hp < f.max_hp).unwrap_or(true),
+        g.ents.get(&far).is_none_or(|f| f.hp < f.max_hp),
         "the aimed wolf was not hit"
     );
     assert!(
@@ -506,8 +506,6 @@ fn pvp_and_party() {
         3.0,
         &Damage::single("fire", 20.0),
         None,
-        '*',
-        "#fff",
     );
     assert!(g.ents[&b].hp >= hp, "area damage hit the party");
     assert!(
@@ -578,13 +576,7 @@ fn summons_and_decoys() {
     let imp = g
         .ents
         .values()
-        .find(|e| {
-            e.owner == p
-                && e.monster
-                    .as_ref()
-                    .map(|m| m.def == "imp_minion")
-                    .unwrap_or(false)
-        })
+        .find(|e| e.owner == p && e.monster.as_ref().is_some_and(|m| m.def == "imp_minion"))
         .map(|e| e.id)
         .expect("imp");
     assert!(g.ents[&imp].faction == Faction::Player && !g.hostile(p, imp) && g.hostile(imp, wolf));
@@ -634,7 +626,7 @@ fn archer_keeps_distance_and_healer_heals() {
         .target = p;
     run(&mut g, 60);
     assert!(
-        g.ents.get(&orc).map(|o| o.hp > hp).unwrap_or(false),
+        g.ents.get(&orc).is_some_and(|o| o.hp > hp),
         "the shaman did not heal the orc"
     );
 }
@@ -660,7 +652,7 @@ fn squads_guards_and_wanderers() {
             guards += 1;
         } else if !n.unique.is_empty() {
             uniques += 1;
-        } else if db().npc_role(&n.role).map(|r| r.world).unwrap_or(false) {
+        } else if db().npc_role(&n.role).is_some_and(|r| r.world) {
             wanderers += 1;
         }
     }
@@ -677,7 +669,7 @@ fn unique_quests() {
     let npc = g
         .ents
         .values()
-        .find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false))
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.unique == "morta"))
         .map(|e| e.id);
     let npc = match npc {
         Some(n) => n,
@@ -685,7 +677,7 @@ fn unique_quests() {
             g.admin(p, "/unique morta");
             g.ents
                 .values()
-                .find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false))
+                .find(|e| e.npc.as_ref().is_some_and(|n| n.unique == "morta"))
                 .unwrap()
                 .id
         }
@@ -740,7 +732,7 @@ fn mimic_and_death_sentence() {
     g.use_ability(p, "copied", Some(mage));
     run(&mut g, 30);
     assert!(
-        g.ents.get(&mage).map(|m| m.hp < m.max_hp).unwrap_or(true),
+        g.ents.get(&mage).is_none_or(|m| m.hp < m.max_hp),
         "the copied firebolt did not hit"
     );
     g.ents.get_mut(&p).unwrap().pm().level = 10;
@@ -781,17 +773,16 @@ fn admin_commands() {
     let wolves: Vec<i32> = g
         .ents
         .values()
-        .filter(|o| {
-            o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0
-        })
+        .filter(|o| o.monster.as_ref().is_some_and(|m| m.def == "wolf") && o.pos.dist(pos) < 7.0)
         .map(|o| o.monster.as_ref().unwrap().lvl)
         .collect();
     assert_eq!(wolves.len(), 3);
     assert!(wolves.iter().all(|&l| l == 4));
     g.admin(p, "/kill");
-    assert!(!g.ents.values().any(
-        |o| o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0
-    ));
+    assert!(!g
+        .ents
+        .values()
+        .any(|o| o.monster.as_ref().is_some_and(|m| m.def == "wolf") && o.pos.dist(pos) < 7.0));
     g.admin(p, "/tp d0-1");
     assert_eq!(g.ents[&p].level, "d0-1");
     g.admin(p, "/time night");
@@ -832,13 +823,9 @@ fn city_life() {
         .ents
         .values()
         .find(|e| {
-            e.npc
-                .as_ref()
-                .map(|n| {
-                    n.village == city.name
-                        && db().npc_role(&n.role).map(|r| r.stock > 0).unwrap_or(false)
-                })
-                .unwrap_or(false)
+            e.npc.as_ref().is_some_and(|n| {
+                n.village == city.name && db().npc_role(&n.role).is_some_and(|r| r.stock > 0)
+            })
         })
         .map(|e| e.id)
         .expect("a city trader");
@@ -859,7 +846,7 @@ fn city_life() {
     let citizens: Vec<Id> = g
         .ents
         .values()
-        .filter(|e| e.npc.as_ref().map(|n| n.night.is_some()).unwrap_or(false))
+        .filter(|e| e.npc.as_ref().is_some_and(|n| n.night.is_some()))
         .map(|e| e.id)
         .collect();
     assert!(!citizens.is_empty());
@@ -882,13 +869,7 @@ fn deeds_open_hidden_skills() {
         .b
         .skills
         .iter()
-        .find(|s| {
-            s.deed == "kills"
-                && db()
-                    .branch(&s.branch)
-                    .map(|b| b.class == "warrior")
-                    .unwrap_or(false)
-        })
+        .find(|s| s.deed == "kills" && db().branch(&s.branch).is_some_and(|b| b.class == "warrior"))
         .expect("a kills deed");
     assert!(!can_learn(g.ents[&p].p(), Some(sd)).is_empty());
     g.deed(p, "kills", sd.deed_count);
@@ -1035,7 +1016,7 @@ fn npc_dialogue_with_claude() {
     let elder = g
         .ents
         .values()
-        .find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false))
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.role == "elder"))
         .map(|e| e.id)
         .expect("an elder");
     g.move_next_to(p, elder);
@@ -1059,7 +1040,7 @@ fn npc_dialogue_with_claude() {
         last = Some(d);
     }
     assert!(
-        last.map(|d| d.text.contains("Помоги нам")).unwrap_or(false),
+        last.is_some_and(|d| d.text.contains("Помоги нам")),
         "reply not delivered"
     );
     assert_eq!(
@@ -1208,7 +1189,7 @@ fn local_model_talks_and_masters() {
     let elder = g
         .ents
         .values()
-        .find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false))
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.role == "elder"))
         .map(|e| e.id)
         .expect("an elder");
     g.move_next_to(p, elder);
@@ -1595,8 +1576,11 @@ fn big_world() {
     println!("tick in the wild at {w:?}: {:?}", t1.elapsed() / 300);
     let t1 = Instant::now();
     let ld = g.level_data(p);
+    let first = t1.elapsed();
+    let t1 = Instant::now();
+    g.level_data(p);
     println!(
-        "level data {:?}: tiles {} KB, explored {} KB",
+        "level data {first:?}, again {:?}: tiles {} KB, explored {} KB",
         t1.elapsed(),
         ld.tiles.len() / 1024,
         ld.explored.len() / 1024
@@ -1610,6 +1594,9 @@ fn big_world() {
     g.save(&path).unwrap();
     let saved = t1.elapsed();
     let size = std::fs::metadata(&path).unwrap().len();
+    let t1 = Instant::now();
+    let listed = list_saves(&dir);
+    println!("list of saves {:?}: {}", t1.elapsed(), listed.len());
     let t1 = Instant::now();
     let g2 = Game::load(&path, None).unwrap();
     println!(

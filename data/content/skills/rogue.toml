@@ -1,4 +1,91 @@
-# Плут: базовая ветка и подклассы Мастер ядов, Дуэлянт, Скаут, Трикстер и секретный Подражатель.
+# Плут: подклассы Мастер ядов, Дуэлянт, Скаут и Трикстер; секретные подклассы Подражатель, Ассасин и Охотник на чудищ;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "poisoner"
+name = "Мастер ядов"
+class = "rogue"
+color = "#8ad04a"
+desc = "Яды, порча и проклятые клинки."
+
+[[subclasses]]
+key = "duelist"
+name = "Дуэлянт"
+class = "rogue"
+color = "#e0e0f0"
+desc = "Бой один на один: серии ударов по одной цели."
+
+[[subclasses]]
+key = "scout"
+name = "Скаут"
+class = "rogue"
+color = "#9ad070"
+desc = "Луки и арбалеты, бой на расстоянии."
+
+[[subclasses]]
+key = "trickster"
+name = "Трикстер"
+class = "rogue"
+color = "#c08aff"
+desc = "Иллюзии, невидимость и удар в спину, пока враг отвлечён обманкой."
+
+[[subclasses]]
+key = "mimic"
+name = "Подражатель"
+class = "rogue"
+color = "#ff8ad8"
+desc = "Копирует умения врагов. Копия чуть слабее оригинала и зависит от уровня врага и вашего."
+secret = true
+
+[[branches]]
+key = "rogue"
+name = "Плут"
+color = "#a8b0c8"
+desc = "Точность, скорость и уклонение."
+class = "rogue"
+
+[[branches]]
+key = "poisoner"
+name = "Мастер ядов"
+color = "#8ad04a"
+desc = "Яды и проклятые клинки."
+class = "rogue"
+subclass = "poisoner"
+
+[[branches]]
+key = "duelist"
+name = "Дуэлянт"
+color = "#e0e0f0"
+desc = "Серии ударов и добивания."
+class = "rogue"
+subclass = "duelist"
+
+[[branches]]
+key = "scout"
+name = "Скаут"
+color = "#9ad070"
+desc = "Стрельба из луков и арбалетов."
+class = "rogue"
+subclass = "scout"
+
+[[branches]]
+key = "trickster"
+name = "Трикстер"
+color = "#c08aff"
+desc = "Иллюзии, невидимость, удар в спину."
+class = "rogue"
+subclass = "trickster"
+
+[[branches]]
+key = "mimic"
+name = "Подражатель"
+color = "#ff8ad8"
+desc = "Чужие умения в своих руках."
+class = "rogue"
+subclass = "mimic"
 
 # ---- Плут ----
 
@@ -445,6 +532,7 @@ kind = "buff"
 mana = 8
 cooldown_ms = 18000
 color = "#b0b0c0"
+fx = "smoke"
 desc = "+40% уклонения и +25% скорости на 4 с."
 [abilities.buff]
 key = "smoke"
@@ -560,6 +648,7 @@ scale_k = 0.6
 range = 1
 glyph = "/"
 color = "#e03a3a"
+fx = "blood"
 desc = "Кровотечение на 6 с, броня цели снижена на 4."
 [abilities.on_hit]
 key = "bleeding"
@@ -599,6 +688,7 @@ scale_k = 0.3
 range = 1
 glyph = "X"
 color = "#ff4a6a"
+fx = "mark blood"
 desc = "На 10 с цель теряет 25% сопротивления физическому урону и 10% — всему."
 [abilities.on_hit]
 key = "death_mark"
@@ -697,6 +787,7 @@ range = 11
 speed_ms = 25
 glyph = "dir"
 color = "#ff6a6a"
+fx = "mark"
 desc = "На 8 с снижает сопротивление цели колющему урону на 30% и физическому на 10%."
 [abilities.on_hit]
 key = "marked"
@@ -721,6 +812,7 @@ scale = "dex"
 scale_k = 1.3
 glyph = "@"
 color = "#e8d8a0"
+fx = "rain"
 desc = "Стрелы накрывают всё в радиусе 3."
 
 [[abilities]]
@@ -733,6 +825,7 @@ count = 1
 summon = "illusion"
 duration_ms = 7000
 color = "#c08aff"
+fx = "illusion"
 desc = "Иллюзия рядом с вами на 7 с; враги вокруг бросаются на неё."
 
 [[abilities]]
@@ -745,6 +838,7 @@ count = 3
 summon = "illusion"
 duration_ms = 8000
 color = "#d0a0ff"
+fx = "illusion"
 desc = "Три иллюзии на 8 с."
 
 [[abilities]]
@@ -754,6 +848,7 @@ kind = "buff"
 mana = 10
 cooldown_ms = 16000
 color = "#8a8aa8"
+fx = "smoke"
 desc = "Невидимость на 8 с: враги не видят вас, пока вы не ударите; +20% скорости."
 [abilities.buff]
 key = "vanish"
@@ -777,6 +872,7 @@ backstab = 3.0
 range = 1
 glyph = "X"
 color = "#c08aff"
+fx = "shadow"
 desc = "Тройной урон из невидимости или по врагу, который занят не вами."
 
 [[abilities]]
@@ -787,6 +883,7 @@ mana = 6
 cooldown_ms = 6000
 range = 8
 color = "#ff8ad8"
+fx = "illusion"
 desc = "Копирует умение ближайшего врага на 2 минуты; оно появится на панели как «Копия»."
 
 [[abilities]]
@@ -796,6 +893,7 @@ kind = "copied"
 mana = 5
 cooldown_ms = 2500
 color = "#ff8ad8"
+fx = "illusion"
 desc = "Скопированное умение врага. Его сила зависит от уровня врага, вашего уровня и навыков подражателя."
 
 [[abilities]]
@@ -805,4 +903,406 @@ kind = "echo"
 mana = 12
 cooldown_ms = 15000
 color = "#ffb0e8"
+fx = "illusion"
 desc = "Скопированное умение с удвоенной силой."
+
+# >>> contentgen: secret_path
+# ---- Ассасин (плут) ----
+
+[[subclasses]]
+key = "assassin"
+name = "Ассасин"
+class = "rogue"
+color = "#b03a4a"
+desc = "Удар из тени, дымовая завеса и смертельная метка."
+secret = true
+
+[[branches]]
+key = "assassin"
+name = "Ассасин"
+color = "#b03a4a"
+desc = "Тень и смерть."
+class = "rogue"
+subclass = "assassin"
+
+[[skills]]
+key = "as_shadow_arts"
+name = "Искусство тени"
+branch = "assassin"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон тьмой и урон из засады."
+stats = { shadow_pct = 6, ambush_pct = 5 }
+
+[[skills]]
+key = "as_shadow_strike"
+name = "Удар из тени"
+branch = "assassin"
+tier = 1
+max_rank = 1
+level = 5
+equip = "weapon"
+grants = "as_shadow_strike"
+desc = "Удар тьмой, втрое сильнее из невидимости или в спину."
+
+[[abilities]]
+key = "as_shadow_strike"
+name = "Удар из тени"
+kind = "strike"
+mana = 10
+cooldown_ms = 5000
+damage = [10, 16]
+dmg_type = "shadow"
+scale = "dex"
+scale_k = 1.1
+backstab = 3
+equip = "weapon"
+glyph = "!"
+color = "#b03a4a"
+desc = "Урон тьмой; из невидимости или по отвлечённой цели — втрое больше."
+
+[[skills]]
+key = "as_smoke_bomb"
+name = "Дымовая бомба"
+branch = "assassin"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["as_shadow_strike"]
+grants = "as_smoke_bomb"
+desc = "Вы исчезаете в облаке дыма."
+
+[[abilities]]
+key = "as_smoke_bomb"
+name = "Дымовая бомба"
+kind = "buff"
+mana = 12
+cooldown_ms = 20000
+color = "#808090"
+fx = "smoke"
+desc = "Невидимость и +30% к скорости бега на 6 с."
+[abilities.buff]
+key = "smoke"
+name = "В дыму"
+duration_ms = 6000
+stats = { move_speed = 30 }
+stealth = true
+color = "#808090"
+
+[[skills]]
+key = "as_death_mark"
+name = "Метка смерти"
+branch = "assassin"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["as_smoke_bomb"]
+grants = "as_death_mark"
+desc = "Метка, медленно и верно убивающая цель."
+
+[[abilities]]
+key = "as_death_mark"
+name = "Метка смерти"
+kind = "projectile"
+mana = 18
+cooldown_ms = 12000
+damage = [6, 10]
+dmg_type = "shadow"
+scale = "dex"
+scale_k = 0.8
+range = 9
+speed_ms = 25
+glyph = "x"
+color = "#8a1a3a"
+fx = "mark"
+desc = "Тьма терзает цель 10 с и снижает её защиту от тьмы на 25%."
+[abilities.on_hit]
+key = "death_mark"
+name = "Метка смерти"
+duration_ms = 10000
+stats = { res_shadow = -25 }
+dot_per_sec = 12
+dmg_type = "shadow"
+color = "#8a1a3a"
+# <<< contentgen: secret_path
+
+# ---- Секретный подкласс: Охотник на чудищ ----
+
+[[subclasses]]
+key = "monster_hunter"
+name = "Охотник на чудищ"
+class = "rogue"
+color = "#c8b070"
+desc = "Метки, серебряные бомбы и казнь: смертелен для чудовищ и боссов."
+secret = true
+
+[[branches]]
+key = "monster_hunter"
+name = "Охотник на чудищ"
+color = "#c8b070"
+desc = "Метки, серебро и казнь."
+class = "rogue"
+subclass = "monster_hunter"
+
+# ---- Навыки: Охотник на чудищ ----
+
+[[skills]]
+key = "hunter_lore"
+name = "Бестиарий"
+branch = "monster_hunter"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Вы знаете слабые места чудовищ."
+stats = { melee_pct = 3, ranged_pct = 3, crit = 1 }
+
+[[skills]]
+key = "beast_mark"
+name = "Метка зверолова"
+branch = "monster_hunter"
+tier = 1
+max_rank = 1
+level = 5
+grants = "beast_mark"
+desc = "Помеченная цель теряет сопротивления и броню."
+
+[[skills]]
+key = "silver_bomb"
+name = "Серебряная бомба"
+branch = "monster_hunter"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["beast_mark"]
+grants = "silver_bomb"
+desc = "Взрыв серебра и святой воды: урон светом и огнём по площади."
+
+[[skills]]
+key = "trophy_hunter"
+name = "Охотник за трофеями"
+branch = "monster_hunter"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Больше золота и сильнее критические удары."
+stats = { gold_find = 10, crit_mult = 0.15 }
+
+[[skills]]
+key = "executioner"
+name = "Казнь"
+branch = "monster_hunter"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["silver_bomb"]
+equip = "weapon"
+grants = "executioner_strike"
+desc = "Удар, тем сильнее, чем меньше здоровья у цели."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "beast_mark"
+name = "Метка зверолова"
+kind = "projectile"
+mana = 8
+cooldown_ms = 8000
+dmg_type = "pierce"
+damage = [2, 4]
+range = 10
+speed_ms = 25
+glyph = "dir"
+color = "#c8b070"
+fx = "mark"
+desc = "Метка на 10 с: −20% сопротивления всему и −6 брони."
+[abilities.on_hit]
+key = "beast_mark"
+name = "Метка зверолова"
+duration_ms = 10000
+stats = { res_all = -20, armor = -6 }
+color = "#c8b070"
+
+[[abilities]]
+key = "silver_bomb"
+name = "Серебряная бомба"
+kind = "projectile"
+mana = 16
+cooldown_ms = 9000
+damage = [14, 22]
+split = ["holy", "fire"]
+scale = "dex"
+scale_k = 1.2
+range = 8
+radius = 2
+speed_ms = 50
+glyph = "o"
+color = "#e0e0f0"
+fx = "flask holy"
+desc = "Взрыв в радиусе 2: урон светом и огнём пополам."
+
+[[abilities]]
+key = "executioner_strike"
+name = "Казнь"
+kind = "strike"
+mana = 14
+cooldown_ms = 8000
+dmg_type = "weapon"
+damage = [8, 14]
+scale = "dex"
+scale_k = 1.0
+execute = 2.0
+equip = "weapon"
+glyph = "!"
+color = "#ffd27a"
+desc = "+2% урона за каждый процент недостающего здоровья цели."
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Плут ----
+
+[[branches]]
+key = "rogue_hidden"
+name = "Скрытые навыки: Плут"
+color = "#a8b0c8"
+desc = "Навыки, которые открываются сами за деяния."
+class = "rogue"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hro_precise"
+name = "Точный удар"
+branch = "rogue_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "crits"
+deed_count = 300
+desc = "Вы знаете, куда бить."
+stats = { crit = 4, crit_mult = 0.2 }
+
+[[skills]]
+key = "hro_elusive"
+name = "Неуловимый"
+branch = "rogue_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dodge"
+deed_count = 200
+desc = "Попасть по вам — редкая удача."
+stats = { dodge = 5 }
+
+[[skills]]
+key = "hro_pickpocket"
+name = "Карманник"
+branch = "rogue_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "gold"
+deed_count = 5000
+desc = "Золото само идёт в руки."
+stats = { gold_find = 25 }
+
+[[skills]]
+key = "hro_night_child"
+name = "Дитя ночи"
+branch = "rogue_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "night"
+deed_count = 100
+desc = "Ночь — ваше время."
+stats = { ambush_pct = 15, sight = 1 }
+
+[[skills]]
+key = "hro_venom"
+name = "Отравитель"
+branch = "rogue_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "dmg:poison"
+deed_count = 8000
+desc = "Ваши яды не знают пощады."
+stats = { poison_pct = 15 }
+
+[[skills]]
+key = "hro_bandit_bane"
+name = "Гроза разбойников"
+branch = "rogue_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "kill:bandit"
+deed_count = 40
+desc = "Разбойники обходят вас стороной."
+stats = { dex = 3, dodge = 2 }
+
+[[skills]]
+key = "hro_roads"
+name = "Тысяча дорог"
+branch = "rogue_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "steps"
+deed_count = 20000
+desc = "Ноги несут вас сами."
+stats = { move_speed = 10 }
+
+[[skills]]
+key = "hro_headhunter"
+name = "Охотник за головами"
+branch = "rogue_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "elites"
+deed_count = 20
+desc = "Один на один вам нет равных."
+stats = { duel_pct = 15 }
+
+[[skills]]
+key = "hro_keen_edge"
+name = "Острый клинок"
+branch = "rogue_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "dmg:pierce"
+deed_count = 15000
+desc = "Каждый укол точен."
+stats = { melee_pct = 5, ranged_pct = 5 }
+
+[[skills]]
+key = "hro_vanish"
+name = "Исчезновение"
+branch = "rogue_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hro_vanish"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути плута: исчезнуть посреди боя."
+
+[[abilities]]
+key = "hro_vanish"
+name = "Исчезновение"
+kind = "buff"
+mana = 10
+cooldown_ms = 40000
+color = "#a8b0c8"
+fx = "smoke"
+desc = "Невидимость и +40% к скорости бега на 8 с."
+[abilities.buff]
+key = "vanish"
+name = "Исчезновение"
+duration_ms = 8000
+stats = { move_speed = 40 }
+stealth = true
+color = "#a8b0c8"
+# <<< contentgen: hidden

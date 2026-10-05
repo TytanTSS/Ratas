@@ -611,7 +611,7 @@ fn gen_cave(
             if l.at(p.x, p.y) != floor
                 || p.manhattan(up) < 4
                 || p == l.down
-                || boss.map(|b: Pos| p.manhattan(b) < 3).unwrap_or(false)
+                || boss.is_some_and(|b: Pos| p.manhattan(b) < 3)
                 || r.int_n(10) > 0
             {
                 continue;

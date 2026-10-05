@@ -110,7 +110,7 @@ jobs:
           flags=()
           case $TAG in *-*) flags+=(--prerelease) ;; esac
           gh release create "$TAG" dist/* \
-            --title "Ратас $TAG" \
+            --title "Ratas $TAG" \
             --target "$GITHUB_SHA" \
             --notes-file .github/release-notes.md \
             --generate-notes \
