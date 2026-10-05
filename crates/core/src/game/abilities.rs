@@ -17,12 +17,18 @@ impl Game {
     }
 
     pub(crate) fn cast_copy(&mut self, c: Id, target: Option<Id>, k: f64) -> bool {
-        let copied = self.ents[&c].player.as_ref().map(|p| p.copied.clone()).unwrap_or_default();
+        let copied = self.ents[&c]
+            .player
+            .as_ref()
+            .map(|p| p.copied.clone())
+            .unwrap_or_default();
         if copied.is_empty() {
             self.log(c, "#808080", "Сначала скопируйте умение врага.".into());
             return false;
         }
-        let Some(orig) = db().ability(&copied) else { return false };
+        let Some(orig) = db().ability(&copied) else {
+            return false;
+        };
         let mut clone = orig.clone();
         let pw = self.copy_power(c) * k;
         clone.damage = [orig.damage[0] * pw, orig.damage[1] * pw];
@@ -35,7 +41,10 @@ impl Game {
 }
 
 pub(crate) fn copyable(a: &AbilityDef) -> bool {
-    !matches!(a.kind.as_str(), "mimic" | "copied" | "echo" | "revive" | "death_sentence")
+    !matches!(
+        a.kind.as_str(),
+        "mimic" | "copied" | "echo" | "revive" | "death_sentence"
+    )
 }
 
 /// Forces enemies around to attack the caster.
@@ -69,14 +78,32 @@ pub(crate) fn cast_taunt(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
 
 /// Calls allies (summon) or illusions (decoy) next to the caster.
 pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
-    let Some(def) = db().monster(&a.summon) else { return false };
+    let Some(def) = db().monster(&a.summon) else {
+        return false;
+    };
     let ce = &g.ents[&c];
     let (level, pos, cell, faction) = (ce.level.clone(), ce.pos, ce.cell(), ce.faction);
     let (cname, cglyph, ccolor) = (ce.name.clone(), ce.glyph.clone(), ce.color.clone());
-    let lvl = ce.player.as_ref().map(|p| p.level).or(ce.monster.as_ref().map(|m| m.lvl)).unwrap_or(1);
+    let lvl = ce
+        .player
+        .as_ref()
+        .map(|p| p.level)
+        .or(ce.monster.as_ref().map(|m| m.lvl))
+        .unwrap_or(1);
     // a new call replaces the old summons of the same kind
     for o in g.on_level(&level) {
-        let mine = g.ents.get(&o).map(|oe| oe.owner == c && oe.monster.as_ref().map(|m| m.def == def.key).unwrap_or(false)).unwrap_or(false);
+        let mine = g
+            .ents
+            .get(&o)
+            .map(|oe| {
+                oe.owner == c
+                    && oe
+                        .monster
+                        .as_ref()
+                        .map(|m| m.def == def.key)
+                        .unwrap_or(false)
+            })
+            .unwrap_or(false);
         if mine {
             g.remove(o);
         }
@@ -115,7 +142,12 @@ pub(crate) fn cast_summon(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     if a.kind == "decoy" {
         // enemies who were after the caster turn to the illusions
         for o in g.on_level(&level) {
-            let turn = g.ents.get(&o).and_then(|oe| oe.monster.as_ref().map(|m| (m.target, oe.pos))).map(|(t, op)| (t == c || t == 0) && op.dist(pos) <= 8.0).unwrap_or(false);
+            let turn = g
+                .ents
+                .get(&o)
+                .and_then(|oe| oe.monster.as_ref().map(|m| (m.target, oe.pos)))
+                .map(|(t, op)| (t == c || t == 0) && op.dist(pos) <= 8.0)
+                .unwrap_or(false);
             if turn && g.hostile(o, c) {
                 let pick = made[g.rng.usize_n(made.len())];
                 g.ents.get_mut(&o).unwrap().monster.as_mut().unwrap().target = pick;
@@ -149,7 +181,12 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
         }
         lvl = m.lvl;
     } else if let Some(p) = &te.player {
-        let opts: Vec<String> = p.abilities.iter().filter(|k| db().ability(k).map(copyable).unwrap_or(false)).cloned().collect();
+        let opts: Vec<String> = p
+            .abilities
+            .iter()
+            .filter(|k| db().ability(k).map(copyable).unwrap_or(false))
+            .cloned()
+            .collect();
         if !opts.is_empty() {
             key = opts[g.rng.usize_n(opts.len())].clone();
         }
@@ -157,7 +194,11 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
     }
     let (tname, tlevel, tpos) = (te.name.clone(), te.level.clone(), te.pos);
     if key.is_empty() {
-        g.log(c, "#808080", format!("У {tname} нет умения, которое можно скопировать."));
+        g.log(
+            c,
+            "#808080",
+            format!("У {tname} нет умения, которое можно скопировать."),
+        );
         return false;
     }
     let now = g.now;
@@ -171,8 +212,19 @@ pub(crate) fn cast_mimic(g: &mut Game, c: Id, target: Option<Id>) -> bool {
     player::unlock_ability_on(e, "copied");
     let (level, pos) = (e.level.clone(), e.pos);
     let name = db().ability(&key).unwrap().name.clone();
-    g.log(c, "#ff8ad8", format!("Скопировано умение: {name} (на 2 минуты, кнопка «Копия»)."));
-    g.fx(&level, pos, &format!("Копия: {name}"), '\0', "#ff8ad8", 1500);
+    g.log(
+        c,
+        "#ff8ad8",
+        format!("Скопировано умение: {name} (на 2 минуты, кнопка «Копия»)."),
+    );
+    g.fx(
+        &level,
+        pos,
+        &format!("Копия: {name}"),
+        '\0',
+        "#ff8ad8",
+        1500,
+    );
     g.fx(&tlevel, tpos, "", '*', "#ff8ad8", 400);
     true
 }
@@ -188,7 +240,11 @@ pub(crate) fn cast_revive(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
             return true;
         }
     }
-    g.log(c, "#808080", "Рядом нет павших союзников, которых ещё можно вернуть.".into());
+    g.log(
+        c,
+        "#808080",
+        "Рядом нет павших союзников, которых ещё можно вернуть.".into(),
+    );
     false
 }
 

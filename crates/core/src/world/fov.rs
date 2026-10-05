@@ -26,7 +26,17 @@ pub fn fov(l: &Level, ox: i32, oy: i32, radius: i32, mark: &mut dyn FnMut(i32, i
 }
 
 #[allow(clippy::too_many_arguments)]
-fn cast_light(l: &Level, cx: i32, cy: i32, radius: i32, row: i32, mut start: f64, end: f64, o: [i32; 4], mark: &mut dyn FnMut(i32, i32)) {
+fn cast_light(
+    l: &Level,
+    cx: i32,
+    cy: i32,
+    radius: i32,
+    row: i32,
+    mut start: f64,
+    end: f64,
+    o: [i32; 4],
+    mark: &mut dyn FnMut(i32, i32),
+) {
     if start < end {
         return;
     }

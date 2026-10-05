@@ -24,7 +24,11 @@ pub(crate) fn bow_shot() -> AbilityDef {
 
 /// The basic melee attack, for aiming.
 pub(crate) fn melee_swing() -> AbilityDef {
-    AbilityDef { key: "melee".into(), kind: "strike".into(), ..Default::default() }
+    AbilityDef {
+        key: "melee".into(),
+        kind: "strike".into(),
+        ..Default::default()
+    }
 }
 
 pub(crate) fn ability_range(a: &AbilityDef) -> f32 {
@@ -52,32 +56,136 @@ struct Affix {
 }
 
 const AFFIXES: &[Affix] = &[
-    Affix { stat: "str", suffix: "силы", base: 1.5 },
-    Affix { stat: "dex", suffix: "ловкости", base: 1.5 },
-    Affix { stat: "int", suffix: "мудрости", base: 1.5 },
-    Affix { stat: "vit", suffix: "здоровья", base: 1.5 },
-    Affix { stat: "max_hp", suffix: "жизни", base: 8.0 },
-    Affix { stat: "crit", suffix: "точности", base: 2.0 },
-    Affix { stat: "armor", suffix: "защиты", base: 1.5 },
-    Affix { stat: "move_speed", suffix: "ветра", base: 4.0 },
-    Affix { stat: "spell_pct", suffix: "чародейства", base: 6.0 },
-    Affix { stat: "melee_pct", suffix: "ярости", base: 6.0 },
-    Affix { stat: "ranged_pct", suffix: "меткости", base: 6.0 },
-    Affix { stat: "mp_regen", suffix: "покоя", base: 0.4 },
-    Affix { stat: "res_fire", suffix: "огнеупорности", base: 8.0 },
-    Affix { stat: "res_cold", suffix: "тепла", base: 8.0 },
-    Affix { stat: "res_lightning", suffix: "заземления", base: 8.0 },
-    Affix { stat: "res_poison", suffix: "противоядия", base: 9.0 },
-    Affix { stat: "res_shadow", suffix: "рассвета", base: 8.0 },
-    Affix { stat: "res_elemental", suffix: "стихий", base: 4.0 },
-    Affix { stat: "life_leech", suffix: "вампира", base: 1.2 },
-    Affix { stat: "thorns", suffix: "шипов", base: 2.0 },
-    Affix { stat: "add_fire", suffix: "пламени", base: 1.5 },
-    Affix { stat: "add_cold", suffix: "стужи", base: 1.5 },
-    Affix { stat: "add_lightning", suffix: "грома", base: 1.5 },
-    Affix { stat: "add_poison", suffix: "яда", base: 1.5 },
-    Affix { stat: "holy_pct", suffix: "праведника", base: 6.0 },
-    Affix { stat: "shadow_pct", suffix: "тьмы", base: 6.0 },
+    Affix {
+        stat: "str",
+        suffix: "силы",
+        base: 1.5,
+    },
+    Affix {
+        stat: "dex",
+        suffix: "ловкости",
+        base: 1.5,
+    },
+    Affix {
+        stat: "int",
+        suffix: "мудрости",
+        base: 1.5,
+    },
+    Affix {
+        stat: "vit",
+        suffix: "здоровья",
+        base: 1.5,
+    },
+    Affix {
+        stat: "max_hp",
+        suffix: "жизни",
+        base: 8.0,
+    },
+    Affix {
+        stat: "crit",
+        suffix: "точности",
+        base: 2.0,
+    },
+    Affix {
+        stat: "armor",
+        suffix: "защиты",
+        base: 1.5,
+    },
+    Affix {
+        stat: "move_speed",
+        suffix: "ветра",
+        base: 4.0,
+    },
+    Affix {
+        stat: "spell_pct",
+        suffix: "чародейства",
+        base: 6.0,
+    },
+    Affix {
+        stat: "melee_pct",
+        suffix: "ярости",
+        base: 6.0,
+    },
+    Affix {
+        stat: "ranged_pct",
+        suffix: "меткости",
+        base: 6.0,
+    },
+    Affix {
+        stat: "mp_regen",
+        suffix: "покоя",
+        base: 0.4,
+    },
+    Affix {
+        stat: "res_fire",
+        suffix: "огнеупорности",
+        base: 8.0,
+    },
+    Affix {
+        stat: "res_cold",
+        suffix: "тепла",
+        base: 8.0,
+    },
+    Affix {
+        stat: "res_lightning",
+        suffix: "заземления",
+        base: 8.0,
+    },
+    Affix {
+        stat: "res_poison",
+        suffix: "противоядия",
+        base: 9.0,
+    },
+    Affix {
+        stat: "res_shadow",
+        suffix: "рассвета",
+        base: 8.0,
+    },
+    Affix {
+        stat: "res_elemental",
+        suffix: "стихий",
+        base: 4.0,
+    },
+    Affix {
+        stat: "life_leech",
+        suffix: "вампира",
+        base: 1.2,
+    },
+    Affix {
+        stat: "thorns",
+        suffix: "шипов",
+        base: 2.0,
+    },
+    Affix {
+        stat: "add_fire",
+        suffix: "пламени",
+        base: 1.5,
+    },
+    Affix {
+        stat: "add_cold",
+        suffix: "стужи",
+        base: 1.5,
+    },
+    Affix {
+        stat: "add_lightning",
+        suffix: "грома",
+        base: 1.5,
+    },
+    Affix {
+        stat: "add_poison",
+        suffix: "яда",
+        base: 1.5,
+    },
+    Affix {
+        stat: "holy_pct",
+        suffix: "праведника",
+        base: 6.0,
+    },
+    Affix {
+        stat: "shadow_pct",
+        suffix: "тьмы",
+        base: 6.0,
+    },
 ];
 
 impl Game {
@@ -100,7 +208,8 @@ impl Game {
         let is_boss = def.map(|d| d.boss).unwrap_or(false);
         let is_elite = def.map(|d| d.elite).unwrap_or(false);
         if let Some(def) = def {
-            let mut gold = self.roll(def.gold[0] as f64, (def.gold[1] + 1) as f64) * monster_scale(ms.lvl);
+            let mut gold =
+                self.roll(def.gold[0] as f64, (def.gold[1] + 1) as f64) * monster_scale(ms.lvl);
             if let Some(k) = killer.and_then(|k| self.ents.get(&k)) {
                 if k.player.is_some() {
                     gold *= 1.0 + k.stats.gold_find / 100.0;
@@ -124,10 +233,21 @@ impl Game {
                 self.drop_item(&level, cell, ItemStack::new(key));
             }
             for it in &db().b.items {
-                let chance = if it.drop_chance <= 0.0 { 35.0 } else { it.drop_chance };
+                let chance = if it.drop_chance <= 0.0 {
+                    35.0
+                } else {
+                    it.drop_chance
+                };
                 if it.drop_from.contains(&def.key) && self.chance(chance) {
                     self.drop_item(&level, cell, ItemStack::new(&it.key));
-                    self.fx(&level, pos, &format!("{}!", it.name), '\0', rarity_color(def_rarity(Some(it))), 2000);
+                    self.fx(
+                        &level,
+                        pos,
+                        &format!("{}!", it.name),
+                        '\0',
+                        rarity_color(def_rarity(Some(it))),
+                        2000,
+                    );
                 }
             }
             if is_boss {
@@ -144,7 +264,9 @@ impl Game {
                 continue;
             }
             let d = pe.pos.dist(pos);
-            let party_near = kc.map(|k| self.same_party(p, k) && d <= 50.0).unwrap_or(false);
+            let party_near = kc
+                .map(|k| self.same_party(p, k) && d <= 50.0)
+                .unwrap_or(false);
             if d > 25.0 && !party_near {
                 continue;
             }
@@ -153,9 +275,17 @@ impl Game {
             self.ents.get_mut(&p).unwrap().pm().kills += 1;
             self.kill_deeds(p, &m, def, Some(p) == kc);
             if Some(p) == kc {
-                self.log(p, "#e0e0e0", format!("Вы убили: {} (+{} опыта).", m.name, ms.xp));
+                self.log(
+                    p,
+                    "#e0e0e0",
+                    format!("Вы убили: {} (+{} опыта).", m.name, ms.xp),
+                );
             } else {
-                self.log(p, "#c0c0c0", format!("{} повержен (+{} опыта).", m.name, ms.xp));
+                self.log(
+                    p,
+                    "#c0c0c0",
+                    format!("{} повержен (+{} опыта).", m.name, ms.xp),
+                );
             }
             self.quest_progress(p, &ms.def);
             self.champion_slain(p, &m);
@@ -169,19 +299,41 @@ impl Game {
         }
         if is_boss {
             heroes.sort();
-            self.log_all("#ff4aff", format!("*** {} повержен! Герои: {} ***", m.name, format!("[{}]", heroes.join(" "))));
+            self.log_all(
+                "#ff4aff",
+                format!(
+                    "*** {} повержен! Герои: {} ***",
+                    m.name,
+                    format!("[{}]", heroes.join(" "))
+                ),
+            );
             self.chronicle(format!("{} сразил(и) {}", heroes.join(", "), m.name));
         }
         if !ms.champion.is_empty() && !heroes.is_empty() {
-            self.chronicle(format!("{} одолел(и) чемпиона «{}»", heroes.join(", "), m.name));
+            self.chronicle(format!(
+                "{} одолел(и) чемпиона «{}»",
+                heroes.join(", "),
+                m.name
+            ));
         }
         if def.map(|d| d.role == "leader").unwrap_or(false) && ms.squad != 0 {
             // the squad loses heart when its leader falls
             for o in self.on_level(&level) {
-                let same = self.ents.get(&o).and_then(|oe| oe.monster.as_ref()).map(|om| om.squad == ms.squad).unwrap_or(false);
+                let same = self
+                    .ents
+                    .get(&o)
+                    .and_then(|oe| oe.monster.as_ref())
+                    .map(|om| om.squad == ms.squad)
+                    .unwrap_or(false);
                 if same && self.chance(40.0) {
                     let now = self.now;
-                    self.ents.get_mut(&o).unwrap().monster.as_mut().unwrap().flee_until = now + 4000.0;
+                    self.ents
+                        .get_mut(&o)
+                        .unwrap()
+                        .monster
+                        .as_mut()
+                        .unwrap()
+                        .flee_until = now + 4000.0;
                     self.say(o, "Бежим!", 1500.0);
                 }
             }
@@ -191,7 +343,8 @@ impl Game {
             if let Some(oe) = self.ents.get_mut(&o) {
                 if oe.faction == Faction::Monster && oe.pos.dist(pos) < 12.0 {
                     if let Some(om) = oe.monster.as_mut() {
-                        om.events.push(format!("your ally {} was just killed", m.name));
+                        om.events
+                            .push(format!("your ally {} was just killed", m.name));
                     }
                 }
             }
@@ -208,7 +361,10 @@ impl Game {
             q.have += 1;
             if q.have >= q.need {
                 q.done = true;
-                done_msgs.push(format!("Задание выполнено! Вернитесь к: {} ({}).", q.giver, q.village));
+                done_msgs.push(format!(
+                    "Задание выполнено! Вернитесь к: {} ({}).",
+                    q.giver, q.village
+                ));
             }
             pm.dirty = true;
         }
@@ -357,9 +513,18 @@ impl Game {
     }
 
     /// random_item with a lowest rarity for equipment.
-    pub(crate) fn random_item_at_least(&mut self, depth: i32, magic_chance: f64, least: i32) -> Option<ItemStack> {
+    pub(crate) fn random_item_at_least(
+        &mut self,
+        depth: i32,
+        magic_chance: f64,
+        least: i32,
+    ) -> Option<ItemStack> {
         let items = &db().b.items;
-        let total: i32 = items.iter().filter(|it| it.weight > 0 && it.depth <= depth).map(|it| it.weight).sum();
+        let total: i32 = items
+            .iter()
+            .filter(|it| it.weight > 0 && it.depth <= depth)
+            .map(|it| it.weight)
+            .sum();
         if total == 0 {
             return None;
         }
@@ -390,7 +555,11 @@ impl Game {
         }
         let key = self.ents[&id].p().hotbar[slot as usize - 1].clone();
         if key.is_empty() {
-            self.log(id, "#808080", format!("Слот {slot} пуст. Назначьте умение в окне навыков (K)."));
+            self.log(
+                id,
+                "#808080",
+                format!("Слот {slot} пуст. Назначьте умение в окне навыков (K)."),
+            );
             return true;
         }
         self.use_ability(id, &key, None)
@@ -399,9 +568,13 @@ impl Game {
     /// Returns true when the request is finished (cast or failed) and false
     /// when it should wait (cooldown).
     pub(crate) fn use_ability(&mut self, c: Id, key: &str, target: Option<Id>) -> bool {
-        let Some(a) = db().ability(key) else { return true };
+        let Some(a) = db().ability(key) else {
+            return true;
+        };
         let now = self.now;
-        let Some(ce) = self.ents.get(&c) else { return true };
+        let Some(ce) = self.ents.get(&c) else {
+            return true;
+        };
         if !ce.alive() {
             return true;
         }
@@ -414,11 +587,19 @@ impl Game {
             return true;
         }
         if ce.stats.silenced {
-            self.log(c, "#e0c8ff", "Вы под печатью и не можете применять умения.".into());
+            self.log(
+                c,
+                "#e0c8ff",
+                "Вы под печатью и не можете применять умения.".into(),
+            );
             return true;
         }
         if ce.player.is_some() && !ce.stats.gear.has(&a.equip) {
-            self.log(c, "#ff8080", format!("Для «{}» нужно: {}.", a.name, gear_need_name(&a.equip)));
+            self.log(
+                c,
+                "#ff8080",
+                format!("Для «{}» нужно: {}.", a.name, gear_need_name(&a.equip)),
+            );
             return true;
         }
         let mut target = target;
@@ -452,7 +633,10 @@ impl Game {
 
     /// The point a player aims the current action at with the mouse.
     pub(crate) fn aimed(&self, id: Id) -> Option<Vec2> {
-        self.ents.get(&id).and_then(|e| e.player.as_ref()).and_then(|p| p.aim)
+        self.ents
+            .get(&id)
+            .and_then(|e| e.player.as_ref())
+            .and_then(|p| p.aim)
     }
 
     /// The enemy at the aimed point (or right next to it) that the ability
@@ -545,7 +729,9 @@ impl Game {
             // a body in the way
             let mut hit = None;
             for o in self.on_level(&level) {
-                let Some(oe) = self.ents.get(&o) else { continue };
+                let Some(oe) = self.ents.get(&o) else {
+                    continue;
+                };
                 if !oe.blocks() || !oe.alive() || oe.pos.dist(pos) > oe.radius() + 0.15 {
                     continue;
                 }
@@ -588,7 +774,17 @@ impl Game {
         let owner = Some(ps.owner).filter(|o| self.ents.contains_key(o));
         if ps.radius > 0 {
             self.fx(&p.level, at, "", '*', &p.color, 250);
-            self.area_damage(owner, ps.faction, &p.level, at, ps.radius as f32, &ps.damage, ps.on_hit.as_ref(), '*', &p.color);
+            self.area_damage(
+                owner,
+                ps.faction,
+                &p.level,
+                at,
+                ps.radius as f32,
+                &ps.damage,
+                ps.on_hit.as_ref(),
+                '*',
+                &p.color,
+            );
             return;
         }
         if let Some(h) = hit {
@@ -602,11 +798,24 @@ impl Game {
 
     /// Hits every enemy of a faction within radius (and flashes the area).
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn area_damage(&mut self, src: Option<Id>, f: Faction, level: &str, at: Vec2, radius: f32, dmg: &Damage, on_hit: Option<&BuffDef>, glyph: char, color: &str) {
+    pub(crate) fn area_damage(
+        &mut self,
+        src: Option<Id>,
+        f: Faction,
+        level: &str,
+        at: Vec2,
+        radius: f32,
+        dmg: &Damage,
+        on_hit: Option<&BuffDef>,
+        glyph: char,
+        color: &str,
+    ) {
         self.fx_area(level, at, radius + 0.5, glyph, color, 260);
         let mut victims = Vec::new();
         for o in self.on_level(level) {
-            let Some(oe) = self.ents.get(&o) else { continue };
+            let Some(oe) = self.ents.get(&o) else {
+                continue;
+            };
             if !oe.alive() || !oe.blocks() || oe.pos.dist(at) > radius + 0.5 + oe.radius() * 0.5 {
                 continue;
             }
@@ -634,7 +843,9 @@ impl Game {
 
     pub(crate) fn apply_buff(&mut self, id: Id, def: &BuffDef, src: Id) {
         let now = self.now;
-        let Some(e) = self.ents.get_mut(&id) else { return };
+        let Some(e) = self.ents.get_mut(&id) else {
+            return;
+        };
         if !e.alive() {
             return;
         }
@@ -644,7 +855,11 @@ impl Game {
             b.source = src;
             return;
         }
-        e.buffs.push(Buff { def: def.clone(), until, source: src });
+        e.buffs.push(Buff {
+            def: def.clone(),
+            until,
+            source: src,
+        });
         e.recalc();
         if let Some(p) = e.player.as_mut() {
             p.dirty = true;
@@ -668,7 +883,11 @@ impl Game {
             if tick_dot && b.def.dot_per_sec != 0.0 {
                 let mut amt = b.def.dot_per_sec / 2.0;
                 if amt > 0.0 {
-                    let t = if b.def.dmg_type.is_empty() { "poison" } else { &b.def.dmg_type };
+                    let t = if b.def.dmg_type.is_empty() {
+                        "poison"
+                    } else {
+                        &b.def.dmg_type
+                    };
                     let mut dot = Damage::single(t, amt);
                     dot.dot = true;
                     let src = Some(b.source).filter(|s| self.ents.contains_key(s));
@@ -699,7 +918,8 @@ impl Game {
 }
 
 pub(crate) fn hostile_factions(a: Faction, b: Faction) -> bool {
-    (a == Faction::Player && b == Faction::Monster) || (a == Faction::Monster && b == Faction::Player)
+    (a == Faction::Player && b == Faction::Monster)
+        || (a == Faction::Monster && b == Faction::Player)
 }
 
 /// Runs an ability by its kind; returns false if it could not be used.
@@ -748,7 +968,12 @@ pub(crate) fn cast_projectile(g: &mut Game, c: Id, a: &AbilityDef, target: Optio
     let base = (aim - pos).angle();
     g.ents.get_mut(&c).unwrap().facing = base;
     let count = a.count.max(1);
-    let speed = 1000.0 / if a.speed_ms > 0 { a.speed_ms as f32 } else { 50.0 };
+    let speed = 1000.0
+        / if a.speed_ms > 0 {
+            a.speed_ms as f32
+        } else {
+            50.0
+        };
     for i in 0..count {
         let off = i - count / 2;
         let ang = base + off as f32 * 0.14;
@@ -786,7 +1011,17 @@ fn cast_nova(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     g.roll_crit(c, &mut dmg);
     let ce = &g.ents[&c];
     let (f, level, pos) = (ce.faction, ce.level.clone(), ce.pos);
-    g.area_damage(Some(c), f, &level, pos, a.radius.max(1) as f32, &dmg, a.on_hit.as_ref(), glyph_of(a, '*'), &a.color);
+    g.area_damage(
+        Some(c),
+        f,
+        &level,
+        pos,
+        a.radius.max(1) as f32,
+        &dmg,
+        a.on_hit.as_ref(),
+        glyph_of(a, '*'),
+        &a.color,
+    );
     true
 }
 
@@ -870,7 +1105,12 @@ fn cast_heal(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
         let (level, pos) = (ce.level.clone(), ce.pos);
         for o in g.on_level(&level) {
             let oe = &g.ents[&o];
-            if o != c && oe.alive() && oe.blocks() && g.friendly(c, o) && oe.pos.dist(pos) <= a.radius as f32 + 0.5 {
+            if o != c
+                && oe.alive()
+                && oe.blocks()
+                && g.friendly(c, o)
+                && oe.pos.dist(pos) <= a.radius as f32 + 0.5
+            {
                 let missing = oe.max_hp - oe.hp;
                 g.deed(c, "heal", (amount * 0.7).min(missing) as i32);
                 g.heal(o, amount * 0.7);
@@ -958,7 +1198,12 @@ fn cast_buff(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
         // party buff: allies around get it too
         for o in g.on_level(&level) {
             let oe = &g.ents[&o];
-            if o != c && oe.alive() && oe.blocks() && g.friendly(c, o) && oe.pos.dist(pos) <= a.radius as f32 + 0.5 {
+            if o != c
+                && oe.alive()
+                && oe.blocks()
+                && g.friendly(c, o)
+                && oe.pos.dist(pos) <= a.radius as f32 + 0.5
+            {
                 let op = oe.pos;
                 g.apply_buff(o, b, c);
                 g.fx(&level, op, "", glyph_of(a, '+'), &a.color, 400);

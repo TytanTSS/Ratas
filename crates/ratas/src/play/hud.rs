@@ -744,7 +744,9 @@ pub fn tooltip(g: &Gfx, text: &str, x: f32, y: f32, s: f32) {
 
 /// The message log at the bottom left: recent lines, fading with age.
 fn log_box(p: &Session, g: &Gfx, h: f32, s: f32) {
-    let w = (520.0 * s).min(screen_width() * 0.4);
+    // left of the ability bar (8 slots of 58 px and a gap, centred)
+    let bar_x0 = screen_width() / 2.0 - 246.0 * s;
+    let w = (520.0 * s).min(bar_x0 - 34.0 * s).max(220.0 * s);
     let fs = 13.0 * s;
     let lh = 17.0 * s;
     let x = 12.0 * s;

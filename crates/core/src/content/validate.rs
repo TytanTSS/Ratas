@@ -3,13 +3,51 @@ use super::*;
 /// The stat keys understood by the game besides the per damage type ones
 /// (res_<type|group|all>, <type>_pct, add_<type>).
 pub const BASE_STATS: &[&str] = &[
-    "str", "dex", "int", "vit", "max_hp", "max_mp", "hp_regen", "mp_regen", "armor", "dodge", "crit", "crit_mult",
-    "melee_pct", "spell_pct", "ranged_pct", "attack_speed", "move_speed", "sight", "gold_find", "life_leech", "thorns",
-    "block", "fury", "duel_pct", "ambush_pct", "heal_pct", "mimic_pct", "reach",
+    "str",
+    "dex",
+    "int",
+    "vit",
+    "max_hp",
+    "max_mp",
+    "hp_regen",
+    "mp_regen",
+    "armor",
+    "dodge",
+    "crit",
+    "crit_mult",
+    "melee_pct",
+    "spell_pct",
+    "ranged_pct",
+    "attack_speed",
+    "move_speed",
+    "sight",
+    "gold_find",
+    "life_leech",
+    "thorns",
+    "block",
+    "fury",
+    "duel_pct",
+    "ambush_pct",
+    "heal_pct",
+    "mimic_pct",
+    "reach",
 ];
 
 /// The valid item kinds; equipment kinds are also slot names.
-pub const ITEM_KINDS: &[&str] = &["weapon", "shield", "offhand", "head", "chest", "belt", "legs", "back", "ring", "consumable", "quest", "gold"];
+pub const ITEM_KINDS: &[&str] = &[
+    "weapon",
+    "shield",
+    "offhand",
+    "head",
+    "chest",
+    "belt",
+    "legs",
+    "back",
+    "ring",
+    "consumable",
+    "quest",
+    "gold",
+];
 
 /// Item rarities from the most common.
 pub const RARITIES: &[&str] = &["common", "uncommon", "rare", "epic", "legendary"];
@@ -17,7 +55,10 @@ pub const RARITIES: &[&str] = &["common", "uncommon", "rare", "epic", "legendary
 /// Gear requirements of skills and abilities.
 pub const EQUIP_NEEDS: &[&str] = &["", "weapon", "melee", "shield", "twohand_dual", "bow"];
 
-pub const WEAPON_TYPES: &[&str] = &["sword", "axe", "mace", "hammer", "dagger", "spear", "staff", "wand", "bow", "crossbow", "scythe"];
+pub const WEAPON_TYPES: &[&str] = &[
+    "sword", "axe", "mace", "hammer", "dagger", "spear", "staff", "wand", "bow", "crossbow",
+    "scythe",
+];
 
 /// Special actions a consumable can perform.
 pub const EFFECTS: &[&str] = &["cleanse", "return", "respec", "xp"];
@@ -80,18 +121,27 @@ impl Db {
         }
         for t in &b.tiles {
             if !t.becomes.is_empty() && !self.tile_by_key.contains_key(&t.becomes) {
-                p.push(format!("tile {:?}: unknown 'becomes' {:?}", t.key, t.becomes));
+                p.push(format!(
+                    "tile {:?}: unknown 'becomes' {:?}",
+                    t.key, t.becomes
+                ));
             }
             dmg(&mut p, &format!("tile {}", t.key), &t.dmg_type);
         }
         for t in &b.damage_types {
             if damage_group(&t.group).is_none() || t.group == "all" {
-                p.push(format!("damage type {:?}: unknown group {:?}", t.key, t.group));
+                p.push(format!(
+                    "damage type {:?}: unknown group {:?}",
+                    t.key, t.group
+                ));
             }
         }
         for m in &b.monsters {
             if !m.ability.is_empty() && !self.abilities.contains_key(&m.ability) {
-                p.push(format!("monster {:?}: unknown ability {:?}", m.key, m.ability));
+                p.push(format!(
+                    "monster {:?}: unknown ability {:?}",
+                    m.key, m.ability
+                ));
             }
             for a in &m.abilities {
                 if !self.abilities.contains_key(a) {
@@ -110,14 +160,20 @@ impl Db {
                     p.push(format!("monster {:?}: unknown resistance {:?}", m.key, k));
                 }
             }
-            if !matches!(m.role.as_str(), "" | "frontline" | "skirmisher" | "ranged" | "caster" | "support" | "leader") {
+            if !matches!(
+                m.role.as_str(),
+                "" | "frontline" | "skirmisher" | "ranged" | "caster" | "support" | "leader"
+            ) {
                 p.push(format!("monster {:?}: unknown role {:?}", m.key, m.role));
             }
         }
         for it in &b.items {
             for m in &it.drop_from {
                 if !self.monsters.contains_key(m) {
-                    p.push(format!("item {:?}: unknown monster in drop_from {:?}", it.key, m));
+                    p.push(format!(
+                        "item {:?}: unknown monster in drop_from {:?}",
+                        it.key, m
+                    ));
                 }
             }
             if !it.rarity.is_empty() && !RARITIES.contains(&it.rarity.as_str()) {
@@ -134,7 +190,10 @@ impl Db {
                 p.push(format!("item {:?}: unknown kind {:?}", it.key, it.kind));
             }
             if !it.weapon.is_empty() && !WEAPON_TYPES.contains(&it.weapon.as_str()) {
-                p.push(format!("item {:?}: unknown weapon type {:?}", it.key, it.weapon));
+                p.push(format!(
+                    "item {:?}: unknown weapon type {:?}",
+                    it.key, it.weapon
+                ));
             }
         }
         for a in &b.abilities {
@@ -148,7 +207,10 @@ impl Db {
                 dmg(&mut p, &format!("ability {}", a.key), t);
             }
             if !a.summon.is_empty() && !self.monsters.contains_key(&a.summon) {
-                p.push(format!("ability {:?}: unknown summon {:?}", a.key, a.summon));
+                p.push(format!(
+                    "ability {:?}: unknown summon {:?}",
+                    a.key, a.summon
+                ));
             }
         }
         for n in &b.npcs {
@@ -158,7 +220,10 @@ impl Db {
                 }
             }
             if !n.combat.is_empty() && !self.monsters.contains_key(&n.combat) {
-                p.push(format!("npc {:?}: unknown combat profile {:?}", n.key, n.combat));
+                p.push(format!(
+                    "npc {:?}: unknown combat profile {:?}",
+                    n.key, n.combat
+                ));
             }
         }
         for c in &b.classes {
@@ -180,7 +245,10 @@ impl Db {
         }
         for sc in &b.subclasses {
             if !self.classes.contains_key(&sc.class) {
-                p.push(format!("subclass {:?}: unknown class {:?}", sc.key, sc.class));
+                p.push(format!(
+                    "subclass {:?}: unknown class {:?}",
+                    sc.key, sc.class
+                ));
             }
         }
         for br in &b.branches {
@@ -188,16 +256,25 @@ impl Db {
                 p.push(format!("branch {:?}: unknown class {:?}", br.key, br.class));
             }
             if !br.subclass.is_empty() {
-                let ok = self.subclass(&br.subclass).map(|s| s.class == br.class).unwrap_or(false);
+                let ok = self
+                    .subclass(&br.subclass)
+                    .map(|s| s.class == br.class)
+                    .unwrap_or(false);
                 if !ok {
-                    p.push(format!("branch {:?}: unknown subclass {:?} of class {:?}", br.key, br.subclass, br.class));
+                    p.push(format!(
+                        "branch {:?}: unknown subclass {:?} of class {:?}",
+                        br.key, br.subclass, br.class
+                    ));
                 }
             }
         }
         for sq in &b.squads {
             for m in &sq.members {
                 if !self.monsters.contains_key(&m.monster) {
-                    p.push(format!("squad {:?}: unknown monster {:?}", sq.key, m.monster));
+                    p.push(format!(
+                        "squad {:?}: unknown monster {:?}",
+                        sq.key, m.monster
+                    ));
                 }
             }
         }
@@ -205,7 +282,10 @@ impl Db {
             match u.quest.as_str() {
                 "slay" | "boss" => {
                     if !self.monsters.contains_key(&u.target) {
-                        p.push(format!("unique {:?}: unknown target monster {:?}", u.key, u.target));
+                        p.push(format!(
+                            "unique {:?}: unknown target monster {:?}",
+                            u.key, u.target
+                        ));
                     }
                 }
                 "relics" => {

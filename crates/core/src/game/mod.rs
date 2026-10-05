@@ -182,7 +182,12 @@ impl Game {
         g.levels.insert("overworld".into(), ow.level);
         let mut r = Rng::labeled(seed, "population");
         for v in &ow.villages {
-            g.villages.push(VillageInfo { name: v.name.clone(), center: v.center, area: v.area, city: v.city });
+            g.villages.push(VillageInfo {
+                name: v.name.clone(),
+                center: v.center,
+                area: v.area,
+                city: v.city,
+            });
         }
         for v in &ow.villages {
             for n in &v.npcs {
@@ -219,10 +224,22 @@ impl Game {
         self.now += TICK_MS;
         self.tick_n += 1;
         self.index_levels();
-        let active: std::collections::HashSet<String> = self.online.values().filter_map(|id| self.ents.get(id)).map(|e| e.level.clone()).collect();
-        let ids: Vec<Id> = self.ents.iter().filter(|(_, e)| active.contains(&e.level)).map(|(id, _)| *id).collect();
+        let active: std::collections::HashSet<String> = self
+            .online
+            .values()
+            .filter_map(|id| self.ents.get(id))
+            .map(|e| e.level.clone())
+            .collect();
+        let ids: Vec<Id> = self
+            .ents
+            .iter()
+            .filter(|(_, e)| active.contains(&e.level))
+            .map(|(id, _)| *id)
+            .collect();
         for &id in &ids {
-            let Some(e) = self.ents.get(&id) else { continue };
+            let Some(e) = self.ents.get(&id) else {
+                continue;
+            };
             match e.kind {
                 Kind::Player => self.update_player(id),
                 Kind::Monster => {
@@ -295,7 +312,11 @@ impl Game {
     }
 
     pub(crate) fn players_on(&self, level: &str) -> Vec<Id> {
-        self.online.values().copied().filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false)).collect()
+        self.online
+            .values()
+            .copied()
+            .filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false))
+            .collect()
     }
 
     pub(crate) fn alive(&self, id: Id) -> bool {
@@ -313,7 +334,9 @@ impl Game {
         if self.levels.contains_key(id) {
             return true;
         }
-        let Some((idx, depth)) = parse_dungeon_id(id) else { return false };
+        let Some((idx, depth)) = parse_dungeon_id(id) else {
+            return false;
+        };
         if idx < 0 || idx as usize >= self.entrances.len() {
             return false;
         }
@@ -321,7 +344,15 @@ impl Game {
         if depth < 1 || depth > ent.max_depth {
             return false;
         }
-        let f = gen::generate_dungeon(self.seed, id, &ent.name, &ent.theme, idx, depth, ent.max_depth);
+        let f = gen::generate_dungeon(
+            self.seed,
+            id,
+            &ent.name,
+            &ent.theme,
+            idx,
+            depth,
+            ent.max_depth,
+        );
         let lid = f.level.id.clone();
         let monsters = f.monsters.clone();
         let items = f.items.clone();
@@ -334,7 +365,10 @@ impl Game {
     pub(crate) fn set_tile(&mut self, level: &str, x: i32, y: i32, t: u8) {
         if let Some(l) = self.levels.get_mut(level) {
             l.set(x, y, t);
-            self.tiles.entry(level.to_string()).or_default().push(TileChange { x, y, t });
+            self.tiles
+                .entry(level.to_string())
+                .or_default()
+                .push(TileChange { x, y, t });
         }
     }
 
@@ -372,7 +406,11 @@ impl Game {
 
     pub fn vision(&self, e: &Entity) -> i32 {
         let lit = self.levels.get(&e.level).map(|l| l.lit).unwrap_or(false);
-        let r = if lit { 6 + (11.0 * self.daylight()).round() as i32 } else { 8 };
+        let r = if lit {
+            6 + (11.0 * self.daylight()).round() as i32
+        } else {
+            8
+        };
         r + e.stats.sight
     }
 
@@ -383,8 +421,16 @@ impl Game {
     }
 
     pub fn log(&mut self, id: Id, color: &str, text: String) {
-        if self.ents.get(&id).map(|e| e.kind == Kind::Player).unwrap_or(false) {
-            self.box_(id).logs.push(LogLine { text, color: color.into() });
+        if self
+            .ents
+            .get(&id)
+            .map(|e| e.kind == Kind::Player)
+            .unwrap_or(false)
+        {
+            self.box_(id).logs.push(LogLine {
+                text,
+                color: color.into(),
+            });
         }
     }
 
@@ -396,7 +442,15 @@ impl Game {
     }
 
     /// A floating text or a burst at a point.
-    pub(crate) fn fx(&mut self, level: &str, p: Vec2, text: &str, glyph: char, color: &str, ms: i32) {
+    pub(crate) fn fx(
+        &mut self,
+        level: &str,
+        p: Vec2,
+        text: &str,
+        glyph: char,
+        color: &str,
+        ms: i32,
+    ) {
         self.fx.entry(level.to_string()).or_default().push(Fx {
             x: p.x,
             y: p.y,
@@ -411,7 +465,15 @@ impl Game {
     }
 
     /// A flash over an area.
-    pub(crate) fn fx_area(&mut self, level: &str, p: Vec2, radius: f32, glyph: char, color: &str, ms: i32) {
+    pub(crate) fn fx_area(
+        &mut self,
+        level: &str,
+        p: Vec2,
+        radius: f32,
+        glyph: char,
+        color: &str,
+        ms: i32,
+    ) {
         self.fx.entry(level.to_string()).or_default().push(Fx {
             x: p.x,
             y: p.y,
@@ -426,8 +488,25 @@ impl Game {
     }
 
     /// A beam between two points (chain lightning, dashes).
-    pub(crate) fn fx_beam(&mut self, level: &str, a: Vec2, b: Vec2, glyph: char, color: &str, ms: i32) {
-        self.fx.entry(level.to_string()).or_default().push(Fx { x: a.x, y: a.y, x2: b.x, y2: b.y, glyph, color: color.into(), ms, ..Default::default() });
+    pub(crate) fn fx_beam(
+        &mut self,
+        level: &str,
+        a: Vec2,
+        b: Vec2,
+        glyph: char,
+        color: &str,
+        ms: i32,
+    ) {
+        self.fx.entry(level.to_string()).or_default().push(Fx {
+            x: a.x,
+            y: a.y,
+            x2: b.x,
+            y2: b.y,
+            glyph,
+            color: color.into(),
+            ms,
+            ..Default::default()
+        });
     }
 
     pub(crate) fn say(&mut self, id: Id, text: &str, ms: f64) {

@@ -17,7 +17,10 @@ pub fn deed_text(deed: &str, count: i32) -> String {
     match kind {
         "kills" => format!("Убить {count} врагов"),
         "kill" => {
-            let name = db().monster(arg).map(|m| m.name.clone()).unwrap_or(arg.into());
+            let name = db()
+                .monster(arg)
+                .map(|m| m.name.clone())
+                .unwrap_or(arg.into());
             format!("Убить {count}: {name}")
         }
         "theme" => format!("Убить {count}: {}", theme_foes(arg)),
@@ -70,8 +73,9 @@ pub fn theme_foes(theme: &str) -> String {
 pub fn deed_known(deed: &str) -> bool {
     let (kind, arg) = deed.split_once(':').unwrap_or((deed, ""));
     match kind {
-        "kills" | "bosses" | "elites" | "night" | "lowhp" | "deaths" | "gold" | "crits" | "heal" | "dodge" | "block" | "casts" | "summons" | "potions" | "steps"
-        | "depth" | "uniques" | "quests" | "landmarks" | "level" | "classlevel" => arg.is_empty(),
+        "kills" | "bosses" | "elites" | "night" | "lowhp" | "deaths" | "gold" | "crits"
+        | "heal" | "dodge" | "block" | "casts" | "summons" | "potions" | "steps" | "depth"
+        | "uniques" | "quests" | "landmarks" | "level" | "classlevel" => arg.is_empty(),
         "kill" => db().monster(arg).is_some(),
         "theme" => !arg.is_empty(),
         "dmg" => db().damage_type(arg).is_some(),
@@ -83,7 +87,10 @@ pub fn deed_known(deed: &str) -> bool {
 pub fn deed_progress(p: &PlayerState, sd: &SkillDef) -> i32 {
     match sd.deed.as_str() {
         "level" => p.level,
-        "classlevel" => db().branch(&sd.branch).map(|b| class_level(p, &b.class)).unwrap_or(0),
+        "classlevel" => db()
+            .branch(&sd.branch)
+            .map(|b| class_level(p, &b.class))
+            .unwrap_or(0),
         "landmarks" => p.found.len() as i32,
         d => p.deeds.get(d).copied().unwrap_or(0),
     }
@@ -95,7 +102,9 @@ pub fn hidden_for(p: &PlayerState, sd: &SkillDef) -> bool {
     if sd.deed.is_empty() {
         return false;
     }
-    db().branch(&sd.branch).map(|b| b.class.is_empty() || p.has_class(&b.class)).unwrap_or(false)
+    db().branch(&sd.branch)
+        .map(|b| b.class.is_empty() || p.has_class(&b.class))
+        .unwrap_or(false)
 }
 
 impl Game {
@@ -113,14 +122,18 @@ impl Game {
         if n <= 0 {
             return;
         }
-        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else { return };
+        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else {
+            return;
+        };
         *p.deeds.entry(key.into()).or_insert(0) += n;
         p.deed_check = true;
     }
 
     /// Adds a fractional amount (steps walked).
     pub(crate) fn deed_f(&mut self, id: Id, key: &str, v: f32) {
-        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else { return };
+        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else {
+            return;
+        };
         p.step_acc += v;
         if p.step_acc >= 1.0 {
             let n = p.step_acc.floor();
@@ -131,7 +144,9 @@ impl Game {
 
     /// Raises a counter that keeps the best value (the deepest floor).
     pub(crate) fn deed_max(&mut self, id: Id, key: &str, v: i32) {
-        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else { return };
+        let Some(p) = self.ents.get_mut(&id).and_then(|e| e.player.as_mut()) else {
+            return;
+        };
         if v > p.deeds.get(key).copied().unwrap_or(0) {
             p.deeds.insert(key.into(), v);
             p.deed_check = true;
@@ -154,7 +169,15 @@ impl Game {
             e.recalc();
             e.pm().dirty = true;
             let (level, pos) = (e.level.clone(), e.pos);
-            self.log(id, "#ff80ff", format!("Скрытый навык открыт: {}! ({})", sd.name, deed_text(&sd.deed, sd.deed_count)));
+            self.log(
+                id,
+                "#ff80ff",
+                format!(
+                    "Скрытый навык открыт: {}! ({})",
+                    sd.name,
+                    deed_text(&sd.deed, sd.deed_count)
+                ),
+            );
             self.fx(&level, pos, &format!("{}!", sd.name), '\0', "#ff80ff", 2200);
         }
     }

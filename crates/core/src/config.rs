@@ -26,7 +26,9 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Config {
-        let name = std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_else(|_| "Странник".into());
+        let name = std::env::var("USER")
+            .or_else(|_| std::env::var("USERNAME"))
+            .unwrap_or_else(|_| "Странник".into());
         Config {
             name,
             port: 7777,
@@ -49,7 +51,9 @@ pub fn home() -> PathBuf {
             return PathBuf::from(h);
         }
     }
-    let base = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).unwrap_or_else(|_| ".".into());
+    let base = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".into());
     PathBuf::from(base).join(".ratas")
 }
 
@@ -71,7 +75,10 @@ fn path() -> PathBuf {
 
 impl Config {
     pub fn load() -> Config {
-        let mut c: Config = std::fs::read(path()).ok().and_then(|d| serde_json::from_slice(&d).ok()).unwrap_or_default();
+        let mut c: Config = std::fs::read(path())
+            .ok()
+            .and_then(|d| serde_json::from_slice(&d).ok())
+            .unwrap_or_default();
         if c.port == 0 {
             c.port = 7777;
         }

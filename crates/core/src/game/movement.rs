@@ -22,20 +22,32 @@ impl Game {
     pub(crate) fn on_level(&self, level: &str) -> Vec<Id> {
         self.by_level
             .get(level)
-            .map(|v| v.iter().copied().filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false)).collect())
+            .map(|v| {
+                v.iter()
+                    .copied()
+                    .filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false))
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
     /// Is a cell taken by a living body?
     pub(crate) fn cell_taken(&self, level: &str, p: Pos) -> bool {
         self.by_level.get(level).map(|v| {
-            v.iter().any(|id| self.ents.get(id).map(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p).unwrap_or(false))
+            v.iter().any(|id| {
+                self.ents
+                    .get(id)
+                    .map(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p)
+                    .unwrap_or(false)
+            })
         }) == Some(true)
     }
 
     /// A free walkable cell near p (no body, no interaction).
     pub(crate) fn free_spot(&self, level: &str, p: Pos) -> Pos {
-        let Some(l) = self.levels.get(level) else { return p };
+        let Some(l) = self.levels.get(level) else {
+            return p;
+        };
         find_free(l, p, &|q| self.cell_taken(level, q))
     }
 
@@ -73,14 +85,18 @@ impl Game {
     pub(crate) fn move_all(&mut self, ids: &[Id]) {
         let dt = (TICK_MS / 1000.0) as f32;
         for &id in ids {
-            let Some(e) = self.ents.get(&id) else { continue };
+            let Some(e) = self.ents.get(&id) else {
+                continue;
+            };
             if !e.blocks() || !e.alive() {
                 if let Some(e) = self.ents.get_mut(&id) {
                     e.vel = Vec2::ZERO;
                 }
                 continue;
             }
-            let Some(l) = self.levels.get(&e.level) else { continue };
+            let Some(l) = self.levels.get(&e.level) else {
+                continue;
+            };
             // steering toward a goal point
             let mut want = e.want;
             let mut limit = f32::MAX;
@@ -121,7 +137,9 @@ impl Game {
             // bodies push each other apart: the mover stops at the other
             if let Some(list) = self.by_level.get(&e.level) {
                 for oid in list {
-                    let Some(o) = self.ents.get(oid) else { continue };
+                    let Some(o) = self.ents.get(oid) else {
+                        continue;
+                    };
                     if o.level != e.level || !self.collides(e, o) {
                         continue;
                     }
@@ -135,7 +153,11 @@ impl Game {
                     if dl >= (from - o.pos).len() - 1e-4 && dl > 0.01 {
                         continue;
                     }
-                    let n = if dl > 1e-4 { d * (1.0 / dl) } else { (from - o.pos).norm() };
+                    let n = if dl > 1e-4 {
+                        d * (1.0 / dl)
+                    } else {
+                        (from - o.pos).norm()
+                    };
                     let pushed = o.pos + n * min;
                     if l.circle_fits(pushed, r, &blocked) {
                         to = pushed;
@@ -183,7 +205,9 @@ impl Game {
     /// false when no step can be made.
     pub(crate) fn step_toward(&mut self, id: Id, goal: Vec2) -> bool {
         let now = self.now;
-        let Some(e) = self.ents.get(&id) else { return false };
+        let Some(e) = self.ents.get(&id) else {
+            return false;
+        };
         if e.stats.stunned {
             return false;
         }
@@ -194,15 +218,21 @@ impl Game {
             return false;
         }
         // in the same cell or a straight free line: walk directly
-        let Some(l) = self.levels.get(&level) else { return false };
-        if cell == gcell || (pos.dist(goal) < 6.0 && self.straight_walk(&level, pos, goal, e.radius())) {
+        let Some(l) = self.levels.get(&level) else {
+            return false;
+        };
+        if cell == gcell
+            || (pos.dist(goal) < 6.0 && self.straight_walk(&level, pos, goal, e.radius()))
+        {
             self.walk_to(id, goal);
             return true;
         }
         let needs_path = {
             let ms = e.monster.as_ref();
             match ms {
-                Some(ms) => ms.path.is_empty() || ms.path_goal != gcell || now - ms.path_at > 1500.0,
+                Some(ms) => {
+                    ms.path.is_empty() || ms.path_goal != gcell || now - ms.path_at > 1500.0
+                }
                 None => true,
             }
         };
@@ -221,7 +251,12 @@ impl Game {
                     if def.interact == "door" {
                         return 2.0; // creatures can open doors
                     }
-                    if !def.walkable || matches!(def.interact.as_str(), "stairs_up" | "stairs_down" | "dungeon") {
+                    if !def.walkable
+                        || matches!(
+                            def.interact.as_str(),
+                            "stairs_up" | "stairs_down" | "dungeon"
+                        )
+                    {
                         return -1.0;
                     }
                     let mut c = def.move_cost;
@@ -274,14 +309,19 @@ impl Game {
 
     /// Whether a body can walk straight from a to b without hitting walls.
     pub(crate) fn straight_walk(&self, level: &str, a: Vec2, b: Vec2, r: f32) -> bool {
-        let Some(l) = self.levels.get(level) else { return false };
+        let Some(l) = self.levels.get(level) else {
+            return false;
+        };
         let d = b - a;
         let n = (d.len() / 0.3).ceil() as i32;
         for i in 1..=n {
             let p = a + d * (i as f32 / n as f32);
             let blocked = |x: i32, y: i32| {
                 let def = l.def(x, y);
-                !l.inside(x, y) || !def.walkable || def.damage > 0.0 || (!def.interact.is_empty() && def.interact != "door")
+                !l.inside(x, y)
+                    || !def.walkable
+                    || def.damage > 0.0
+                    || (!def.interact.is_empty() && def.interact != "door")
             };
             if !l.circle_fits(p, r * 0.9, &blocked) {
                 return false;
@@ -291,7 +331,9 @@ impl Game {
     }
 
     pub(crate) fn greedy_step(&mut self, id: Id, goal: Vec2) -> bool {
-        let Some(e) = self.ents.get(&id) else { return false };
+        let Some(e) = self.ents.get(&id) else {
+            return false;
+        };
         let l = &self.levels[&e.level];
         let cell = e.cell();
         let mut best: Option<Pos> = None;
@@ -317,7 +359,9 @@ impl Game {
     }
 
     pub(crate) fn can_step(&self, level: &str, p: Pos) -> bool {
-        let Some(l) = self.levels.get(level) else { return false };
+        let Some(l) = self.levels.get(level) else {
+            return false;
+        };
         if !l.walkable(p.x, p.y) || self.cell_taken(level, p) {
             return false;
         }
@@ -327,7 +371,9 @@ impl Game {
 
     /// Steps away from a threat: to the free neighbour farthest from it.
     pub(crate) fn step_away(&mut self, id: Id, from: Vec2) -> bool {
-        let Some(e) = self.ents.get(&id) else { return false };
+        let Some(e) = self.ents.get(&id) else {
+            return false;
+        };
         let l = &self.levels[&e.level];
         let cell = e.cell();
         let mut best: Option<Pos> = None;
@@ -338,7 +384,10 @@ impl Game {
                 continue;
             }
             // no cutting corners
-            if d.x != 0 && d.y != 0 && (!l.walkable(cell.x + d.x, cell.y) || !l.walkable(cell.x, cell.y + d.y)) {
+            if d.x != 0
+                && d.y != 0
+                && (!l.walkable(cell.x + d.x, cell.y) || !l.walkable(cell.x, cell.y + d.y))
+            {
                 continue;
             }
             let dd = to.center().dist(from);

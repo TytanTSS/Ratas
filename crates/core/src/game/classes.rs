@@ -12,7 +12,12 @@ pub fn class_level(p: &PlayerState, class: &str) -> i32 {
     let d = db();
     p.skills
         .iter()
-        .filter_map(|(k, r)| d.skill(k).and_then(|s| d.branch(&s.branch)).filter(|b| b.class == class && !b.hidden).map(|_| *r))
+        .filter_map(|(k, r)| {
+            d.skill(k)
+                .and_then(|s| d.branch(&s.branch))
+                .filter(|b| b.class == class && !b.hidden)
+                .map(|_| *r)
+        })
         .sum()
 }
 
@@ -34,23 +39,34 @@ impl PlayerState {
 /// Explains why a skill cannot be learned ("" = it can).
 pub fn can_learn(p: &PlayerState, sd: Option<&SkillDef>) -> String {
     let d = db();
-    let Some(sd) = sd else { return "нет такого навыка".into() };
+    let Some(sd) = sd else {
+        return "нет такого навыка".into();
+    };
     if p.skill(&sd.key) >= sd.max_rank {
         return "максимальный ранг".into();
     }
     if let Some(b) = d.branch(&sd.branch) {
         if !sd.deed.is_empty() {
-            return format!("открывается деянием: {}", lower(&deed_text(&sd.deed, sd.deed_count)));
+            return format!(
+                "открывается деянием: {}",
+                lower(&deed_text(&sd.deed, sd.deed_count))
+            );
         }
         if b.secret {
             return "этому учат лишь уникальные мастера мира".into();
         }
         if !b.class.is_empty() && !p.has_class(&b.class) {
-            let name = d.class(&b.class).map(|c| c.name.clone()).unwrap_or(b.class.clone());
+            let name = d
+                .class(&b.class)
+                .map(|c| c.name.clone())
+                .unwrap_or(b.class.clone());
             return format!("класс «{name}» не начат");
         }
         if !b.subclass.is_empty() && p.subclasses.get(&b.class) != Some(&b.subclass) {
-            let name = d.subclass(&b.subclass).map(|s| s.name.clone()).unwrap_or(b.subclass.clone());
+            let name = d
+                .subclass(&b.subclass)
+                .map(|s| s.name.clone())
+                .unwrap_or(b.subclass.clone());
             return format!("нужен подкласс «{name}»");
         }
     }
@@ -74,19 +90,29 @@ pub fn can_start_class(p: &PlayerState, class: &str) -> String {
     match db().class(class) {
         None => "нет такого класса".into(),
         Some(_) if p.has_class(class) => "класс уже начат".into(),
-        Some(c) if c.secret && !p.unlocked("class", class) => "секретный класс: его открывает задание уникального персонажа".into(),
-        Some(_) if p.level < MULTICLASS_LEVEL => format!("второй класс можно начать с {MULTICLASS_LEVEL}-го уровня"),
+        Some(c) if c.secret && !p.unlocked("class", class) => {
+            "секретный класс: его открывает задание уникального персонажа".into()
+        }
+        Some(_) if p.level < MULTICLASS_LEVEL => {
+            format!("второй класс можно начать с {MULTICLASS_LEVEL}-го уровня")
+        }
         _ => String::new(),
     }
 }
 
 /// Explains why a subclass cannot be chosen ("" = it can).
 pub fn can_choose_subclass(p: &PlayerState, key: &str) -> String {
-    let Some(sc) = db().subclass(key) else { return "нет такого подкласса".into() };
+    let Some(sc) = db().subclass(key) else {
+        return "нет такого подкласса".into();
+    };
     if !p.has_class(&sc.class) {
         return "класс не начат".into();
     }
-    if p.subclasses.get(&sc.class).map(|s| !s.is_empty()).unwrap_or(false) {
+    if p.subclasses
+        .get(&sc.class)
+        .map(|s| !s.is_empty())
+        .unwrap_or(false)
+    {
         return "подкласс этого класса уже выбран".into();
     }
     if sc.secret && !p.unlocked("subclass", key) {
@@ -114,7 +140,14 @@ impl Game {
         e.recalc();
         e.pm().dirty = true;
         let (level, pos) = (e.level.clone(), e.pos);
-        self.log(id, "#80ffff", format!("Вы начинаете путь класса «{}». Его навыки — в окне K.", c.name));
+        self.log(
+            id,
+            "#80ffff",
+            format!(
+                "Вы начинаете путь класса «{}». Его навыки — в окне K.",
+                c.name
+            ),
+        );
         self.fx(&level, pos, &format!("{}!", c.name), '\0', &c.color, 1500);
     }
 
@@ -129,7 +162,11 @@ impl Game {
         e.pm().subclasses.insert(sc.class.clone(), key.into());
         e.pm().dirty = true;
         let (level, pos) = (e.level.clone(), e.pos);
-        self.log(id, "#ffd24a", format!("Ваш путь: {}! Его навыки открыты в окне K.", sc.name));
+        self.log(
+            id,
+            "#ffd24a",
+            format!("Ваш путь: {}! Его навыки открыты в окне K.", sc.name),
+        );
         self.fx(&level, pos, &format!("{}!", sc.name), '\0', &sc.color, 1800);
     }
 
@@ -167,12 +204,18 @@ impl Game {
                             p.classes.push(sc.class.clone());
                         }
                     }
-                    self.log(id, "#ff80ff", format!("Открыт секретный {name}! Выбрать его можно в окне навыков (K)."));
+                    self.log(
+                        id,
+                        "#ff80ff",
+                        format!("Открыт секретный {name}! Выбрать его можно в окне навыков (K)."),
+                    );
                 }
                 name
             }
             "skill" => {
-                let Some(sd) = d.skill(key) else { return key.into() };
+                let Some(sd) = d.skill(key) else {
+                    return key.into();
+                };
                 let e = self.ents.get_mut(&id).unwrap();
                 let p = e.pm();
                 if p.skill(key) < sd.max_rank {

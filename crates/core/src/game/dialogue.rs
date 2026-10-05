@@ -10,7 +10,10 @@ pub(crate) struct DialogueOption {
 }
 
 fn opt(label: &str, action: &'static str) -> DialogueOption {
-    DialogueOption { label: label.into(), action }
+    DialogueOption {
+        label: label.into(),
+        action,
+    }
 }
 
 pub(crate) fn compass(from: Pos, to: Pos) -> &'static str {
@@ -19,7 +22,16 @@ pub(crate) fn compass(from: Pos, to: Pos) -> &'static str {
     if ang < 0.0 {
         ang += 360.0;
     }
-    const DIRS: [&str; 8] = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"];
+    const DIRS: [&str; 8] = [
+        "east",
+        "north-east",
+        "north",
+        "north-west",
+        "west",
+        "south-west",
+        "south",
+        "south-east",
+    ];
     DIRS[((ang + 22.5) / 45.0) as usize % 8]
 }
 
@@ -72,13 +84,17 @@ impl Game {
         let n = self.ents[&npc].npc.as_ref().unwrap();
         if let Some(u) = db().unique(&n.unique) {
             let mut opts = vec![opt("Кто ты?", "about")];
-            let q = self.unique_quest(p, &u.key).map(|i| &self.ents[&p].p().quests[i]);
+            let q = self
+                .unique_quest(p, &u.key)
+                .map(|i| &self.ents[&p].p().quests[i]);
             if self.unique_done(p, &u.key) {
                 opts.push(opt("Спасибо за всё", "thanks"));
             } else {
                 match q {
                     None => opts.push(opt("Чем я могу помочь?", "uoffer")),
-                    Some(q) if q.done || q.kind == "relics" => opts.push(opt("Я выполнил твою просьбу", "ufinish")),
+                    Some(q) if q.done || q.kind == "relics" => {
+                        opts.push(opt("Я выполнил твою просьбу", "ufinish"))
+                    }
                     Some(_) => opts.push(opt("Напомни, что нужно сделать", "ufinish")),
                 }
             }
@@ -87,7 +103,10 @@ impl Game {
             return opts;
         }
         let role = db().npc_role(&n.role);
-        let mut opts = vec![opt("Как жизнь?", "mood"), opt("Что слышно в округе?", "rumor")];
+        let mut opts = vec![
+            opt("Как жизнь?", "mood"),
+            opt("Что слышно в округе?", "rumor"),
+        ];
         if let Some(r) = role {
             if !r.stories.is_empty() {
                 opts.push(opt("Расскажи о себе", "story"));
@@ -109,7 +128,10 @@ impl Game {
         if let Some(u) = db().unique(&n.unique) {
             return (u.name.clone(), u.title.clone());
         }
-        let rn = db().npc_role(&n.role).map(|r| r.name.clone()).unwrap_or(n.role.clone());
+        let rn = db()
+            .npc_role(&n.role)
+            .map(|r| r.name.clone())
+            .unwrap_or(n.role.clone());
         (n.pname.clone(), rn)
     }
 
@@ -121,7 +143,11 @@ impl Game {
             name,
             role,
             text: text.into(),
-            options: self.dialogue_options(p, npc).into_iter().map(|o| o.label).collect(),
+            options: self
+                .dialogue_options(p, npc)
+                .into_iter()
+                .map(|o| o.label)
+                .collect(),
             ai,
             waiting,
             ..Default::default()
@@ -133,7 +159,10 @@ impl Game {
     }
 
     pub(crate) fn open_dialogue(&mut self, p: Id, npc: Id) {
-        if self.ents.get(&npc).map(|n| n.npc.is_none()).unwrap_or(true) || self.ents[&p].dead || self.hostile(p, npc) {
+        if self.ents.get(&npc).map(|n| n.npc.is_none()).unwrap_or(true)
+            || self.ents[&p].dead
+            || self.hostile(p, npc)
+        {
             return;
         }
         let pp = self.ents[&p].pos;
@@ -159,7 +188,14 @@ impl Game {
         let rep = |s: &str| s.replace("{village}", &village).replace("{player}", &pname);
         if let Some(u) = db().unique(&n.unique) {
             if met > 0 {
-                return rep(&self.pick(npc, &["Снова ты, {player}. Я ждал.", "Вернулся? Хорошо.", "А, {player}. Говори."]));
+                return rep(&self.pick(
+                    npc,
+                    &[
+                        "Снова ты, {player}. Я ждал.",
+                        "Вернулся? Хорошо.",
+                        "А, {player}. Говори.",
+                    ],
+                ));
             }
             return rep(&u.greeting);
         }
@@ -168,12 +204,34 @@ impl Game {
         let pe = &self.ents[&p];
         let lit = self.levels[&self.ents[&npc].level].lit;
         if pe.hp < pe.max_hp * 0.4 {
-            parts.push(self.pick(npc, &["Да ты весь в крови!", "Эк тебя потрепало!", "Тебе бы к знахарке, путник."]));
+            parts.push(self.pick(
+                npc,
+                &[
+                    "Да ты весь в крови!",
+                    "Эк тебя потрепало!",
+                    "Тебе бы к знахарке, путник.",
+                ],
+            ));
         } else if lit && self.is_night() && !village.is_empty() {
-            parts.push(self.pick(npc, &["Поздно ты гуляешь.", "Ночь на дворе, а ты всё бродишь.", "В такую темень добрые люди по домам сидят."]));
+            parts.push(self.pick(
+                npc,
+                &[
+                    "Поздно ты гуляешь.",
+                    "Ночь на дворе, а ты всё бродишь.",
+                    "В такую темень добрые люди по домам сидят.",
+                ],
+            ));
         }
         if met > 0 && self.chance(60.0) {
-            parts.push(rep(&self.pick(npc, &["Снова ты, {player}!", "А, {player}, рад видеть.", "Опять ты? Ну, заходи.", "{player}! Как дорога?"])));
+            parts.push(rep(&self.pick(
+                npc,
+                &[
+                    "Снова ты, {player}!",
+                    "А, {player}, рад видеть.",
+                    "Опять ты? Ну, заходи.",
+                    "{player}! Как дорога?",
+                ],
+            )));
         } else if let Some(r) = role.filter(|r| !r.greetings.is_empty()) {
             parts.push(rep(self.rng.pick(&r.greetings)));
         }
@@ -197,7 +255,11 @@ impl Game {
             return "...".into();
         }
         let n = self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap();
-        let mut fresh: Vec<&str> = lines.iter().map(|l| l.as_ref()).filter(|l| !n.said.contains(*l)).collect();
+        let mut fresh: Vec<&str> = lines
+            .iter()
+            .map(|l| l.as_ref())
+            .filter(|l| !n.said.contains(*l))
+            .collect();
         if fresh.is_empty() {
             for l in lines {
                 n.said.remove(l.as_ref());
@@ -205,18 +267,30 @@ impl Game {
             fresh = lines.iter().map(|l| l.as_ref()).collect();
         }
         let l = fresh[self.rng.usize_n(fresh.len())].to_string();
-        self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap().said.insert(l.clone());
+        self.ents
+            .get_mut(&npc)
+            .unwrap()
+            .npc
+            .as_mut()
+            .unwrap()
+            .said
+            .insert(l.clone());
         l
     }
 
     pub(crate) fn close_dialogue(&mut self, p: Id, notify: bool) {
-        let Some(pl) = self.ents.get_mut(&p).and_then(|e| e.player.as_mut()) else { return };
+        let Some(pl) = self.ents.get_mut(&p).and_then(|e| e.player.as_mut()) else {
+            return;
+        };
         if pl.talking == 0 {
             return;
         }
         pl.talking = 0;
         if notify {
-            self.box_(p).dialogue = Some(Dialogue { close: true, ..Default::default() });
+            self.box_(p).dialogue = Some(Dialogue {
+                close: true,
+                ..Default::default()
+            });
         }
     }
 
@@ -255,7 +329,14 @@ impl Game {
             "ufinish" => self.finish_unique_quest(p, u.unwrap()),
             "thanks" => {
                 let name = self.ents[&p].name.clone();
-                self.pick(npc, &["Это я должен благодарить тебя.".to_string(), "Ступай со светом. Наши пути ещё пересекутся.".to_string(), format!("Мир тесен, {name}. Ещё увидимся.")])
+                self.pick(
+                    npc,
+                    &[
+                        "Это я должен благодарить тебя.".to_string(),
+                        "Ступай со светом. Наши пути ещё пересекутся.".to_string(),
+                        format!("Мир тесен, {name}. Ещё увидимся."),
+                    ],
+                )
             }
             a @ ("rest" | "upgrade" | "song" | "bless") => self.service(p, npc, a),
             "bye" => {
@@ -277,14 +358,38 @@ impl Game {
         let threats = threats.count();
         let mut lines: Vec<String> = Vec::new();
         if threats >= 3 {
-            lines.extend(["Чудища бродят у самой околицы. Страшно мне, честно скажу.", "Слышишь? Опять что-то воет за частоколом."].map(String::from));
+            lines.extend(
+                [
+                    "Чудища бродят у самой околицы. Страшно мне, честно скажу.",
+                    "Слышишь? Опять что-то воет за частоколом.",
+                ]
+                .map(String::from),
+            );
         } else if threats == 0 {
-            lines.extend(["Тихо нынче, хвала небесам.", "Спокойный денёк выдался. Редкость по нынешним временам."].map(String::from));
+            lines.extend(
+                [
+                    "Тихо нынче, хвала небесам.",
+                    "Спокойный денёк выдался. Редкость по нынешним временам.",
+                ]
+                .map(String::from),
+            );
         }
         if self.is_night() {
-            lines.extend(["Ночью я двери на засов запираю. И тебе советую.", "Не люблю ночь. Мёртвые не спят."].map(String::from));
+            lines.extend(
+                [
+                    "Ночью я двери на засов запираю. И тебе советую.",
+                    "Не люблю ночь. Мёртвые не спят.",
+                ]
+                .map(String::from),
+            );
         } else {
-            lines.extend(["Работы невпроворот, а день короткий.", "Солнце греет — уже хорошо."].map(String::from));
+            lines.extend(
+                [
+                    "Работы невпроворот, а день короткий.",
+                    "Солнце греет — уже хорошо.",
+                ]
+                .map(String::from),
+            );
         }
         let r = self.region_index(ne.cell());
         if r != 0 && self.regions[r - 1].danger >= 2 {
@@ -318,7 +423,12 @@ impl Game {
         }
         for lm in &self.landmarks {
             if lm.pos.dist(at) < 90 {
-                lines.push(format!("{} есть {}. {}", upper_first(compass_ru(at, lm.pos)), lm.name, landmark_word(&lm.kind)));
+                lines.push(format!(
+                    "{} есть {}. {}",
+                    upper_first(compass_ru(at, lm.pos)),
+                    lm.name,
+                    landmark_word(&lm.kind)
+                ));
             }
         }
         for o in self.on_level("overworld") {
@@ -338,12 +448,18 @@ impl Game {
         }
         for r in &self.regions {
             if r.danger >= 2 {
-                lines.push(format!("Держись подальше от земель «{}». Оттуда мало кто возвращается.", r.name));
+                lines.push(format!(
+                    "Держись подальше от земель «{}». Оттуда мало кто возвращается.",
+                    r.name
+                ));
             }
         }
         for m in &db().b.monsters {
             if m.boss {
-                lines.push(format!("Старики шепчут, что {} ещё жив и копит силы.", m.name));
+                lines.push(format!(
+                    "Старики шепчут, что {} ещё жив и копит силы.",
+                    m.name
+                ));
             }
         }
         if lines.is_empty() {
@@ -356,7 +472,9 @@ impl Game {
 
     pub(crate) fn turn_in_quests(&mut self, p: Id, npc: Id) -> String {
         let pm = self.ents.get_mut(&p).unwrap().pm();
-        let (done, kept): (Vec<Quest>, Vec<Quest>) = std::mem::take(&mut pm.quests).into_iter().partition(|q| q.done && q.giver_id == npc && q.unique.is_empty());
+        let (done, kept): (Vec<Quest>, Vec<Quest>) = std::mem::take(&mut pm.quests)
+            .into_iter()
+            .partition(|q| q.done && q.giver_id == npc && q.unique.is_empty());
         pm.quests = kept;
         if done.is_empty() {
             return String::new();
@@ -368,16 +486,33 @@ impl Game {
             self.give_xp(p, q.xp);
             self.deed(p, "quests", 1);
             parts.push(format!("{} золота", q.gold));
-            self.log(p, "#ffd24a", format!("Награда за задание: {} золота, {} опыта.", q.gold, q.xp));
+            self.log(
+                p,
+                "#ffd24a",
+                format!("Награда за задание: {} золота, {} опыта.", q.gold, q.xp),
+            );
         }
-        format!("Ты справился! Деревня тебе благодарна. Держи награду: {}.", parts.join(", "))
+        format!(
+            "Ты справился! Деревня тебе благодарна. Держи награду: {}.",
+            parts.join(", ")
+        )
     }
 
     pub(crate) fn quest_monsters(&self) -> Vec<&'static crate::content::MonsterDef> {
-        db().b.monsters.iter().filter(|m| m.boss || (m.depth == [0, 0] && m.weight > 0 && !m.elite)).collect()
+        db().b
+            .monsters
+            .iter()
+            .filter(|m| m.boss || (m.depth == [0, 0] && m.weight > 0 && !m.elite))
+            .collect()
     }
 
-    pub(crate) fn add_quest(&mut self, p: Id, npc: Id, monster: &str, count: i32) -> Result<usize, String> {
+    pub(crate) fn add_quest(
+        &mut self,
+        p: Id,
+        npc: Id,
+        monster: &str,
+        count: i32,
+    ) -> Result<usize, String> {
         let pm = self.ents[&p].p();
         if pm.quests.iter().any(|q| q.giver_id == npc && !q.done) {
             return Err("уже есть задание от этого персонажа".into());
@@ -385,7 +520,9 @@ impl Game {
         if pm.quests.len() >= 5 {
             return Err("слишком много заданий".into());
         }
-        let Some(def) = db().monster(monster) else { return Err("неизвестный монстр".into()) };
+        let Some(def) = db().monster(monster) else {
+            return Err("неизвестный монстр".into());
+        };
         let count = if def.boss { 1 } else { count.clamp(1, 10) };
         self.quest_seq += 1;
         let n = self.ents[&npc].npc.as_ref().unwrap();
@@ -409,17 +546,36 @@ impl Game {
         pm.quests.push(q);
         pm.dirty = true;
         let i = pm.quests.len() - 1;
-        self.log(p, "#ffd24a", format!("Новое задание — охота: {} ×{count} (награда {gold} золота). Журнал — J.", def.name));
+        self.log(
+            p,
+            "#ffd24a",
+            format!(
+                "Новое задание — охота: {} ×{count} (награда {gold} золота). Журнал — J.",
+                def.name
+            ),
+        );
         Ok(i)
     }
 
     pub(crate) fn canned_quest(&mut self, p: Id, npc: Id) -> String {
-        if let Some(q) = self.ents[&p].p().quests.iter().find(|q| q.giver_id == npc && !q.done) {
-            let name = db().monster(&q.monster).map(|m| m.name.clone()).unwrap_or(q.monster.clone());
+        if let Some(q) = self.ents[&p]
+            .p()
+            .quests
+            .iter()
+            .find(|q| q.giver_id == npc && !q.done)
+        {
+            let name = db()
+                .monster(&q.monster)
+                .map(|m| m.name.clone())
+                .unwrap_or(q.monster.clone());
             return format!("Ты ещё не закончил: {name} — {} из {}.", q.have, q.need);
         }
         let lvl = self.ents[&p].p().level;
-        let pool: Vec<_> = self.quest_monsters().into_iter().filter(|m| !m.boss || lvl >= 6).collect();
+        let pool: Vec<_> = self
+            .quest_monsters()
+            .into_iter()
+            .filter(|m| !m.boss || lvl >= 6)
+            .collect();
         if pool.is_empty() {
             return "Пока работы нет.".into();
         }
@@ -430,9 +586,15 @@ impl Game {
             Ok(i) => {
                 let q = &self.ents[&p].p().quests[i];
                 if m.boss {
-                    format!("Говорят, в подземелье правит {}. Уничтожь это зло — и {} золота твои.", m.name, q.gold)
+                    format!(
+                        "Говорят, в подземелье правит {}. Уничтожь это зло — и {} золота твои.",
+                        m.name, q.gold
+                    )
                 } else {
-                    format!("Нас одолевают твари. Убей {}: {} — и получишь {} золота.", q.need, m.name, q.gold)
+                    format!(
+                        "Нас одолевают твари. Убей {}: {} — и получишь {} золота.",
+                        q.need, m.name, q.gold
+                    )
                 }
             }
         }
@@ -441,8 +603,13 @@ impl Game {
     // ---- trade ----
 
     pub(crate) fn sell(&mut self, p: Id, idx: i32) {
-        let Some(npc) = self.talking_to(p) else { return };
-        let trader = db().npc_role(&self.ents[&npc].npc.as_ref().unwrap().role).map(|r| r.trader).unwrap_or(false);
+        let Some(npc) = self.talking_to(p) else {
+            return;
+        };
+        let trader = db()
+            .npc_role(&self.ents[&npc].npc.as_ref().unwrap().role)
+            .map(|r| r.trader)
+            .unwrap_or(false);
         if !trader {
             return;
         }
@@ -460,7 +627,11 @@ impl Game {
         }
         pm.gold += price;
         pm.dirty = true;
-        self.log(p, "#ffd700", format!("Продано: {} за {price} золота.", st.name()));
+        self.log(
+            p,
+            "#ffd700",
+            format!("Продано: {} за {price} золота.", st.name()),
+        );
     }
 
     // ---- AI conversation ----
@@ -469,7 +640,12 @@ impl Game {
         let at = self.ents[&npc].cell();
         let village = self.ents[&npc].npc.as_ref().unwrap().village.clone();
         let mut facts = Vec::new();
-        let mut ds: Vec<(usize, i32)> = self.entrances.iter().enumerate().map(|(i, e)| (i, e.pos.manhattan(at))).collect();
+        let mut ds: Vec<(usize, i32)> = self
+            .entrances
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (i, e.pos.manhattan(at)))
+            .collect();
         ds.sort_by_key(|d| d.1);
         for (i, d) in ds.into_iter().take(4) {
             let e = &self.entrances[i];
@@ -484,12 +660,21 @@ impl Game {
         }
         for v in &self.villages {
             if v.name != village {
-                facts.push(format!("The village {} lies to the {}.", v.name, compass(at, v.center)));
+                facts.push(format!(
+                    "The village {} lies to the {}.",
+                    v.name,
+                    compass(at, v.center)
+                ));
             }
         }
         for lm in &self.landmarks {
             if lm.pos.dist(at) < 100 {
-                facts.push(format!("Landmark: {} ({}) to the {}.", lm.name, lm.kind, compass(at, lm.pos)));
+                facts.push(format!(
+                    "Landmark: {} ({}) to the {}.",
+                    lm.name,
+                    lm.kind,
+                    compass(at, lm.pos)
+                ));
             }
         }
         for o in self.on_level("overworld") {
@@ -502,12 +687,19 @@ impl Game {
         }
         for r in &self.regions {
             if r.danger >= 2 {
-                facts.push(format!("The lands called {} ({}) are deadly.", r.name, r.kind));
+                facts.push(format!(
+                    "The lands called {} ({}) are deadly.",
+                    r.name, r.kind
+                ));
             }
         }
         for m in &db().b.monsters {
             if m.boss {
-                facts.push(format!("Rumour: {} rules the deepest level of a {}.", m.name, m.themes.join("/")));
+                facts.push(format!(
+                    "Rumour: {} rules the deepest level of a {}.",
+                    m.name,
+                    m.themes.join("/")
+                ));
             }
         }
         for c in &self.chronicle {
@@ -517,7 +709,9 @@ impl Game {
     }
 
     pub(crate) fn talk_ai(&mut self, p: Id, text: &str) {
-        let Some(npc) = self.talking_to(p) else { return };
+        let Some(npc) = self.talking_to(p) else {
+            return;
+        };
         let text: String = text.trim().chars().take(300).collect();
         if text.is_empty() {
             return;
@@ -542,7 +736,11 @@ impl Game {
         let pl = pe.p();
         let mut req = NpcRequest {
             npc_name: n.pname.clone(),
-            village: if n.village.is_empty() { "the wilds".into() } else { n.village.clone() },
+            village: if n.village.is_empty() {
+                "the wilds".into()
+            } else {
+                n.village.clone()
+            },
             world: self.world_name.clone(),
             time_of_day: self.time_name().into(),
             player_name: pe.name.clone(),
@@ -579,17 +777,23 @@ impl Game {
             } else {
                 "not given yet: the player can ask you about it"
             };
-            req.own_quest = format!("{} Reward: {}. State: {state}.", u.offer, reward_name(&u.reward));
+            req.own_quest = format!(
+                "{} Reward: {}. State: {state}.",
+                u.offer,
+                reward_name(&u.reward)
+            );
         }
         let d = db();
         req.player_class = pl
             .classes
             .iter()
             .filter_map(|ck| d.class(ck).map(|c| (ck, c)))
-            .map(|(ck, c)| match pl.subclasses.get(ck).and_then(|s| d.subclass(s)) {
-                Some(sc) => format!("{} ({})", c.name, sc.name),
-                None => c.name.clone(),
-            })
+            .map(
+                |(ck, c)| match pl.subclasses.get(ck).and_then(|s| d.subclass(s)) {
+                    Some(sc) => format!("{} ({})", c.name, sc.name),
+                    None => c.name.clone(),
+                },
+            )
             .collect::<Vec<_>>()
             .join(", ");
         for b in &pl.bosses {
@@ -598,24 +802,42 @@ impl Game {
             }
         }
         if pl.kills > 0 {
-            req.player_deeds.push(format!("has killed {} monsters", pl.kills));
+            req.player_deeds
+                .push(format!("has killed {} monsters", pl.kills));
         }
         if pe.hp < pe.max_hp * 0.4 {
             req.player_deeds.push("is badly wounded right now".into());
         }
         for q in &pl.quests {
-            let name = d.monster(&q.monster).map(|m| m.name.clone()).unwrap_or(q.monster.clone());
-            let status = if q.done { "done, reward not yet collected".to_string() } else { format!("{}/{}", q.have, q.need) };
-            req.player_quests.push(format!("slay {name} for {} ({status})", q.giver));
+            let name = d
+                .monster(&q.monster)
+                .map(|m| m.name.clone())
+                .unwrap_or(q.monster.clone());
+            let status = if q.done {
+                "done, reward not yet collected".to_string()
+            } else {
+                format!("{}/{}", q.have, q.need)
+            };
+            req.player_quests
+                .push(format!("slay {name} for {} ({status})", q.giver));
         }
         for t in n.memory.get(&pe.name).cloned().unwrap_or_default() {
-            req.history.push(LTurn { who: t.who, text: t.text });
+            req.history.push(LTurn {
+                who: t.who,
+                text: t.text,
+            });
         }
         for key in self.gift_keys(npc) {
-            req.gifts.push(Option_ { name: d.item(&key).unwrap().name.clone(), key });
+            req.gifts.push(Option_ {
+                name: d.item(&key).unwrap().name.clone(),
+                key,
+            });
         }
         for m in self.quest_monsters() {
-            req.monsters.push(Option_ { key: m.key.clone(), name: m.name.clone() });
+            req.monsters.push(Option_ {
+                key: m.key.clone(),
+                name: m.name.clone(),
+            });
         }
         let mood = self.mood_line(npc);
         req.mood = mood;
@@ -626,13 +848,21 @@ impl Game {
         self.brain.as_ref().unwrap().npc_talk(
             req,
             Box::new(move |r: Result<NpcReply, String>| {
-                let _ = tx.send(Box::new(move |g: &mut Game| g.apply_npc_reply(&account, npc, &text, r)));
+                let _ = tx.send(Box::new(move |g: &mut Game| {
+                    g.apply_npc_reply(&account, npc, &text, r)
+                }));
             }),
         );
     }
 
     pub(crate) fn gift_keys(&self, npc: Id) -> Vec<String> {
-        let mut keys: Vec<String> = db().b.items.iter().filter(|it| it.kind == "consumable" && it.value <= 20).map(|it| it.key.clone()).collect();
+        let mut keys: Vec<String> = db()
+            .b
+            .items
+            .iter()
+            .filter(|it| it.kind == "consumable" && it.value <= 20)
+            .map(|it| it.key.clone())
+            .collect();
         if let Some(role) = db().npc_role(&self.ents[&npc].npc.as_ref().unwrap().role) {
             for k in &role.goods {
                 if db().item(k).map(|d| d.value <= 30).unwrap_or(false) && !keys.contains(k) {
@@ -643,9 +873,17 @@ impl Game {
         keys
     }
 
-    pub(crate) fn apply_npc_reply(&mut self, account: &str, npc: Id, said: &str, r: Result<NpcReply, String>) {
+    pub(crate) fn apply_npc_reply(
+        &mut self,
+        account: &str,
+        npc: Id,
+        said: &str,
+        r: Result<NpcReply, String>,
+    ) {
         let now = self.now;
-        let Some(ne) = self.ents.get_mut(&npc) else { return };
+        let Some(ne) = self.ents.get_mut(&npc) else {
+            return;
+        };
         let Some(n) = ne.npc.as_mut() else { return };
         n.busy = false;
         let p = self.online.get(account).copied();
@@ -672,8 +910,14 @@ impl Game {
         }
         let n = self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap();
         let mem = n.memory.entry(account.to_string()).or_default();
-        mem.push(Turn { who: "player".into(), text: said.into() });
-        mem.push(Turn { who: "npc".into(), text: say.clone() });
+        mem.push(Turn {
+            who: "player".into(),
+            text: said.into(),
+        });
+        mem.push(Turn {
+            who: "npc".into(),
+            text: say.clone(),
+        });
         if mem.len() > 16 {
             let k = mem.len() - 16;
             mem.drain(..k);
@@ -701,7 +945,14 @@ impl Game {
                     if last == 0.0 || now - last > 5.0 * 60.0 * 1000.0 {
                         let st = ItemStack::new(&r.item);
                         if self.add_item(p, st.clone()) {
-                            self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap().gifts.insert(account.into(), now);
+                            self.ents
+                                .get_mut(&npc)
+                                .unwrap()
+                                .npc
+                                .as_mut()
+                                .unwrap()
+                                .gifts
+                                .insert(account.into(), now);
                             self.log(p, "#c0c0ff", format!("{pname} дарит вам: {}.", st.name()));
                         }
                     }
@@ -711,7 +962,14 @@ impl Game {
                 let k = format!("heal:{account}");
                 let last = n.gifts.get(&k).copied().unwrap_or(0.0);
                 if last == 0.0 || now - last > 60.0 * 1000.0 {
-                    self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap().gifts.insert(k, now);
+                    self.ents
+                        .get_mut(&npc)
+                        .unwrap()
+                        .npc
+                        .as_mut()
+                        .unwrap()
+                        .gifts
+                        .insert(k, now);
                     let pe = &self.ents[&p];
                     let missing = pe.max_hp - pe.hp;
                     self.heal(p, missing);
@@ -719,7 +977,12 @@ impl Game {
                 }
             }
             "offer_quest" => {
-                if role.map(|r| r.quest_giver).unwrap_or(false) && self.quest_monsters().iter().any(|m| m.key == r.quest_monster) {
+                if role.map(|r| r.quest_giver).unwrap_or(false)
+                    && self
+                        .quest_monsters()
+                        .iter()
+                        .any(|m| m.key == r.quest_monster)
+                {
                     let _ = self.add_quest(p, npc, &r.quest_monster, r.quest_count);
                 }
             }
@@ -734,7 +997,15 @@ impl Game {
             "end" => {
                 if self.ents[&p].p().talking == npc {
                     let (name, role_name) = self.npc_title(npc);
-                    self.box_(p).dialogue = Some(Dialogue { npc, name, role: role_name, text: say, options: vec!["Уйти".into()], ai: true, ..Default::default() });
+                    self.box_(p).dialogue = Some(Dialogue {
+                        npc,
+                        name,
+                        role: role_name,
+                        text: say,
+                        options: vec!["Уйти".into()],
+                        ai: true,
+                        ..Default::default()
+                    });
                     self.ents.get_mut(&p).unwrap().pm().talking = 0;
                 }
                 return;
@@ -753,7 +1024,11 @@ impl Game {
         let (plvl, ppos) = (self.ents[&p].p().level, self.ents[&p].pos);
         let ne = self.ents.get_mut(&npc).unwrap();
         let n = ne.npc.take().unwrap();
-        let (hp, dmg) = if n.role == "guard" { (80.0, [6.0, 11.0]) } else { (45.0, [4.0, 8.0]) };
+        let (hp, dmg) = if n.role == "guard" {
+            (80.0, [6.0, 11.0])
+        } else {
+            (45.0, [4.0, 8.0])
+        };
         ne.kind = Kind::Monster;
         ne.faction = Faction::Monster;
         ne.color = "#ff5050".into();

@@ -101,8 +101,24 @@ pub struct TacticReply {
     pub say: String,
 }
 
-pub const TACTICS: &[&str] = &["aggressive", "defensive", "flank", "retreat", "call_allies", "use_ability"];
-pub const NPC_ACTIONS: &[&str] = &["none", "give_gold", "give_item", "heal", "offer_quest", "trade", "hostile", "end"];
+pub const TACTICS: &[&str] = &[
+    "aggressive",
+    "defensive",
+    "flank",
+    "retreat",
+    "call_allies",
+    "use_ability",
+];
+pub const NPC_ACTIONS: &[&str] = &[
+    "none",
+    "give_gold",
+    "give_item",
+    "heal",
+    "offer_quest",
+    "trade",
+    "hostile",
+    "end",
+];
 
 enum Auth {
     Key(String),
@@ -128,7 +144,9 @@ pub struct Brain(Arc<Inner>);
 
 /// Reports whether an API key is available from config or environment.
 pub fn has_credentials(api_key: &str) -> bool {
-    !api_key.is_empty() || env("ANTHROPIC_API_KEY").is_some() || env("ANTHROPIC_AUTH_TOKEN").is_some()
+    !api_key.is_empty()
+        || env("ANTHROPIC_API_KEY").is_some()
+        || env("ANTHROPIC_AUTH_TOKEN").is_some()
 }
 
 fn env(k: &str) -> Option<String> {
@@ -138,13 +156,29 @@ fn env(k: &str) -> Option<String> {
 /// The proxy from HTTPS_PROXY / HTTP_PROXY unless NO_PROXY lists the host.
 fn proxy_for(base: &str) -> Option<String> {
     let https = base.starts_with("https:");
-    let host = base.split("://").nth(1).unwrap_or(base).split(['/', ':']).next().unwrap_or("").to_lowercase();
-    let no = env("NO_PROXY").or_else(|| env("no_proxy")).unwrap_or_default();
-    for n in no.split(',').map(|n| n.trim().trim_start_matches('*').to_lowercase()) {
+    let host = base
+        .split("://")
+        .nth(1)
+        .unwrap_or(base)
+        .split(['/', ':'])
+        .next()
+        .unwrap_or("")
+        .to_lowercase();
+    let no = env("NO_PROXY")
+        .or_else(|| env("no_proxy"))
+        .unwrap_or_default();
+    for n in no
+        .split(',')
+        .map(|n| n.trim().trim_start_matches('*').to_lowercase())
+    {
         if n.is_empty() {
             continue;
         }
-        if n == "*" || host == n || (n.starts_with('.') && host.ends_with(&n)) || host.ends_with(&format!(".{n}")) {
+        if n == "*"
+            || host == n
+            || (n.starts_with('.') && host.ends_with(&n))
+            || host.ends_with(&format!(".{n}"))
+        {
             return None;
         }
     }
@@ -152,9 +186,13 @@ fn proxy_for(base: &str) -> Option<String> {
         return None;
     }
     if https {
-        env("HTTPS_PROXY").or_else(|| env("https_proxy")).or_else(|| env("ALL_PROXY"))
+        env("HTTPS_PROXY")
+            .or_else(|| env("https_proxy"))
+            .or_else(|| env("ALL_PROXY"))
     } else {
-        env("HTTP_PROXY").or_else(|| env("http_proxy")).or_else(|| env("ALL_PROXY"))
+        env("HTTP_PROXY")
+            .or_else(|| env("http_proxy"))
+            .or_else(|| env("ALL_PROXY"))
     }
 }
 
@@ -163,7 +201,11 @@ pub type Done<T> = Box<dyn FnOnce(Result<T, String>) + Send>;
 impl Brain {
     /// Creates a Brain; None when no credentials are available.
     pub fn new(api_key: &str, model: &str) -> Option<Brain> {
-        Brain::with_base(api_key, model, &env("ANTHROPIC_BASE_URL").unwrap_or_else(|| "https://api.anthropic.com".into()))
+        Brain::with_base(
+            api_key,
+            model,
+            &env("ANTHROPIC_BASE_URL").unwrap_or_else(|| "https://api.anthropic.com".into()),
+        )
     }
 
     /// A Brain talking to another API address (tests, proxies).
@@ -177,7 +219,11 @@ impl Brain {
         } else {
             return None;
         };
-        let model = if model.is_empty() { DEFAULT_MODEL } else { model };
+        let model = if model.is_empty() {
+            DEFAULT_MODEL
+        } else {
+            model
+        };
         let mut ab = ureq::AgentBuilder::new().timeout(Duration::from_secs(60));
         if let Some(p) = proxy_for(base) {
             if let Ok(p) = ureq::Proxy::new(p) {
@@ -240,7 +286,9 @@ impl Brain {
             }
             let r = b.call(NPC_SYSTEM, &npc_prompt(&req), npc_schema(), 4096);
             b.0.talking.fetch_sub(1, Ordering::SeqCst);
-            done(r.and_then(|v| serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))));
+            done(r.and_then(|v| {
+                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
+            }));
         });
     }
 
@@ -259,7 +307,9 @@ impl Brain {
         std::thread::spawn(move || {
             let r = b.call(TACTIC_SYSTEM, &tactic_prompt(&req), tactic_schema(), 2048);
             b.0.tactics.fetch_sub(1, Ordering::SeqCst);
-            done(r.and_then(|v| serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))));
+            done(r.and_then(|v| {
+                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
+            }));
         });
         true
     }
@@ -273,7 +323,11 @@ impl Brain {
     /// Server-side refusal fallbacks for the models that run safety
     /// classifiers (Claude API only).
     fn supports_fallback(&self) -> bool {
-        matches!(self.0.model.as_str(), "claude-opus-5-5" | "claude-opus-5" | "claude-fable-5-1" | "claude-sonnet-5-5") && !self.0.base.contains("bedrock") && !self.0.base.contains("vertex")
+        matches!(
+            self.0.model.as_str(),
+            "claude-opus-5-5" | "claude-opus-5" | "claude-fable-5-1" | "claude-sonnet-5-5"
+        ) && !self.0.base.contains("bedrock")
+            && !self.0.base.contains("vertex")
     }
 
     fn fail(&self, err: &str, status: u16) {
@@ -284,7 +338,13 @@ impl Brain {
         }
     }
 
-    fn call(&self, system: &str, user: &str, schema: Value, max_tokens: u32) -> Result<Value, String> {
+    fn call(
+        &self,
+        system: &str,
+        user: &str,
+        schema: Value,
+        max_tokens: u32,
+    ) -> Result<Value, String> {
         let mut body = json!({
             "model": self.0.model,
             "max_tokens": max_tokens,
@@ -296,7 +356,12 @@ impl Brain {
         if self.supports_effort() {
             body["output_config"]["effort"] = json!("low");
         }
-        let mut req = self.0.agent.post(&format!("{}/v1/messages", self.0.base)).set("anthropic-version", "2023-06-01").set("content-type", "application/json");
+        let mut req = self
+            .0
+            .agent
+            .post(&format!("{}/v1/messages", self.0.base))
+            .set("anthropic-version", "2023-06-01")
+            .set("content-type", "application/json");
         if self.supports_fallback() {
             body["fallbacks"] = json!("default");
             req = req.set("anthropic-beta", "server-side-fallback-2026-07-01");
@@ -330,7 +395,16 @@ impl Brain {
             Some("max_tokens") => return Err("ответ ИИ обрезан".into()),
             _ => {}
         }
-        let text: String = v["content"].as_array().map(|blocks| blocks.iter().filter(|b| b["type"] == "text").filter_map(|b| b["text"].as_str()).collect()).unwrap_or_default();
+        let text: String = v["content"]
+            .as_array()
+            .map(|blocks| {
+                blocks
+                    .iter()
+                    .filter(|b| b["type"] == "text")
+                    .filter_map(|b| b["text"].as_str())
+                    .collect()
+            })
+            .unwrap_or_default();
         serde_json::from_str(&text).map_err(|e| format!("неверный JSON от ИИ: {e}"))
     }
 }
@@ -347,15 +421,33 @@ mod tests {
             village: "Каменка".into(),
             message: "Привет!".into(),
             can_give_quest: true,
-            monsters: vec![Option_ { key: "wolf".into(), name: "Волк".into() }],
+            monsters: vec![Option_ {
+                key: "wolf".into(),
+                name: "Волк".into(),
+            }],
             lang: "en".into(),
             ..Default::default()
         };
         let p = npc_prompt(&req);
-        assert!(p.contains("Ждан") && p.contains("wolf: Волк") && p.contains("English") && p.contains("Привет!"));
-        let t = tactic_prompt(&TacticRequest { name: "Орк".into(), boss: true, ..Default::default() });
+        assert!(
+            p.contains("Ждан")
+                && p.contains("wolf: Волк")
+                && p.contains("English")
+                && p.contains("Привет!")
+        );
+        let t = tactic_prompt(&TacticRequest {
+            name: "Орк".into(),
+            boss: true,
+            ..Default::default()
+        });
         assert!(t.contains("boss"));
-        assert_eq!(npc_schema()["properties"]["action"]["enum"].as_array().unwrap().len(), NPC_ACTIONS.len());
+        assert_eq!(
+            npc_schema()["properties"]["action"]["enum"]
+                .as_array()
+                .unwrap()
+                .len(),
+            NPC_ACTIONS.len()
+        );
     }
 
     #[test]

@@ -16,27 +16,111 @@ pub struct AdminCommand {
 
 /// The commands in the order of the help.
 pub const ADMIN_COMMANDS: &[AdminCommand] = &[
-    AdminCommand { name: "/god", args: "", desc: "бессмертие вкл/выкл" },
-    AdminCommand { name: "/nocd", args: "", desc: "умения без маны и перезарядки вкл/выкл" },
-    AdminCommand { name: "/heal", args: "", desc: "полное здоровье и мана, снять эффекты" },
-    AdminCommand { name: "/level", args: "N", desc: "поднять героя до уровня N" },
-    AdminCommand { name: "/xp", args: "N", desc: "дать N опыта" },
-    AdminCommand { name: "/gold", args: "N", desc: "дать N золота" },
-    AdminCommand { name: "/points", args: "N", desc: "дать N очков навыков и характеристик" },
-    AdminCommand { name: "/give", args: "предмет [кол-во] [редкость]", desc: "дать предмет по ключу или части названия" },
-    AdminCommand { name: "/items", args: "[фильтр]", desc: "список предметов" },
-    AdminCommand { name: "/spawn", args: "монстр [кол-во] [уровень]", desc: "призвать монстров рядом" },
-    AdminCommand { name: "/monsters", args: "[фильтр]", desc: "список монстров" },
-    AdminCommand { name: "/kill", args: "[радиус]", desc: "убить врагов вокруг (по умолчанию 12)" },
-    AdminCommand { name: "/tp", args: "X Y | уровень", desc: "телепорт: в точку или на уровень (d3-2, overworld)" },
-    AdminCommand { name: "/levels", args: "", desc: "список уровней мира" },
-    AdminCommand { name: "/find", args: "имя", desc: "телепорт к NPC, уникальному персонажу или монстру" },
-    AdminCommand { name: "/unique", args: "ключ", desc: "поставить уникального персонажа рядом (даже если его нет в мире)" },
-    AdminCommand { name: "/uniques", args: "", desc: "список уникальных персонажей" },
-    AdminCommand { name: "/unlock", args: "all | class:ключ | subclass:ключ | skill:ключ", desc: "открыть секреты" },
-    AdminCommand { name: "/reveal", args: "", desc: "открыть карту текущего уровня" },
-    AdminCommand { name: "/time", args: "day | night | ЧЧ", desc: "сменить время суток" },
-    AdminCommand { name: "/speed", args: "N", desc: "бонус к скорости бега в процентах (0 — снять)" },
+    AdminCommand {
+        name: "/god",
+        args: "",
+        desc: "бессмертие вкл/выкл",
+    },
+    AdminCommand {
+        name: "/nocd",
+        args: "",
+        desc: "умения без маны и перезарядки вкл/выкл",
+    },
+    AdminCommand {
+        name: "/heal",
+        args: "",
+        desc: "полное здоровье и мана, снять эффекты",
+    },
+    AdminCommand {
+        name: "/level",
+        args: "N",
+        desc: "поднять героя до уровня N",
+    },
+    AdminCommand {
+        name: "/xp",
+        args: "N",
+        desc: "дать N опыта",
+    },
+    AdminCommand {
+        name: "/gold",
+        args: "N",
+        desc: "дать N золота",
+    },
+    AdminCommand {
+        name: "/points",
+        args: "N",
+        desc: "дать N очков навыков и характеристик",
+    },
+    AdminCommand {
+        name: "/give",
+        args: "предмет [кол-во] [редкость]",
+        desc: "дать предмет по ключу или части названия",
+    },
+    AdminCommand {
+        name: "/items",
+        args: "[фильтр]",
+        desc: "список предметов",
+    },
+    AdminCommand {
+        name: "/spawn",
+        args: "монстр [кол-во] [уровень]",
+        desc: "призвать монстров рядом",
+    },
+    AdminCommand {
+        name: "/monsters",
+        args: "[фильтр]",
+        desc: "список монстров",
+    },
+    AdminCommand {
+        name: "/kill",
+        args: "[радиус]",
+        desc: "убить врагов вокруг (по умолчанию 12)",
+    },
+    AdminCommand {
+        name: "/tp",
+        args: "X Y | уровень",
+        desc: "телепорт: в точку или на уровень (d3-2, overworld)",
+    },
+    AdminCommand {
+        name: "/levels",
+        args: "",
+        desc: "список уровней мира",
+    },
+    AdminCommand {
+        name: "/find",
+        args: "имя",
+        desc: "телепорт к NPC, уникальному персонажу или монстру",
+    },
+    AdminCommand {
+        name: "/unique",
+        args: "ключ",
+        desc: "поставить уникального персонажа рядом (даже если его нет в мире)",
+    },
+    AdminCommand {
+        name: "/uniques",
+        args: "",
+        desc: "список уникальных персонажей",
+    },
+    AdminCommand {
+        name: "/unlock",
+        args: "all | class:ключ | subclass:ключ | skill:ключ",
+        desc: "открыть секреты",
+    },
+    AdminCommand {
+        name: "/reveal",
+        args: "",
+        desc: "открыть карту текущего уровня",
+    },
+    AdminCommand {
+        name: "/time",
+        args: "day | night | ЧЧ",
+        desc: "сменить время суток",
+    },
+    AdminCommand {
+        name: "/speed",
+        args: "N",
+        desc: "бонус к скорости бега в процентах (0 — снять)",
+    },
 ];
 
 fn on_off(b: bool) -> &'static str {
@@ -61,13 +145,21 @@ fn split_tail(args: &[String], is_tail: impl Fn(&str) -> bool) -> (String, Vec<S
 }
 
 /// Finds a definition by exact key, then by a part of the key or name.
-fn find_def<'a, T>(all: &'a [T], key: impl Fn(&T) -> &str, name: impl Fn(&T) -> &str, q: &str) -> Option<&'a T> {
+fn find_def<'a, T>(
+    all: &'a [T],
+    key: impl Fn(&T) -> &str,
+    name: impl Fn(&T) -> &str,
+    q: &str,
+) -> Option<&'a T> {
     let q = q.trim().to_lowercase();
     if q.is_empty() {
         return None;
     }
     let k = q.replace(' ', "_"); // "long sword" is long_sword
-    all.iter().find(|t| key(t) == k).or_else(|| all.iter().find(|t| key(t).contains(&k) || name(t).to_lowercase().contains(&q)))
+    all.iter().find(|t| key(t) == k).or_else(|| {
+        all.iter()
+            .find(|t| key(t).contains(&k) || name(t).to_lowercase().contains(&q))
+    })
 }
 
 impl Game {
@@ -80,13 +172,22 @@ impl Game {
         if self.ents.get(&id).and_then(|e| e.player.as_ref()).is_none() {
             return;
         }
-        let f: Vec<String> = line.trim().trim_start_matches('/').split_whitespace().map(String::from).collect();
+        let f: Vec<String> = line
+            .trim()
+            .trim_start_matches('/')
+            .split_whitespace()
+            .map(String::from)
+            .collect();
         if f.is_empty() {
             return;
         }
         let cmd = f[0].to_lowercase();
         let args = &f[1..];
-        let num = |i: usize, def: i32| args.get(i).and_then(|a| a.parse::<i32>().ok()).unwrap_or(def);
+        let num = |i: usize, def: i32| {
+            args.get(i)
+                .and_then(|a| a.parse::<i32>().ok())
+                .unwrap_or(def)
+        };
         let say = |g: &mut Game, s: String| g.say_admin(id, s);
         match cmd.as_str() {
             "help" | "?" => {
@@ -140,12 +241,23 @@ impl Game {
             }
             "give" => self.admin_give(id, args),
             "items" => {
-                let all: Vec<String> = db().b.items.iter().filter(|i| i.kind != "gold").map(|i| format!("{} — {}", i.key, i.name)).collect();
+                let all: Vec<String> = db()
+                    .b
+                    .items
+                    .iter()
+                    .filter(|i| i.kind != "gold")
+                    .map(|i| format!("{} — {}", i.key, i.name))
+                    .collect();
                 self.admin_list(id, args, &all);
             }
             "spawn" => self.admin_spawn(id, args),
             "monsters" => {
-                let all: Vec<String> = db().b.monsters.iter().map(|m| format!("{} — {}", m.key, m.name)).collect();
+                let all: Vec<String> = db()
+                    .b
+                    .monsters
+                    .iter()
+                    .map(|m| format!("{} — {}", m.key, m.name))
+                    .collect();
                 self.admin_list(id, args, &all);
             }
             "kill" => {
@@ -154,8 +266,14 @@ impl Game {
                 let (level, pos) = (e.level.clone(), e.pos);
                 let mut n = 0;
                 for o in self.on_level(&level) {
-                    let Some(oe) = self.ents.get(&o) else { continue };
-                    if oe.monster.is_some() && oe.alive() && self.hostile(id, o) && oe.pos.dist(pos) <= r {
+                    let Some(oe) = self.ents.get(&o) else {
+                        continue;
+                    };
+                    if oe.monster.is_some()
+                        && oe.alive()
+                        && self.hostile(id, o)
+                        && oe.pos.dist(pos) <= r
+                    {
                         self.ents.get_mut(&o).unwrap().hp = 0.0;
                         self.kill(o, Some(id));
                         n += 1;
@@ -184,7 +302,17 @@ impl Game {
                         .find(|o| o.npc.as_ref().map(|n| n.unique == u.key).unwrap_or(false))
                         .map(|o| format!("({},{})", o.cell().x, o.cell().y))
                         .unwrap_or_else(|| "нет в этом мире".into());
-                    say(self, format!("{} — {}, {}: {} → {}", u.key, u.name, lower(&u.title), where_, u.reward));
+                    say(
+                        self,
+                        format!(
+                            "{} — {}, {}: {} → {}",
+                            u.key,
+                            u.name,
+                            lower(&u.title),
+                            where_,
+                            u.reward
+                        ),
+                    );
                 }
             }
             "unlock" => self.admin_unlock(id, args),
@@ -211,7 +339,10 @@ impl Game {
                 };
                 // moving the clock forward keeps every timer consistent
                 self.now += (target - self.time_of_day() + 1.0).rem_euclid(1.0) * DAY_MS;
-                say(self, format!("Время: {:02}:00.", ((target * 24.0).round() as i32) % 24));
+                say(
+                    self,
+                    format!("Время: {:02}:00.", ((target * 24.0).round() as i32) % 24),
+                );
             }
             "speed" => {
                 let n = num(0, 100);
@@ -259,7 +390,10 @@ impl Game {
     pub(crate) fn admin_give(&mut self, id: Id, args: &[String]) {
         let (name, tail) = split_tail(args, |s| is_number(s) || rarity_by_name(s) >= 0);
         let Some(d) = find_def(&db().b.items, |t| &t.key, |t| &t.name, &name) else {
-            self.say_admin(id, format!("Нет такого предмета: {name:?}. Список: /items фильтр."));
+            self.say_admin(
+                id,
+                format!("Нет такого предмета: {name:?}. Список: /items фильтр."),
+            );
             return;
         };
         let (mut qty, mut rarity) = (1, -1);
@@ -286,17 +420,35 @@ impl Game {
             }
             last = st;
         }
-        self.say_admin(id, format!("Получено: {} ×{qty} ({}).", last.name(), lower(rarity_name(last.item_rarity()))));
+        self.say_admin(
+            id,
+            format!(
+                "Получено: {} ×{qty} ({}).",
+                last.name(),
+                lower(rarity_name(last.item_rarity()))
+            ),
+        );
     }
 
     pub(crate) fn admin_spawn(&mut self, id: Id, args: &[String]) {
         let (name, tail) = split_tail(args, is_number);
         let Some(d) = find_def(&db().b.monsters, |t| &t.key, |t| &t.name, &name) else {
-            self.say_admin(id, format!("Нет такого монстра: {name:?}. Список: /monsters фильтр."));
+            self.say_admin(
+                id,
+                format!("Нет такого монстра: {name:?}. Список: /monsters фильтр."),
+            );
             return;
         };
-        let n = tail.first().and_then(|t| t.parse().ok()).unwrap_or(1).clamp(1, 30);
-        let lvl = tail.get(1).and_then(|t| t.parse().ok()).unwrap_or(self.ents[&id].p().level.max(1)).clamp(1, 99);
+        let n = tail
+            .first()
+            .and_then(|t| t.parse().ok())
+            .unwrap_or(1)
+            .clamp(1, 30);
+        let lvl = tail
+            .get(1)
+            .and_then(|t| t.parse().ok())
+            .unwrap_or(self.ents[&id].p().level.max(1))
+            .clamp(1, 99);
         let e = &self.ents[&id];
         let level = e.level.clone();
         let front = (e.pos + e.facing_vec() * 2.5).cell();
@@ -371,16 +523,30 @@ impl Game {
         };
         self.move_next_to(id, b);
         let be = &self.ents[&b];
-        let text = format!("Вы рядом: {} ({}, {},{}).", be.name, be.level, be.cell().x, be.cell().y);
+        let text = format!(
+            "Вы рядом: {} ({}, {},{}).",
+            be.name,
+            be.level,
+            be.cell().x,
+            be.cell().y
+        );
         self.say_admin(id, text);
     }
 
     pub(crate) fn admin_unique(&mut self, id: Id, q: &str) {
         let Some(u) = find_def(&db().b.uniques, |t| &t.key, |t| &t.name, q) else {
-            self.say_admin(id, format!("Нет такого персонажа: {q:?}. Список: /uniques."));
+            self.say_admin(
+                id,
+                format!("Нет такого персонажа: {q:?}. Список: /uniques."),
+            );
             return;
         };
-        if let Some(o) = self.ents.iter().find(|(_, o)| o.npc.as_ref().map(|n| n.unique == u.key).unwrap_or(false)).map(|(i, _)| *i) {
+        if let Some(o) = self
+            .ents
+            .iter()
+            .find(|(_, o)| o.npc.as_ref().map(|n| n.unique == u.key).unwrap_or(false))
+            .map(|(i, _)| *i)
+        {
             self.move_next_to(id, o);
             self.say_admin(id, format!("{} уже в мире — вы рядом.", u.name));
             return;
@@ -397,14 +563,32 @@ impl Game {
 
     pub(crate) fn admin_unlock(&mut self, id: Id, args: &[String]) {
         if args.is_empty() {
-            self.say_admin(id, "Использование: /unlock all | class:ключ | subclass:ключ | skill:ключ.".into());
+            self.say_admin(
+                id,
+                "Использование: /unlock all | class:ключ | subclass:ключ | skill:ключ.".into(),
+            );
             return;
         }
         let d = db();
         let rewards: Vec<String> = if args[0] == "all" {
-            let mut r: Vec<String> = d.b.classes.iter().filter(|c| c.secret).map(|c| format!("class:{}", c.key)).collect();
-            r.extend(d.b.subclasses.iter().filter(|s| s.secret).map(|s| format!("subclass:{}", s.key)));
-            r.extend(d.b.skills.iter().filter(|s| d.branch(&s.branch).map(|b| b.secret).unwrap_or(false)).map(|s| format!("skill:{}", s.key)));
+            let mut r: Vec<String> =
+                d.b.classes
+                    .iter()
+                    .filter(|c| c.secret)
+                    .map(|c| format!("class:{}", c.key))
+                    .collect();
+            r.extend(
+                d.b.subclasses
+                    .iter()
+                    .filter(|s| s.secret)
+                    .map(|s| format!("subclass:{}", s.key)),
+            );
+            r.extend(
+                d.b.skills
+                    .iter()
+                    .filter(|s| d.branch(&s.branch).map(|b| b.secret).unwrap_or(false))
+                    .map(|s| format!("skill:{}", s.key)),
+            );
             r
         } else {
             args.to_vec()

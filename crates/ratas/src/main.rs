@@ -141,8 +141,16 @@ fn parse_args(raw: &[String]) -> Result<Args, String> {
 }
 
 fn usage() -> String {
-    let mut s = t("Ратас — ролевая игра в реальном времени.\n\nИспользование:\n  ratas                     главное меню\n  ratas --new --host        новый мир, открытый для друзей\n  ratas --join IP:7777      присоединиться к другу\n  ratas --server --seed 1   выделенный сервер без окна\n\nФлаги:");
-    s.push('\n');
+    let mut s = format!("{}\n\n{}\n", t("Ратас — ролевая игра в реальном времени."), t("Использование:"));
+    for (cmd, what) in [
+        ("ratas", "главное меню"),
+        ("ratas --new --host", "новый мир, открытый для друзей"),
+        ("ratas --join IP:7777", "присоединиться к другу"),
+        ("ratas --server --seed 1", "выделенный сервер без окна"),
+    ] {
+        s.push_str(&format!("  {cmd:<26}{}\n", t(what)));
+    }
+    s.push_str(&format!("\n{}\n", t("Флаги:")));
     for (k, m, d) in FLAGS {
         let flag = if m.is_empty() {
             format!("--{k}")

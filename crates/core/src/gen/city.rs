@@ -9,7 +9,13 @@ pub const CITY_H: i32 = 40;
 
 /// Puts up to `want` walled cities on the main landmass: any dry land will do
 /// (the city is paved over), with little water or mountains.
-pub(super) fn place_cities(r: &mut Rng, l: &mut Level, main: &[bool], want: i32, used: &mut HashSet<String>) -> Vec<Village> {
+pub(super) fn place_cities(
+    r: &mut Rng,
+    l: &mut Level,
+    main: &[bool],
+    want: i32,
+    used: &mut HashSet<String>,
+) -> Vec<Village> {
     let mut cs: Vec<Village> = Vec::new();
     for max_bad in [6, 14, 25] {
         for _ in 0..3000 {
@@ -27,7 +33,11 @@ pub(super) fn place_cities(r: &mut Rng, l: &mut Level, main: &[bool], want: i32,
                     let in_main = l.inside(x, y) && main[(y * l.w + x) as usize];
                     if !in_main && !def.walkable {
                         bad += 2;
-                    } else if def.biome == "water" || def.biome == "snow" || def.key == "mountain" || def.damage > 0.0 {
+                    } else if def.biome == "water"
+                        || def.biome == "snow"
+                        || def.key == "mountain"
+                        || def.damage > 0.0
+                    {
                         bad += 1;
                     }
                 }
@@ -57,19 +67,35 @@ struct Building {
 
 /// City buildings with a purpose, the most important first (they get the
 /// largest houses); NPC roles name the one they work in.
-const CITY_BUILDINGS: &[&str] = &["temple", "townhall", "tavern", "armory", "smithy", "magic", "alchemy", "jewelry", "barracks"];
+const CITY_BUILDINGS: &[&str] = &[
+    "temple", "townhall", "tavern", "armory", "smithy", "magic", "alchemy", "jewelry", "barracks",
+];
 
 /// Stamps a walled stone city: gates on every side, two main streets crossing
 /// at a plaza with a fountain and a market, stone houses in four quarters,
 /// lamps along the streets.
 fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
-    let mut v = Village { name, center: area.center(), area, city: true, ..Default::default() };
+    let mut v = Village {
+        name,
+        center: area.center(),
+        area,
+        city: true,
+        ..Default::default()
+    };
     let c = v.center;
     let (x0, y0, x1, y1) = (area.x, area.y, area.x + area.w - 1, area.y + area.h - 1);
     for y in y0..=y1 {
         for x in x0..=x1 {
             let wall = x == x0 || x == x1 || y == y0 || y == y1;
-            l.set(x, y, if wall { t("city_wall") } else { t("cobblestone") });
+            l.set(
+                x,
+                y,
+                if wall {
+                    t("city_wall")
+                } else {
+                    t("cobblestone")
+                },
+            );
         }
     }
     // a ring of grass outside the walls so the gates are never blocked
@@ -81,7 +107,12 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
         }
     }
     // corner towers
-    for p in [Pos::new(x0, y0), Pos::new(x1 - 1, y0), Pos::new(x0, y1 - 1), Pos::new(x1 - 1, y1 - 1)] {
+    for p in [
+        Pos::new(x0, y0),
+        Pos::new(x1 - 1, y0),
+        Pos::new(x0, y1 - 1),
+        Pos::new(x1 - 1, y1 - 1),
+    ] {
         for dy in 0..2 {
             for dx in 0..2 {
                 l.set(p.x + dx, p.y + dy, t("city_wall"));
@@ -146,9 +177,24 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
     // houses in the four quarters
     let quarters = [
         Rect::new(x0 + 2, y0 + 2, street_v.x - x0 - 3, street_h.y - y0 - 3),
-        Rect::new(street_v.x + street_v.w + 1, y0 + 2, x1 - street_v.x - street_v.w - 2, street_h.y - y0 - 3),
-        Rect::new(x0 + 2, street_h.y + street_h.h + 1, street_v.x - x0 - 3, y1 - street_h.y - street_h.h - 2),
-        Rect::new(street_v.x + street_v.w + 1, street_h.y + street_h.h + 1, x1 - street_v.x - street_v.w - 2, y1 - street_h.y - street_h.h - 2),
+        Rect::new(
+            street_v.x + street_v.w + 1,
+            y0 + 2,
+            x1 - street_v.x - street_v.w - 2,
+            street_h.y - y0 - 3,
+        ),
+        Rect::new(
+            x0 + 2,
+            street_h.y + street_h.h + 1,
+            street_v.x - x0 - 3,
+            y1 - street_h.y - street_h.h - 2,
+        ),
+        Rect::new(
+            street_v.x + street_v.w + 1,
+            street_h.y + street_h.h + 1,
+            x1 - street_v.x - street_v.w - 2,
+            y1 - street_h.y - street_h.h - 2,
+        ),
     ];
     // rows of houses with one-cell alleys between them; a few lots stay
     // empty as yards
@@ -196,14 +242,19 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
         if l.def(x, y).key != "cobblestone" {
             continue;
         }
-        let free = !reserved.iter().any(|o| o.contains(x, y)) && !bs.iter().any(|b| b.door.dist(Pos::new(x, y)) <= 2);
+        let free = !reserved.iter().any(|o| o.contains(x, y))
+            && !bs.iter().any(|b| b.door.dist(Pos::new(x, y)) <= 2);
         if free {
             l.set(x, y, t("garden"));
         }
     }
 
     // people
-    let by_kind: HashMap<&str, Building> = bs.iter().filter(|b| !b.kind.is_empty()).map(|b| (b.kind, b.clone())).collect();
+    let by_kind: HashMap<&str, Building> = bs
+        .iter()
+        .filter(|b| !b.kind.is_empty())
+        .map(|b| (b.kind, b.clone()))
+        .collect();
     let inside = |l: &Level, b: &Building, k: i32| {
         let ctr = b.rect.center();
         let p = Pos::new(ctr.x - 1 + k % 3, ctr.y);
@@ -215,7 +266,10 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
     };
     let street_spot = |r: &mut Rng, l: &Level, near: Rect| {
         for _ in 0..300 {
-            let (x, y) = (r.range(near.x, near.x + near.w - 1), r.range(near.y, near.y + near.h - 1));
+            let (x, y) = (
+                r.range(near.x, near.x + near.w - 1),
+                r.range(near.y, near.y + near.h - 1),
+            );
             let key = &l.def(x, y).key;
             if l.walkable(x, y) && key != "stone_floor" && key != "carpet" && key != "house_floor" {
                 return Pos::new(x, y);
@@ -223,19 +277,35 @@ fn build_city(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
         }
         Pos::new(c.x, c.y + 2)
     };
-    let gates = [Pos::new(c.x, y0 + 1), Pos::new(c.x, y1 - 1), Pos::new(x0 + 1, c.y), Pos::new(x1 - 1, c.y)];
-    let night = by_kind.get("tavern").map(|b| b.door).unwrap_or(Pos::new(c.x, c.y + 2));
+    let gates = [
+        Pos::new(c.x, y0 + 1),
+        Pos::new(c.x, y1 - 1),
+        Pos::new(x0 + 1, c.y),
+        Pos::new(x1 - 1, c.y),
+    ];
+    let night = by_kind
+        .get("tavern")
+        .map(|b| b.door)
+        .unwrap_or(Pos::new(c.x, c.y + 2));
     let mut guards = 0;
     for role in &db().b.npcs {
         let cnt = r.range(role.city_count[0], role.city_count[1]);
         let b = by_kind.get(role.building.as_str());
         for k in 0..cnt {
-            let mut s = NpcSpawn { role: role.key.clone(), name: person_name(r), ..Default::default() };
+            let mut s = NpcSpawn {
+                role: role.key.clone(),
+                name: person_name(r),
+                ..Default::default()
+            };
             if let Some(b) = b {
                 s.pos = inside(l, b, k);
             } else if !role.combat.is_empty() {
                 // guards keep the gates, the rest walk the plaza
-                s.pos = if guards < gates.len() { gates[guards] } else { street_spot(r, l, plaza) };
+                s.pos = if guards < gates.len() {
+                    gates[guards]
+                } else {
+                    street_spot(r, l, plaza)
+                };
                 guards += 1;
             } else if role.trader {
                 s.pos = street_spot(r, l, plaza);
@@ -274,7 +344,11 @@ fn stamp_house(l: &mut Level, h: Rect, kind: &'static str, c: Pos) -> Building {
     };
     l.set(door.x, door.y, t("door"));
     // furniture against the wall opposite the door
-    let back = if door.y == h.y { Pos::new(hc.x, h.y + h.h - 2) } else { Pos::new(hc.x, h.y + 1) };
+    let back = if door.y == h.y {
+        Pos::new(hc.x, h.y + h.h - 2)
+    } else {
+        Pos::new(hc.x, h.y + 1)
+    };
     match kind {
         "temple" => {
             l.set(back.x, back.y, t("altar"));
@@ -286,5 +360,9 @@ fn stamp_house(l: &mut Level, h: Rect, kind: &'static str, c: Pos) -> Building {
         "jewelry" | "townhall" => l.set(h.x + 1, back.y, t("chest_open")),
         _ => {}
     }
-    Building { rect: h, kind, door }
+    Building {
+        rect: h,
+        kind,
+        door,
+    }
 }

@@ -6,14 +6,22 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// Lists of names that are transliterated, not translated.
-const PROPER_NAMES: &[&str] = &["VILLAGE_NAMES", "CITY_NAMES", "MALE_NAMES", "FEMALE_NAMES", "LAYOUT_KEYS"];
+const PROPER_NAMES: &[&str] = &[
+    "VILLAGE_NAMES",
+    "CITY_NAMES",
+    "MALE_NAMES",
+    "FEMALE_NAMES",
+    "LAYOUT_KEYS",
+];
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         let name = e.file_name().to_string_lossy().to_string();
@@ -51,7 +59,10 @@ fn rust_strings(text: &str) -> Vec<(String, usize)> {
         }
         // name lists
         if c.is_ascii_uppercase() {
-            let word: String = chars[i..].iter().take_while(|c| c.is_ascii_uppercase() || **c == '_').collect();
+            let word: String = chars[i..]
+                .iter()
+                .take_while(|c| c.is_ascii_uppercase() || **c == '_')
+                .collect();
             if PROPER_NAMES.contains(&word.as_str()) {
                 skip_until_close = true;
             }
@@ -80,7 +91,9 @@ fn rust_strings(text: &str) -> Vec<(String, usize)> {
             }
             if chars.get(j) == Some(&'"') {
                 let start = j + 1;
-                let end_pat: String = std::iter::once('"').chain(std::iter::repeat_n('#', hashes)).collect();
+                let end_pat: String = std::iter::once('"')
+                    .chain(std::iter::repeat_n('#', hashes))
+                    .collect();
                 let rest: String = chars[start..].iter().collect();
                 if let Some(k) = rest.find(&end_pat) {
                     let s: String = rest[..k].to_string();
@@ -160,7 +173,9 @@ fn catalog_complete() {
     let mut texts: BTreeMap<String, String> = BTreeMap::new();
     let rel = |p: &Path| p.strip_prefix(root()).unwrap_or(p).display().to_string();
     for f in &files {
-        let Ok(text) = std::fs::read_to_string(f) else { continue };
+        let Ok(text) = std::fs::read_to_string(f) else {
+            continue;
+        };
         let ext = f.extension().and_then(|e| e.to_str()).unwrap_or("");
         if ext == "rs" && !f.ends_with("tests.rs") && !f.ends_with("build.rs") {
             for (s, line) in rust_strings(&text) {
@@ -181,7 +196,10 @@ fn catalog_complete() {
             }
         }
     }
-    let mut missing: Vec<(&String, &String)> = texts.iter().filter(|(s, _)| !i18n::has_format(i18n::EN, s)).collect();
+    let mut missing: Vec<(&String, &String)> = texts
+        .iter()
+        .filter(|(s, _)| !i18n::has_format(i18n::EN, s))
+        .collect();
     missing.sort_by(|a, b| a.1.cmp(b.1));
     if let Ok(out) = std::env::var("RATAS_I18N_MISSING") {
         let mut b = String::new();
@@ -199,5 +217,10 @@ fn catalog_complete() {
     for (s, wh) in missing.iter().take(30) {
         eprintln!("no English for {s:?} ({wh})");
     }
-    assert!(missing.is_empty(), "{} of {} texts have no English translation", missing.len(), texts.len());
+    assert!(
+        missing.is_empty(),
+        "{} of {} texts have no English translation",
+        missing.len(),
+        texts.len()
+    );
 }

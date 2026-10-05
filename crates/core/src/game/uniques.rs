@@ -15,8 +15,12 @@ pub fn reward_name(reward: &str) -> String {
     let (kind, key) = reward.split_once(':').unwrap_or((reward, ""));
     match kind {
         "item" => d.item(key).map(|i| format!("артефакт «{}»", i.name)),
-        "class" => d.class(key).map(|c| format!("секретный класс «{}»", c.name)),
-        "subclass" => d.subclass(key).map(|s| format!("секретный подкласс «{}»", s.name)),
+        "class" => d
+            .class(key)
+            .map(|c| format!("секретный класс «{}»", c.name)),
+        "subclass" => d
+            .subclass(key)
+            .map(|s| format!("секретный подкласс «{}»", s.name)),
         "skill" => d.skill(key).map(|s| format!("тайный навык «{}»", s.name)),
         _ => None,
     }
@@ -52,13 +56,19 @@ pub(crate) fn sources_text(src: &[String]) -> String {
 /// Describes a quest for the journal.
 pub fn quest_text(q: &Quest) -> String {
     let d = db();
-    let name = d.monster(&q.monster).map(|m| m.name.clone()).unwrap_or(q.monster.clone());
+    let name = d
+        .monster(&q.monster)
+        .map(|m| m.name.clone())
+        .unwrap_or(q.monster.clone());
     match q.kind.as_str() {
         "slay" => format!("сразить чемпиона «{}»", q.where_),
         "boss" if !q.where_.is_empty() => format!("сразить: {name} ({})", q.where_),
         "boss" => format!("сразить: {name}"),
         "relics" => {
-            let item = d.item(&q.item).map(|i| i.name.clone()).unwrap_or(q.item.clone());
+            let item = d
+                .item(&q.item)
+                .map(|i| i.name.clone())
+                .unwrap_or(q.item.clone());
             format!("собрать: {item} ×{} ({})", q.need, sources_text(&q.sources))
         }
         _ => format!("убить: {name} ×{}", q.need),
@@ -70,7 +80,9 @@ impl Game {
     /// and subclasses come first, the rest are picked at random.
     pub(crate) fn place_uniques(&mut self, r: &mut Rng) {
         let all = &db().b.uniques;
-        let (mut first, mut rest): (Vec<usize>, Vec<usize>) = (0..all.len()).partition(|&i| all[i].reward.starts_with("class:") || all[i].reward.starts_with("subclass:"));
+        let (mut first, mut rest): (Vec<usize>, Vec<usize>) = (0..all.len()).partition(|&i| {
+            all[i].reward.starts_with("class:") || all[i].reward.starts_with("subclass:")
+        });
         r.shuffle(&mut rest);
         first.extend(rest);
         let mut placed: Vec<Pos> = Vec::new();
@@ -111,17 +123,36 @@ impl Game {
             hp: 100.0,
             max_hp: 100.0,
             facing: std::f32::consts::FRAC_PI_2,
-            npc: Some(Box::new(NpcState { role: "unique".into(), pname: u.name.clone(), home: p.center(), unique: u.key.clone(), gold, ..Default::default() })),
+            npc: Some(Box::new(NpcState {
+                role: "unique".into(),
+                pname: u.name.clone(),
+                home: p.center(),
+                unique: u.key.clone(),
+                gold,
+                ..Default::default()
+            })),
             ..Default::default()
         })
     }
 
-    pub(crate) fn unique_spot(&self, r: &mut Rng, biomes: &[String], taken: &[Pos], gap: i32) -> Option<Pos> {
+    pub(crate) fn unique_spot(
+        &self,
+        r: &mut Rng,
+        biomes: &[String],
+        taken: &[Pos],
+        gap: i32,
+    ) -> Option<Pos> {
         let l = &self.levels["overworld"];
         for _ in 0..4000 {
             let p = Pos::new(4 + r.int_n(l.w - 8), 4 + r.int_n(l.h - 8));
             let def = l.def_at(p);
-            if !l.walkable(p.x, p.y) || !def.interact.is_empty() || def.damage > 0.0 || self.in_village(p, 10) || p.manhattan(self.start) < 35 || self.cell_taken("overworld", p) {
+            if !l.walkable(p.x, p.y)
+                || !def.interact.is_empty()
+                || def.damage > 0.0
+                || self.in_village(p, 10)
+                || p.manhattan(self.start) < 35
+                || self.cell_taken("overworld", p)
+            {
                 continue;
             }
             if !biomes.is_empty() && !biomes.contains(&def.biome) {
@@ -135,7 +166,11 @@ impl Game {
     }
 
     pub(crate) fn unique_quest(&self, p: Id, key: &str) -> Option<usize> {
-        self.ents[&p].p().quests.iter().position(|q| q.unique == key)
+        self.ents[&p]
+            .p()
+            .quests
+            .iter()
+            .position(|q| q.unique == key)
     }
 
     pub(crate) fn unique_done(&self, p: Id, key: &str) -> bool {
@@ -167,7 +202,9 @@ impl Game {
         match u.quest.as_str() {
             "slay" => {
                 let near = self.ents[&npc].cell();
-                let Some(c) = self.champion_of(u, near, lvl) else { return "Твоя цель ускользнула... Приходи позже.".into() };
+                let Some(c) = self.champion_of(u, near, lvl) else {
+                    return "Твоя цель ускользнула... Приходи позже.".into();
+                };
                 let ce = &self.ents[&c];
                 q.monster = ce.monster.as_ref().unwrap().def.clone();
                 q.at = Some(ce.cell());
@@ -176,7 +213,11 @@ impl Game {
             "boss" => {
                 q.monster = u.target.clone();
                 if let Some(def) = db().monster(&u.target) {
-                    if let Some(e) = self.entrances.iter().find(|e| def.themes.contains(&e.theme)) {
+                    if let Some(e) = self
+                        .entrances
+                        .iter()
+                        .find(|e| def.themes.contains(&e.theme))
+                    {
                         q.at = Some(e.pos);
                         q.where_ = e.name.clone();
                     }
@@ -189,7 +230,12 @@ impl Game {
             }
             _ => {}
         }
-        let text = format!("Задание {}: {}. Награда — {}. Журнал — J.", u.name, quest_text(&q), reward_name(&u.reward));
+        let text = format!(
+            "Задание {}: {}. Награда — {}. Журнал — J.",
+            u.name,
+            quest_text(&q),
+            reward_name(&u.reward)
+        );
         let pm = self.ents.get_mut(&p).unwrap().pm();
         pm.quests.push(q);
         pm.dirty = true;
@@ -213,7 +259,13 @@ impl Game {
             let p = (near.center() + Vec2::from_angle(a) * d).cell();
             let l = &self.levels["overworld"];
             let d2 = l.def_at(p);
-            if l.walkable(p.x, p.y) && d2.interact.is_empty() && d2.damage == 0.0 && !self.in_village(p, 15) && !self.cell_taken("overworld", p) && (def.themes.contains(&d2.biome) || tries > 2000) {
+            if l.walkable(p.x, p.y)
+                && d2.interact.is_empty()
+                && d2.damage == 0.0
+                && !self.in_village(p, 15)
+                && !self.cell_taken("overworld", p)
+                && (def.themes.contains(&d2.biome) || tries > 2000)
+            {
                 spot = Some(p);
                 break;
             }
@@ -258,7 +310,11 @@ impl Game {
                 q.done = true;
                 let giver = q.giver.clone();
                 pm.dirty = true;
-                self.log(p, "#ff80ff", format!("Чемпион повержен! Вернитесь к: {giver}."));
+                self.log(
+                    p,
+                    "#ff80ff",
+                    format!("Чемпион повержен! Вернитесь к: {giver}."),
+                );
             }
         }
     }
@@ -266,8 +322,18 @@ impl Game {
     /// Monsters of the right lands carry relics for active quests.
     pub(crate) fn relic_drop(&mut self, p: Id, m: &Entity) {
         let l = &self.levels[&m.level];
-        let where_ = if l.id == "overworld" { l.def_at(m.cell()).biome.clone() } else { l.theme.clone() };
-        let items: Vec<String> = self.ents[&p].p().quests.iter().filter(|q| q.kind == "relics" && !q.done && q.sources.contains(&where_)).map(|q| q.item.clone()).collect();
+        let where_ = if l.id == "overworld" {
+            l.def_at(m.cell()).biome.clone()
+        } else {
+            l.theme.clone()
+        };
+        let items: Vec<String> = self.ents[&p]
+            .p()
+            .quests
+            .iter()
+            .filter(|q| q.kind == "relics" && !q.done && q.sources.contains(&where_))
+            .map(|q| q.item.clone())
+            .collect();
         for it in items {
             if self.chance(35.0) {
                 self.drop_item(&m.level, m.cell(), ItemStack::new(&it));
@@ -284,7 +350,11 @@ impl Game {
             if q.kind != "relics" {
                 continue;
             }
-            let have: i32 = inv.iter().filter(|st| st.key == q.item).map(|st| st.qty.max(1)).sum();
+            let have: i32 = inv
+                .iter()
+                .filter(|st| st.key == q.item)
+                .map(|st| st.qty.max(1))
+                .sum();
             let was = q.done;
             q.have = have.min(q.need);
             q.done = have >= q.need;
@@ -299,17 +369,29 @@ impl Game {
 
     /// Hands out the reward of a completed unique quest.
     pub(crate) fn finish_unique_quest(&mut self, p: Id, u: &UniqueDef) -> String {
-        let Some(_) = self.unique_quest(p, &u.key) else { return String::new() };
+        let Some(_) = self.unique_quest(p, &u.key) else {
+            return String::new();
+        };
         self.update_relics(p);
         let qi = self.unique_quest(p, &u.key).unwrap();
         let pe = &self.ents[&p];
         let q = pe.p().quests[qi].clone();
         if !q.done {
             return match q.kind.as_str() {
-                "relics" => format!("Пока лишь {} из {}. Ищи у тварей: {}.", q.have, q.need, sources_text(&q.sources)),
+                "relics" => format!(
+                    "Пока лишь {} из {}. Ищи у тварей: {}.",
+                    q.have,
+                    q.need,
+                    sources_text(&q.sources)
+                ),
                 "slay" => {
                     let at = q.at.unwrap_or_default();
-                    format!("{} всё ещё жив. Ищи {}, примерно в {} шагах.", q.where_, compass_ru(pe.cell(), at), pe.cell().dist(at))
+                    format!(
+                        "{} всё ещё жив. Ищи {}, примерно в {} шагах.",
+                        q.where_,
+                        compass_ru(pe.cell(), at),
+                        pe.cell().dist(at)
+                    )
                 }
                 _ => "Дело не сделано. Возвращайся с победой.".into(),
             };
@@ -341,7 +423,10 @@ impl Game {
         let e = &self.ents[&p];
         let (level, pos, name) = (e.level.clone(), e.pos, e.name.clone());
         self.fx(&level, pos, "Награда!", '\0', "#ff80ff", 1800);
-        self.chronicle(format!("{name} исполнил(а) просьбу {} и получил(а) {what}", u.name));
+        self.chronicle(format!(
+            "{name} исполнил(а) просьбу {} и получил(а) {what}",
+            u.name
+        ));
         u.done.clone()
     }
 }

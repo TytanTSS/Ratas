@@ -81,7 +81,10 @@ pub const DAMAGE_GROUPS: &[(&str, &str)] = &[
 ];
 
 pub fn damage_group(key: &str) -> Option<&'static str> {
-    DAMAGE_GROUPS.iter().find(|(k, _)| *k == key).map(|(_, n)| *n)
+    DAMAGE_GROUPS
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, n)| *n)
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -355,7 +358,20 @@ trait Keyed {
 macro_rules! keyed {
     ($($t:ty),*) => { $(impl Keyed for $t { fn key(&self) -> &str { &self.key } })* };
 }
-keyed!(DamageTypeDef, SubclassDef, SquadDef, UniqueDef, TileDef, MonsterDef, ItemDef, AbilityDef, BranchDef, SkillDef, ClassDef, NpcRoleDef);
+keyed!(
+    DamageTypeDef,
+    SubclassDef,
+    SquadDef,
+    UniqueDef,
+    TileDef,
+    MonsterDef,
+    ItemDef,
+    AbilityDef,
+    BranchDef,
+    SkillDef,
+    ClassDef,
+    NpcRoleDef
+);
 
 fn merge_by_key<T: Keyed + Clone>(dst: &mut Vec<T>, src: &[T]) {
     for s in src {
@@ -452,7 +468,12 @@ pub fn load_default(mods_dir: Option<&Path>) -> Result<(Db, Vec<String>), String
             let mut files: Vec<_> = rd
                 .filter_map(|e| e.ok())
                 .map(|e| e.path())
-                .filter(|p| matches!(p.extension().and_then(|x| x.to_str()), Some("toml") | Some("json")))
+                .filter(|p| {
+                    matches!(
+                        p.extension().and_then(|x| x.to_str()),
+                        Some("toml") | Some("json")
+                    )
+                })
                 .collect();
             files.sort();
             for f in files {
@@ -479,7 +500,10 @@ pub fn from_json(data: &[u8]) -> Result<Db, String> {
 }
 
 fn idx<T: Keyed>(v: &[T]) -> HashMap<String, usize> {
-    v.iter().enumerate().map(|(i, t)| (t.key().to_string(), i)).collect()
+    v.iter()
+        .enumerate()
+        .map(|(i, t)| (t.key().to_string(), i))
+        .collect()
 }
 
 /// Validates a bundle and builds lookup tables.
@@ -590,7 +614,11 @@ impl Db {
     }
     /// The subclasses of a class in definition order.
     pub fn subclasses_of(&self, class: &str) -> Vec<&SubclassDef> {
-        self.b.subclasses.iter().filter(|s| s.class == class).collect()
+        self.b
+            .subclasses
+            .iter()
+            .filter(|s| s.class == class)
+            .collect()
     }
 }
 

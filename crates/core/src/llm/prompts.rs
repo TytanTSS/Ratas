@@ -67,7 +67,10 @@ fn options(opts: &[Option_]) -> String {
     if opts.is_empty() {
         return "(none)".into();
     }
-    opts.iter().map(|o| format!("{}: {}", o.key, o.name)).collect::<Vec<_>>().join("; ")
+    opts.iter()
+        .map(|o| format!("{}: {}", o.key, o.name))
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 fn yes_no(b: bool) -> &'static str {
@@ -90,7 +93,15 @@ fn lang_name(code: &str) -> &'static str {
 pub(super) fn npc_prompt(r: &NpcRequest) -> String {
     let mut b = String::new();
     let _ = write!(b, "<character>\nName: {}, {} of the village {} in the realm of {}.\nPersonality: {}\n</character>\n\n", r.npc_name, r.role, r.village, r.world, r.persona);
-    let _ = write!(b, "<situation>\nLanguage: {}.\nTime of day: {}.\nPlayer: {}, a level {} {}.\n", lang_name(&r.lang), r.time_of_day, r.player_name, r.player_level, r.player_class);
+    let _ = write!(
+        b,
+        "<situation>\nLanguage: {}.\nTime of day: {}.\nPlayer: {}, a level {} {}.\n",
+        lang_name(&r.lang),
+        r.time_of_day,
+        r.player_name,
+        r.player_level,
+        r.player_class
+    );
     if !r.region.is_empty() {
         let _ = writeln!(b, "Region: {}.", r.region);
     }
@@ -98,7 +109,11 @@ pub(super) fn npc_prompt(r: &NpcRequest) -> String {
         let _ = writeln!(b, "Your mood: {}.", r.mood);
     }
     if r.times_met > 0 {
-        let _ = writeln!(b, "You have talked with this player {} times before.", r.times_met);
+        let _ = writeln!(
+            b,
+            "You have talked with this player {} times before.",
+            r.times_met
+        );
     } else {
         b += "You meet this player for the first time.\n";
     }
@@ -114,21 +129,39 @@ pub(super) fn npc_prompt(r: &NpcRequest) -> String {
     for f in &r.facts {
         let _ = writeln!(b, "Known fact: {f}");
     }
-    let _ = writeln!(b, "Your purse: {} gold. You can give quests: {}. You are a trader: {}.", r.purse, yes_no(r.can_give_quest), yes_no(r.trader));
+    let _ = writeln!(
+        b,
+        "Your purse: {} gold. You can give quests: {}. You are a trader: {}.",
+        r.purse,
+        yes_no(r.can_give_quest),
+        yes_no(r.trader)
+    );
     let _ = writeln!(b, "Gift list (key: name): {}", options(&r.gifts));
     if r.can_give_quest {
-        let _ = writeln!(b, "Quest monster list (key: name): {}", options(&r.monsters));
+        let _ = writeln!(
+            b,
+            "Quest monster list (key: name): {}",
+            options(&r.monsters)
+        );
     }
     b += "</situation>\n\n";
     if !r.history.is_empty() {
         b += "<conversation_so_far>\n";
         for t in &r.history {
-            let who = if t.who == "npc" { r.npc_name.as_str() } else { "Player" };
+            let who = if t.who == "npc" {
+                r.npc_name.as_str()
+            } else {
+                "Player"
+            };
             let _ = writeln!(b, "{who}: {}", t.text);
         }
         b += "</conversation_so_far>\n\n";
     }
-    let _ = write!(b, "The player now says:\n<player_message>\n{}\n</player_message>", r.message);
+    let _ = write!(
+        b,
+        "The player now says:\n<player_message>\n{}\n</player_message>",
+        r.message
+    );
     b
 }
 
@@ -143,7 +176,11 @@ pub(super) fn tactic_prompt(r: &TacticRequest) -> String {
     } else {
         let _ = writeln!(b, "Allies nearby: {}.", r.allies.join(", "));
     }
-    let _ = writeln!(b, "Opponent: {}, level {} {}, health {}%, {} steps away.", r.enemy, r.enemy_level, r.enemy_class, r.enemy_hp_pct, r.distance);
+    let _ = writeln!(
+        b,
+        "Opponent: {}, level {} {}, health {}%, {} steps away.",
+        r.enemy, r.enemy_level, r.enemy_class, r.enemy_hp_pct, r.distance
+    );
     if r.ability_name.is_empty() {
         b += "You have no special ability (use_ability acts like aggressive).\n";
     } else {

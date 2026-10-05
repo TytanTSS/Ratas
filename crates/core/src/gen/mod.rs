@@ -39,10 +39,18 @@ mod tests {
         let dist = bfs(&a.level, a.start);
         for v in &a.villages {
             let near = find_free(&a.level, v.center);
-            assert!(dist[a.level.idx(near)] >= 0, "village {} unreachable", v.name);
+            assert!(
+                dist[a.level.idx(near)] >= 0,
+                "village {} unreachable",
+                v.name
+            );
         }
         for e in &a.entrances {
-            assert!(dist[a.level.idx(e.pos)] >= 0, "entrance {} unreachable", e.name);
+            assert!(
+                dist[a.level.idx(e.pos)] >= 0,
+                "entrance {} unreachable",
+                e.name
+            );
         }
     }
 
@@ -57,7 +65,10 @@ mod tests {
             assert!(!f.monsters.is_empty());
             let last = generate_dungeon(3, &format!("d0-2-{theme}"), "Тест", theme, 0, 2, 2);
             let b = last.boss.expect("boss");
-            assert!(bfs(&last.level, last.level.up)[last.level.idx(b)] >= 0, "{theme}: boss unreachable");
+            assert!(
+                bfs(&last.level, last.level.up)[last.level.idx(b)] >= 0,
+                "{theme}: boss unreachable"
+            );
         }
     }
 
@@ -68,12 +79,23 @@ mod tests {
             let ow = generate_overworld(seed, 300, 200);
             for v in ow.villages.iter().filter(|v| v.city) {
                 found += 1;
-                assert!(v.npcs.len() >= 10, "{} has {} citizens", v.name, v.npcs.len());
+                assert!(
+                    v.npcs.len() >= 10,
+                    "{} has {} citizens",
+                    v.name,
+                    v.npcs.len()
+                );
                 let dist = bfs(&ow.level, ow.start);
                 let gate = Pos::new(v.center.x, v.area.y);
                 assert_eq!(ow.level.def(gate.x, gate.y).key, "city_gate");
                 for n in &v.npcs {
-                    assert!(dist[ow.level.idx(n.pos)] >= 0 || ow.level.def(n.pos.x, n.pos.y).key == "door", "{} at {:?} unreachable", n.role, n.pos);
+                    assert!(
+                        dist[ow.level.idx(n.pos)] >= 0
+                            || ow.level.def(n.pos.x, n.pos.y).key == "door",
+                        "{} at {:?} unreachable",
+                        n.role,
+                        n.pos
+                    );
                 }
             }
         }

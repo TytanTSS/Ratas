@@ -182,8 +182,16 @@ impl Game {
             let def = st.def();
             let p = e.pm();
             let mut slot = slot_for(def).to_string();
-            let main_taken = p.equip.get(SLOT_MAIN).map(|s| !s.key.is_empty()).unwrap_or(false);
-            if slot == SLOT_MAIN && main_taken && !two_handed(&st) && !p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false) {
+            let main_taken = p
+                .equip
+                .get(SLOT_MAIN)
+                .map(|s| !s.key.is_empty())
+                .unwrap_or(false);
+            if slot == SLOT_MAIN
+                && main_taken
+                && !two_handed(&st)
+                && !p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false)
+            {
                 slot = SLOT_OFF.into(); // a second one-handed weapon goes to the left hand
             }
             if slot == SLOT_OFF && p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false) {
@@ -237,7 +245,11 @@ impl Game {
             let id = self.spawn(e);
             self.online.insert(name.into(), id);
             let wn = self.world_name.clone();
-            self.log(id, "#ffd24a", format!("Добро пожаловать в {wn}, {name}! Время приключений."));
+            self.log(
+                id,
+                "#ffd24a",
+                format!("Добро пожаловать в {wn}, {name}! Время приключений."),
+            );
             self.log(id, "#a0a0a0", "WASD/стрелки — ходить (можно по диагонали), мышь — целиться, ЛКМ/пробел — атака, 1-6 — умения, E — взаимодействие, F1 — помощь.".into());
             id
         };
@@ -249,7 +261,9 @@ impl Game {
 
     /// Removes a player from the world but keeps the character for later.
     pub fn leave(&mut self, name: &str) {
-        let Some(id) = self.online.get(name).copied() else { return };
+        let Some(id) = self.online.get(name).copied() else {
+            return;
+        };
         self.close_dialogue(id, false);
         if self.party_of(id).is_some() {
             self.party_leave(id);
@@ -266,7 +280,9 @@ impl Game {
     /// Records a real-time input; it is executed on the next ticks.
     pub fn set_input(&mut self, id: Id, inp: &Input) {
         let now = self.now;
-        let Some(e) = self.ents.get_mut(&id) else { return };
+        let Some(e) = self.ents.get_mut(&id) else {
+            return;
+        };
         let it = &mut e.pm().intent;
         let mv = Vec2::new(inp.mv[0].clamp(-1, 1) as f32, inp.mv[1].clamp(-1, 1) as f32).norm();
         it.mv = mv;
@@ -373,7 +389,12 @@ impl Game {
         let talking = e.p().talking;
         if talking != 0 {
             let close = match self.ents.get(&talking) {
-                Some(npc) => npc.level != e.level || npc.dist(e) > 3.5 || self.hostile(talking, id) || npc.npc.is_none(),
+                Some(npc) => {
+                    npc.level != e.level
+                        || npc.dist(e) > 3.5
+                        || self.hostile(talking, id)
+                        || npc.npc.is_none()
+                }
                 None => true,
             };
             if close {
@@ -393,7 +414,9 @@ impl Game {
         if now >= e.next_attack {
             let mut target = None;
             for oid in self.on_level(&level) {
-                let Some(o) = self.ents.get(&oid) else { continue };
+                let Some(o) = self.ents.get(&oid) else {
+                    continue;
+                };
                 if !self.hostile(id, oid) || !o.blocks() {
                     continue;
                 }
@@ -431,7 +454,10 @@ impl Game {
         let l = &self.levels[&e.level];
         let hint = match l.def_at(e.cell()).interact.as_str() {
             "dungeon" => match self.entrance_at(e.cell()) {
-                Some(i) => format!("Вход: {}. Нажмите E, чтобы спуститься.", self.entrances[i].name),
+                Some(i) => format!(
+                    "Вход: {}. Нажмите E, чтобы спуститься.",
+                    self.entrances[i].name
+                ),
                 None => String::new(),
             },
             "stairs_down" => "Лестница вниз. Нажмите E.".into(),
@@ -447,13 +473,17 @@ impl Game {
     pub(crate) fn update_explored(&mut self, id: Id) {
         let e = &self.ents[&id];
         let vision = self.vision(e);
-        let Some(l) = self.levels.get(&e.level) else { return };
+        let Some(l) = self.levels.get(&e.level) else {
+            return;
+        };
         let n = (l.w * l.h) as usize;
         let c = e.cell();
         let lid = l.id.clone();
         let w = l.w;
         let mut cells = Vec::new();
-        crate::world::fov(l, c.x, c.y, vision, &mut |x, y| cells.push((y * w + x) as usize));
+        crate::world::fov(l, c.x, c.y, vision, &mut |x, y| {
+            cells.push((y * w + x) as usize)
+        });
         let p = self.ents.get_mut(&id).unwrap().pm();
         let bs = p.explored.entry(lid).or_insert_with(|| Bitset::new(n));
         if !bs.len_for(n) {
@@ -482,7 +512,9 @@ impl Game {
         let fv = e.facing_vec();
         let mut best: Option<(Id, f32)> = None;
         for oid in self.on_level(&level) {
-            let Some(o) = self.ents.get(&oid) else { continue };
+            let Some(o) = self.ents.get(&oid) else {
+                continue;
+            };
             if o.npc.is_none() || self.hostile(id, oid) || !o.alive() {
                 continue;
             }
@@ -555,7 +587,9 @@ impl Game {
         let cell = e.cell();
         match kind {
             "dungeon" => {
-                let Some(idx) = self.entrance_at(cell) else { return };
+                let Some(idx) = self.entrance_at(cell) else {
+                    return;
+                };
                 let lid = dungeon_level_id(idx as i32, 1);
                 if self.ensure_level(&lid) {
                     let up = self.levels[&lid].up;
@@ -589,7 +623,11 @@ impl Game {
         self.close_dialogue(id, true);
         // arrive on the stairs themselves, where they can be used to go back
         let tl = &self.levels[target];
-        let spot = if tl.walkable(near.x, near.y) && !self.cell_taken(target, near) { near } else { self.free_spot(target, near) };
+        let spot = if tl.walkable(near.x, near.y) && !self.cell_taken(target, near) {
+            near
+        } else {
+            self.free_spot(target, near)
+        };
         let tl = &self.levels[target];
         let (name, depth, no_down) = (tl.name.clone(), tl.depth, tl.down.x < 0);
         let hint = tl.def_at(spot).key.clone();
@@ -611,7 +649,11 @@ impl Game {
         self.deed_max(id, "depth", depth);
         self.log(id, "#c0a0ff", format!("Вы входите: {name}."));
         if depth > 0 && no_down {
-            self.log(id, "#ff6a6a", "Здесь обитает нечто могущественное...".into());
+            self.log(
+                id,
+                "#ff6a6a",
+                "Здесь обитает нечто могущественное...".into(),
+            );
         }
     }
 
@@ -661,7 +703,11 @@ impl Game {
         e.pm().dirty = true;
         self.index_levels();
         self.update_explored(id);
-        self.log(id, "#a0ffa0", "Вы приходите в себя у колодца деревни.".into());
+        self.log(
+            id,
+            "#a0ffa0",
+            "Вы приходите в себя у колодца деревни.".into(),
+        );
     }
 
     pub(crate) fn kill_player(&mut self, id: Id, killer: Option<Id>) {
@@ -694,8 +740,17 @@ impl Game {
                 }
             }
         }
-        self.log(id, "#ff4a4a", format!("Вы погибли! Вас сразил(а) {who}. Потеряно {lost} золота."));
-        self.log(id, "#c0c0c0", "Enter — возродиться у колодца деревни. Союзник может воскресить вас в течение минуты.".into());
+        self.log(
+            id,
+            "#ff4a4a",
+            format!("Вы погибли! Вас сразил(а) {who}. Потеряно {lost} золота."),
+        );
+        self.log(
+            id,
+            "#c0c0c0",
+            "Enter — возродиться у колодца деревни. Союзник может воскресить вас в течение минуты."
+                .into(),
+        );
         let others: Vec<Id> = self.online.values().copied().filter(|&o| o != id).collect();
         for o in others {
             self.log(o, "#ff8a8a", format!("{name} пал(а) в бою ({who})."));
@@ -706,7 +761,9 @@ impl Game {
     // ---- progression ----
 
     pub fn give_xp(&mut self, id: Id, amount: i32) {
-        let Some(e) = self.ents.get_mut(&id) else { return };
+        let Some(e) = self.ents.get_mut(&id) else {
+            return;
+        };
         if e.player.is_none() || amount <= 0 {
             return;
         }
@@ -727,7 +784,11 @@ impl Game {
             e.hp = e.max_hp;
             e.mp = e.max_mp;
             let (name, level, pos) = (e.name.clone(), e.level.clone(), e.pos);
-            self.log(id, "#ffff4a", format!("*** Уровень {lvl}! +3 очка характеристик, +1 очко навыков (C и K). ***"));
+            self.log(
+                id,
+                "#ffff4a",
+                format!("*** Уровень {lvl}! +3 очка характеристик, +1 очко навыков (C и K). ***"),
+            );
             self.fx(&level, pos, "УРОВЕНЬ!", '\0', "#ffff4a", 1500);
             let others: Vec<Id> = self.online.values().copied().filter(|&o| o != id).collect();
             for o in others {
@@ -762,7 +823,11 @@ impl Game {
             }
         }
         self.ents.get_mut(&id).unwrap().recalc();
-        self.log(id, "#80ff80", format!("Навык «{}» — ранг {}/{}.", sd.name, rank, sd.max_rank));
+        self.log(
+            id,
+            "#80ff80",
+            format!("Навык «{}» — ранг {}/{}.", sd.name, rank, sd.max_rank),
+        );
     }
 
     pub(crate) fn alloc_attr(&mut self, id: Id, key: &str) {
@@ -818,7 +883,12 @@ impl Game {
         let items: Vec<Id> = self
             .on_level(&level)
             .into_iter()
-            .filter(|o| self.ents.get(o).map(|o| o.kind == Kind::Item && o.pos.dist(pos) < 0.7).unwrap_or(false))
+            .filter(|o| {
+                self.ents
+                    .get(o)
+                    .map(|o| o.kind == Kind::Item && o.pos.dist(pos) < 0.7)
+                    .unwrap_or(false)
+            })
             .collect();
         let mut relics = false;
         for oid in items {
@@ -838,11 +908,26 @@ impl Game {
                 }
                 let r = st.item_rarity();
                 if st.qty > 1 {
-                    self.log(id, "#c0c0ff", format!("Подобрано: {} ×{}.", st.name(), st.qty));
+                    self.log(
+                        id,
+                        "#c0c0ff",
+                        format!("Подобрано: {} ×{}.", st.name(), st.qty),
+                    );
                 } else if r > COMMON && !slot_for(st.def()).is_empty() {
-                    self.log(id, rarity_color(r), format!("Подобрано: {} ({}).", st.name(), lower(rarity_name(r))));
+                    self.log(
+                        id,
+                        rarity_color(r),
+                        format!("Подобрано: {} ({}).", st.name(), lower(rarity_name(r))),
+                    );
                     if r >= EPIC {
-                        self.fx(&level, pos, &format!("{}!", rarity_name(r)), '\0', rarity_color(r), 1500);
+                        self.fx(
+                            &level,
+                            pos,
+                            &format!("{}!", rarity_name(r)),
+                            '\0',
+                            rarity_color(r),
+                            1500,
+                        );
                     }
                 } else {
                     self.log(id, "#c0c0ff", format!("Подобрано: {}.", st.name()));
@@ -895,10 +980,24 @@ impl Game {
             self.remove_inv_item(id, idx);
         }
         if d.heal > 0.0 {
-            self.fx(&level, pos, &format!("+{}", d.heal as i32), '\0', "#60ff60", 900);
+            self.fx(
+                &level,
+                pos,
+                &format!("+{}", d.heal as i32),
+                '\0',
+                "#60ff60",
+                900,
+            );
         }
         if d.mana > 0.0 {
-            self.fx(&level, pos, &format!("+{}", d.mana as i32), '\0', "#6090ff", 900);
+            self.fx(
+                &level,
+                pos,
+                &format!("+{}", d.mana as i32),
+                '\0',
+                "#6090ff",
+                900,
+            );
         }
         self.log(id, "#a0ffa0", format!("Вы используете: {}.", d.name));
         self.item_effect(id, d);
@@ -907,7 +1006,11 @@ impl Game {
     /// Drinks the first healing or mana potion.
     pub(crate) fn quick_potion(&mut self, id: Id, mana: bool) {
         let best = self.ents[&id].p().inventory.iter().position(|st| {
-            st.def().map(|d| d.kind == "consumable" && ((mana && d.mana > 0.0) || (!mana && d.heal > 0.0))).unwrap_or(false)
+            st.def()
+                .map(|d| {
+                    d.kind == "consumable" && ((mana && d.mana > 0.0) || (!mana && d.heal > 0.0))
+                })
+                .unwrap_or(false)
         });
         match best {
             Some(i) => self.use_item(id, i as i32),
@@ -946,7 +1049,9 @@ impl Game {
         p.inventory.sort_by(|a, b| {
             let (da, dbb) = (a.def(), b.def());
             match (da, dbb) {
-                (Some(x), Some(y)) => order(&x.kind).cmp(&order(&y.kind)).then_with(|| a.name().cmp(&b.name())),
+                (Some(x), Some(y)) => order(&x.kind)
+                    .cmp(&order(&y.kind))
+                    .then_with(|| a.name().cmp(&b.name())),
                 _ => std::cmp::Ordering::Equal,
             }
         });

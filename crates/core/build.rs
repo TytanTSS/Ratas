@@ -21,7 +21,11 @@ fn main() {
         code += &format!("pub static {name}: &[(&str, &str)] = &[\n");
         for f in list(&dir) {
             let p = dir.join(&f).canonicalize().unwrap();
-            code += &format!("    ({:?}, include_str!({:?})),\n", f, p.display().to_string());
+            code += &format!(
+                "    ({:?}, include_str!({:?})),\n",
+                f,
+                p.display().to_string()
+            );
         }
         code += "];\n";
     }

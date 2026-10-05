@@ -14,7 +14,9 @@ pub const SLOT_MAIN: &str = "main";
 pub const SLOT_OFF: &str = "off";
 
 /// The slots in display order.
-pub const EQUIP_SLOTS: &[&str] = &["head", "chest", "belt", "legs", "back", "main", "off", "ring1", "ring2", "ring3", "ring4"];
+pub const EQUIP_SLOTS: &[&str] = &[
+    "head", "chest", "belt", "legs", "back", "main", "off", "ring1", "ring2", "ring3", "ring4",
+];
 
 const RING_SLOTS: &[&str] = &["ring1", "ring2", "ring3", "ring4"];
 
@@ -38,7 +40,13 @@ pub fn slot_name(slot: &str) -> &'static str {
 
 /// Whether an item can be worn at all.
 pub fn equippable(d: Option<&ItemDef>) -> bool {
-    d.map(|d| matches!(d.kind.as_str(), "weapon" | "shield" | "offhand" | "head" | "chest" | "belt" | "legs" | "back" | "ring")).unwrap_or(false)
+    d.map(|d| {
+        matches!(
+            d.kind.as_str(),
+            "weapon" | "shield" | "offhand" | "head" | "chest" | "belt" | "legs" | "back" | "ring"
+        )
+    })
+    .unwrap_or(false)
 }
 
 /// The default slot of an item ("" = not equipment).
@@ -60,7 +68,9 @@ pub fn slot_for(d: Option<&ItemDef>) -> &'static str {
 }
 
 pub fn two_handed(st: &ItemStack) -> bool {
-    st.def().map(|d| d.kind == "weapon" && d.hands >= 2).unwrap_or(false)
+    st.def()
+        .map(|d| d.kind == "weapon" && d.hands >= 2)
+        .unwrap_or(false)
 }
 
 impl Game {
@@ -79,10 +89,18 @@ impl Game {
         }
         let mut slot = slot_for(Some(d));
         if d.kind == "ring" {
-            slot = RING_SLOTS.iter().copied().find(|rs| !p.equip.contains_key(*rs)).unwrap_or(RING_SLOTS[0]);
+            slot = RING_SLOTS
+                .iter()
+                .copied()
+                .find(|rs| !p.equip.contains_key(*rs))
+                .unwrap_or(RING_SLOTS[0]);
         } else if d.kind == "weapon" && left {
             if d.hands >= 2 {
-                self.log(id, "#ff8080", "Двуручное оружие не взять в одну левую руку.".into());
+                self.log(
+                    id,
+                    "#ff8080",
+                    "Двуручное оружие не взять в одну левую руку.".into(),
+                );
                 return;
             }
             slot = SLOT_OFF;
@@ -109,9 +127,17 @@ impl Game {
         }
         e.recalc();
         let (level, cell) = (e.level.clone(), e.cell());
-        self.log(id, "#c0c0ff", format!("Надето ({}): {}.", lower(slot_name(slot)), st.name()));
+        self.log(
+            id,
+            "#c0c0ff",
+            format!("Надето ({}): {}.", lower(slot_name(slot)), st.name()),
+        );
         for it in dropped {
-            self.log(id, "#ff8080", format!("Рюкзак полон — {} на земле.", it.name()));
+            self.log(
+                id,
+                "#ff8080",
+                format!("Рюкзак полон — {} на земле.", it.name()),
+            );
             self.drop_item(&level, cell, it);
         }
     }

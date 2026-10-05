@@ -46,10 +46,19 @@ pub struct Command {
 
 impl Command {
     pub fn new(kind: &str, key: &str, index: i32) -> Command {
-        Command { kind: kind.into(), key: key.into(), index, text: String::new() }
+        Command {
+            kind: kind.into(),
+            key: key.into(),
+            index,
+            text: String::new(),
+        }
     }
     pub fn text(kind: &str, text: &str) -> Command {
-        Command { kind: kind.into(), text: text.into(), ..Default::default() }
+        Command {
+            kind: kind.into(),
+            text: text.into(),
+            ..Default::default()
+        }
     }
 }
 
@@ -424,7 +433,12 @@ mod tests {
     #[test]
     fn framing_roundtrip() {
         let mut buf = Vec::new();
-        let m = ClientMsg::Input(Input { mv: [1, -1], aim: Some([3.5, 4.0]), attack: true, ..Default::default() });
+        let m = ClientMsg::Input(Input {
+            mv: [1, -1],
+            aim: Some([3.5, 4.0]),
+            attack: true,
+            ..Default::default()
+        });
         write_msg(&mut buf, &m).unwrap();
         let back: ClientMsg = read_msg(&mut buf.as_slice()).unwrap();
         match back {

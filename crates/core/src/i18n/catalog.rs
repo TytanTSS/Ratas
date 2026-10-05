@@ -45,7 +45,9 @@ pub struct Catalog {
 
 impl Catalog {
     pub fn new() -> Catalog {
-        Catalog { inner: RwLock::new(Inner::default()) }
+        Catalog {
+            inner: RwLock::new(Inner::default()),
+        }
     }
 
     pub fn add_all(&self, entries: &HashMap<String, String>) {
@@ -65,9 +67,15 @@ impl Catalog {
         c.buckets.clear();
         c.loose.clear();
         c.tmpls.clear();
-        let srcs: Vec<(String, String)> = c.tmpl_src.iter().map(|(a, b)| (a.clone(), b.clone())).collect();
+        let srcs: Vec<(String, String)> = c
+            .tmpl_src
+            .iter()
+            .map(|(a, b)| (a.clone(), b.clone()))
+            .collect();
         for (src, dst) in srcs {
-            let Some((t, word)) = compile(&src, &dst) else { continue };
+            let Some((t, word)) = compile(&src, &dst) else {
+                continue;
+            };
             let i = c.tmpls.len();
             c.tmpls.push(t);
             match word {
@@ -176,7 +184,10 @@ impl Catalog {
 
     fn segment(&self, s: &str, depth: usize) -> Option<String> {
         // sentences
-        let locs: Vec<(usize, usize)> = sentence_end().find_iter(s).map(|m| (m.start(), m.end())).collect();
+        let locs: Vec<(usize, usize)> = sentence_end()
+            .find_iter(s)
+            .map(|m| (m.start(), m.end()))
+            .collect();
         if !locs.is_empty() {
             let mut b = String::new();
             let mut prev = 0;
@@ -236,7 +247,11 @@ impl Catalog {
                     }
                 }
                 let Some(m) = t.re.captures(s) else { continue };
-                let args: Vec<String> = m.iter().skip(1).map(|g| g.map(|g| g.as_str().to_string()).unwrap_or_default()).collect();
+                let args: Vec<String> = m
+                    .iter()
+                    .skip(1)
+                    .map(|g| g.map(|g| g.as_str().to_string()).unwrap_or_default())
+                    .collect();
                 if args.iter().all(|a| !a.trim().is_empty()) {
                     best = Some(i);
                     best_args = args;
@@ -262,7 +277,9 @@ impl Catalog {
                 Piece::Verb(v) => {
                     let idx = if v.index > 0 { v.index } else { next };
                     next = idx + 1;
-                    let Some((arg, kind)) = args.get(&idx) else { continue };
+                    let Some((arg, kind)) = args.get(&idx) else {
+                        continue;
+                    };
                     let arg = match kind {
                         's' | 'v' | 'q' => self.tr(arg, depth + 1),
                         _ => arg.clone(),
@@ -300,7 +317,13 @@ impl Inner {
         // "• выдал:" = "• given by:" also teaches "выдал" = "given by"
         let (kl, kc, kt) = split_core(&k);
         let (vl, vc, vt) = split_core(&v);
-        if kc != k && !kc.is_empty() && !vc.is_empty() && kl == vl && kt == vt && !self.exact.contains_key(kc) {
+        if kc != k
+            && !kc.is_empty()
+            && !vc.is_empty()
+            && kl == vl
+            && kt == vt
+            && !self.exact.contains_key(kc)
+        {
             self.exact.insert(kc.to_string(), vc.to_string());
         }
         self.exact.insert(k, v);
@@ -313,7 +336,9 @@ fn sentence_end() -> &'static Regex {
 }
 
 // separators that split composite lines, the strongest first
-const SEPARATORS: &[&str] = &["\n", " • ", " — ", " – ", " | ", "; ", ", ", ": ", " / ", " («", "» ", "«", "»", " (", ")"];
+const SEPARATORS: &[&str] = &[
+    "\n", " • ", " — ", " – ", " | ", "; ", ", ", ": ", " / ", " («", "» ", "«", "»", " (", ")",
+];
 
 fn is_name(s: &str) -> bool {
     let mut words = 0;
@@ -338,7 +363,10 @@ fn split_space(s: &str) -> (&str, &str, &str) {
     (lead, b2, trail)
 }
 
-const EDGE: &[char] = &[' ', '\t', '\n', '•', ':', '—', '–', '-', '|', '/', '(', ')', '[', ']', '«', '»', '"', '\'', '.', ',', ';', '!', '?', '…', '*', '>'];
+const EDGE: &[char] = &[
+    ' ', '\t', '\n', '•', ':', '—', '–', '-', '|', '/', '(', ')', '[', ']', '«', '»', '"', '\'',
+    '.', ',', ';', '!', '?', '…', '*', '>',
+];
 
 /// Separates punctuation around a phrase.
 pub(crate) fn split_core(s: &str) -> (&str, &str, &str) {
@@ -374,7 +402,11 @@ fn parse_format(f: &str) -> Vec<Piece> {
         }
         if j < b.len() && b[j] == '[' {
             if let Some(k) = b[j..].iter().position(|&c| c == ']') {
-                v.index = b[j + 1..j + k].iter().collect::<String>().parse().unwrap_or(0);
+                v.index = b[j + 1..j + k]
+                    .iter()
+                    .collect::<String>()
+                    .parse()
+                    .unwrap_or(0);
                 j += k + 1;
             }
         }
@@ -443,13 +475,24 @@ fn compile(src: &str, dst: &str) -> Option<(Tmpl, Option<String>)> {
         return None;
     }
     let re = Regex::new(&re).ok()?;
-    Some((Tmpl { re, src: verbs, out, weight }, word))
+    Some((
+        Tmpl {
+            re,
+            src: verbs,
+            out,
+            weight,
+        },
+        word,
+    ))
 }
 
 /// Replaces printf verbs and Rust {} placeholders with one marker.
 pub(crate) fn normalize_placeholders(s: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[svdqfgecxXt]|\{[A-Za-z_0-9.]*(:[^{}]*)?\}").unwrap());
+    let re = RE.get_or_init(|| {
+        Regex::new(r"%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[svdqfgecxXt]|\{[A-Za-z_0-9.]*(:[^{}]*)?\}")
+            .unwrap()
+    });
     let s = s.replace("{{", "{").replace("}}", "}").replace("%%", "%");
     re.replace_all(&s, "\u{1}").into_owned()
 }
@@ -487,11 +530,42 @@ pub(crate) fn placeholders(k: &str, v: &str) -> (String, String) {
 
 fn translit_rune(r: char) -> Option<&'static str> {
     Some(match r {
-        'а' => "a", 'б' => "b", 'в' => "v", 'г' => "g", 'д' => "d", 'е' => "e", 'ё' => "yo", 'ж' => "zh",
-        'з' => "z", 'и' => "i", 'й' => "y", 'к' => "k", 'л' => "l", 'м' => "m", 'н' => "n", 'о' => "o",
-        'п' => "p", 'р' => "r", 'с' => "s", 'т' => "t", 'у' => "u", 'ф' => "f", 'х' => "kh", 'ц' => "ts",
-        'ч' => "ch", 'ш' => "sh", 'щ' => "shch", 'ъ' => "", 'ы' => "y", 'ь' => "", 'э' => "e", 'ю' => "yu",
-        'я' => "ya", 'і' => "i", 'ї' => "yi", 'є' => "ye",
+        'а' => "a",
+        'б' => "b",
+        'в' => "v",
+        'г' => "g",
+        'д' => "d",
+        'е' => "e",
+        'ё' => "yo",
+        'ж' => "zh",
+        'з' => "z",
+        'и' => "i",
+        'й' => "y",
+        'к' => "k",
+        'л' => "l",
+        'м' => "m",
+        'н' => "n",
+        'о' => "o",
+        'п' => "p",
+        'р' => "r",
+        'с' => "s",
+        'т' => "t",
+        'у' => "u",
+        'ф' => "f",
+        'х' => "kh",
+        'ц' => "ts",
+        'ч' => "ch",
+        'ш' => "sh",
+        'щ' => "shch",
+        'ъ' => "",
+        'ы' => "y",
+        'ь' => "",
+        'э' => "e",
+        'ю' => "yu",
+        'я' => "ya",
+        'і' => "i",
+        'ї' => "yi",
+        'є' => "ye",
         _ => return None,
     })
 }
@@ -512,7 +586,8 @@ pub fn translit(s: &str) -> String {
             continue;
         }
         // a capital letter: whole word in capitals or just the first one
-        let caps = (i + 1 < rs.len() && rs[i + 1].is_uppercase()) || (i > 0 && rs[i - 1].is_uppercase());
+        let caps =
+            (i + 1 < rs.len() && rs[i + 1].is_uppercase()) || (i > 0 && rs[i - 1].is_uppercase());
         if caps {
             b += &t.to_uppercase();
         } else {

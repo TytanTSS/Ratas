@@ -39,11 +39,50 @@ fn palette(theme: &str) -> Palette {
         pool_threshold: 0.0,
     };
     match theme {
-        "cave" => Palette { cave: true, wall: "cave_wall", floor: "cave_floor", pool: "water", pool3: "lava", deco: &["rubble", "bones", "web"], pool_threshold: 0.42, ..base },
-        "ice" => Palette { cave: true, wall: "ice_wall", floor: "ice_floor", pool: "ice", pool3: "ice", deco: &["snowdrift", "bones"], crystal: "crystal", pool_threshold: 0.36, ..base },
-        "volcano" => Palette { cave: true, wall: "basalt_wall", floor: "basalt_floor", pool: "lava", pool3: "lava", deco: &["magma_crack", "rubble", "bones"], pool_threshold: 0.4, ..base },
-        "temple" => Palette { wall: "sandstone_wall", floor: "sandstone_floor", chest: "sarcophagus", ..base },
-        "fortress" => Palette { wall: "dark_wall", floor: "dark_floor", pillar: "brazier", carpet: "carpet", ..base },
+        "cave" => Palette {
+            cave: true,
+            wall: "cave_wall",
+            floor: "cave_floor",
+            pool: "water",
+            pool3: "lava",
+            deco: &["rubble", "bones", "web"],
+            pool_threshold: 0.42,
+            ..base
+        },
+        "ice" => Palette {
+            cave: true,
+            wall: "ice_wall",
+            floor: "ice_floor",
+            pool: "ice",
+            pool3: "ice",
+            deco: &["snowdrift", "bones"],
+            crystal: "crystal",
+            pool_threshold: 0.36,
+            ..base
+        },
+        "volcano" => Palette {
+            cave: true,
+            wall: "basalt_wall",
+            floor: "basalt_floor",
+            pool: "lava",
+            pool3: "lava",
+            deco: &["magma_crack", "rubble", "bones"],
+            pool_threshold: 0.4,
+            ..base
+        },
+        "temple" => Palette {
+            wall: "sandstone_wall",
+            floor: "sandstone_floor",
+            chest: "sarcophagus",
+            ..base
+        },
+        "fortress" => Palette {
+            wall: "dark_wall",
+            floor: "dark_floor",
+            pillar: "brazier",
+            carpet: "carpet",
+            ..base
+        },
         _ => base,
     }
 }
@@ -56,11 +95,23 @@ pub fn themes() -> &'static [&'static str] {
 /// Builds one floor. Room themes (crypt, temple, fortress) use BSP rooms and
 /// corridors, cave themes (cave, ice, volcano) use cellular automata. The last
 /// floor (depth == max_depth) has a boss lair instead of stairs down.
-pub fn generate_dungeon(seed: i64, id: &str, name: &str, theme: &str, dungeon_idx: i32, depth: i32, max_depth: i32) -> DungeonFloor {
+pub fn generate_dungeon(
+    seed: i64,
+    id: &str,
+    name: &str,
+    theme: &str,
+    dungeon_idx: i32,
+    depth: i32,
+    max_depth: i32,
+) -> DungeonFloor {
     let mut r = Rng::labeled(seed, id);
     let (w, h) = (64 + depth * 4, 50 + depth * 3);
     let pal = palette(theme);
-    let mut f = if pal.cave { gen_cave(&mut r, w, h, depth, max_depth, &pal) } else { gen_crypt(&mut r, w, h, depth, max_depth, &pal) };
+    let mut f = if pal.cave {
+        gen_cave(&mut r, w, h, depth, max_depth, &pal)
+    } else {
+        gen_crypt(&mut r, w, h, depth, max_depth, &pal)
+    };
     f.level.id = id.into();
     f.level.name = format!("{name} — ур. {depth}");
     f.level.theme = theme.into();
@@ -79,7 +130,11 @@ struct Bsp {
 
 impl Bsp {
     fn new(r: Rect) -> Bsp {
-        Bsp { r, kids: None, room: None }
+        Bsp {
+            r,
+            kids: None,
+            room: None,
+        }
     }
 
     fn split(&mut self, rng: &mut Rng, min_w: i32, min_h: i32) {
@@ -95,13 +150,19 @@ impl Bsp {
                 return;
             }
             let cut = rng.range(min_h, r.h - min_h);
-            (Rect::new(r.x, r.y, r.w, cut), Rect::new(r.x, r.y + cut, r.w, r.h - cut))
+            (
+                Rect::new(r.x, r.y, r.w, cut),
+                Rect::new(r.x, r.y + cut, r.w, r.h - cut),
+            )
         } else {
             if r.w < min_w * 2 {
                 return;
             }
             let cut = rng.range(min_w, r.w - min_w);
-            (Rect::new(r.x, r.y, cut, r.h), Rect::new(r.x + cut, r.y, r.w - cut, r.h))
+            (
+                Rect::new(r.x, r.y, cut, r.h),
+                Rect::new(r.x + cut, r.y, r.w - cut, r.h),
+            )
         };
         let mut k = Box::new((Bsp::new(a), Bsp::new(b)));
         k.0.split(rng, min_w, min_h);
@@ -189,7 +250,14 @@ fn corridor(rng: &mut Rng, l: &mut Level, a: Pos, b: Pos, wall: u8, floor: u8) {
     }
 }
 
-fn gen_crypt(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palette) -> DungeonFloor {
+fn gen_crypt(
+    r: &mut Rng,
+    w: i32,
+    h: i32,
+    depth: i32,
+    max_depth: i32,
+    pal: &Palette,
+) -> DungeonFloor {
     let (wall, floor) = (t(pal.wall), t(pal.floor));
     let mut l = Level::new("", "", w, h, wall);
     let mut root = Bsp::new(Rect::new(1, 1, w - 2, h - 2));
@@ -204,14 +272,22 @@ fn gen_crypt(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Pale
     for rm in &rooms {
         for x in rm.x - 1..=rm.x + rm.w {
             for y in [rm.y - 1, rm.y + rm.h] {
-                if l.at(x, y) == floor && l.at(x - 1, y) == wall && l.at(x + 1, y) == wall && r.int_n(2) == 0 {
+                if l.at(x, y) == floor
+                    && l.at(x - 1, y) == wall
+                    && l.at(x + 1, y) == wall
+                    && r.int_n(2) == 0
+                {
                     l.set(x, y, door);
                 }
             }
         }
         for y in rm.y - 1..=rm.y + rm.h {
             for x in [rm.x - 1, rm.x + rm.w] {
-                if l.at(x, y) == floor && l.at(x, y - 1) == wall && l.at(x, y + 1) == wall && r.int_n(2) == 0 {
+                if l.at(x, y) == floor
+                    && l.at(x, y - 1) == wall
+                    && l.at(x, y + 1) == wall
+                    && r.int_n(2) == 0
+                {
                     l.set(x, y, door);
                 }
             }
@@ -235,7 +311,10 @@ fn gen_crypt(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Pale
             }
         }
         for _ in 0..3 {
-            let (x, y) = (r.range(rm.x, rm.x + rm.w - 1), r.range(rm.y, rm.y + rm.h - 1));
+            let (x, y) = (
+                r.range(rm.x, rm.x + rm.w - 1),
+                r.range(rm.y, rm.y + rm.h - 1),
+            );
             if l.at(x, y) == floor && r.int_n(2) == 0 {
                 let d = *r.pick(pal.deco);
                 l.set(x, y, t(d));
@@ -268,7 +347,12 @@ fn gen_crypt(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Pale
     let monsters = scatter(r, &l, &rooms, first, (7 + depth * 3) as usize);
     let k = 3 + r.int_n(3);
     let items = scatter(r, &l, &rooms, first, k as usize);
-    DungeonFloor { level: l, monsters, items, boss }
+    DungeonFloor {
+        level: l,
+        monsters,
+        items,
+        boss,
+    }
 }
 
 fn farthest_room(l: &Level, from: Pos, rooms: &[Rect]) -> Rect {
@@ -309,7 +393,15 @@ pub fn bfs(l: &Level, from: Pos) -> Vec<i32> {
     dist
 }
 
-fn place_chests(r: &mut Rng, l: &mut Level, rooms: &[Rect], skip: Rect, mut n: i32, chest: u8, floor: u8) {
+fn place_chests(
+    r: &mut Rng,
+    l: &mut Level,
+    rooms: &[Rect],
+    skip: Rect,
+    mut n: i32,
+    chest: u8,
+    floor: u8,
+) {
     let mut k = 0;
     while k < n * 10 && n > 0 {
         k += 1;
@@ -319,7 +411,11 @@ fn place_chests(r: &mut Rng, l: &mut Level, rooms: &[Rect], skip: Rect, mut n: i
         }
         // against a wall, not in a doorway
         let x = r.range(rm.x, rm.x + rm.w - 1);
-        let y = if r.int_n(2) == 0 { rm.y + rm.h - 1 } else { rm.y };
+        let y = if r.int_n(2) == 0 {
+            rm.y + rm.h - 1
+        } else {
+            rm.y
+        };
         if l.at(x, y) != floor || x == rm.center().x {
             continue;
         }
@@ -350,7 +446,10 @@ fn scatter(r: &mut Rng, l: &Level, rooms: &[Rect], skip: Rect, n: usize) -> Vec<
         if rm == skip && rooms.len() > 1 {
             continue;
         }
-        let (x, y) = (r.range(rm.x, rm.x + rm.w - 1), r.range(rm.y, rm.y + rm.h - 1));
+        let (x, y) = (
+            r.range(rm.x, rm.x + rm.w - 1),
+            r.range(rm.y, rm.y + rm.h - 1),
+        );
         if l.walkable(x, y) && l.def(x, y).interact.is_empty() {
             out.push(Pos::new(x, y));
         }
@@ -391,7 +490,14 @@ fn blockable(l: &Level, p: Pos) -> bool {
 
 // ---------- cellular automata cave ----------
 
-fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palette) -> DungeonFloor {
+fn gen_cave(
+    r: &mut Rng,
+    w: i32,
+    h: i32,
+    depth: i32,
+    max_depth: i32,
+    pal: &Palette,
+) -> DungeonFloor {
     let (wall, floor) = (t(pal.wall), t(pal.floor));
     let n = (w * h) as usize;
     let mut l;
@@ -417,7 +523,11 @@ fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palet
                     for dy in -2..=2i32 {
                         for dx in -2..=2i32 {
                             let (xx, yy) = (x + dx, y + dy);
-                            let wall_at = xx < 0 || yy < 0 || xx >= w || yy >= h || cells[(yy * w + xx) as usize];
+                            let wall_at = xx < 0
+                                || yy < 0
+                                || xx >= w
+                                || yy >= h
+                                || cells[(yy * w + xx) as usize];
                             if !wall_at {
                                 continue;
                             }
@@ -469,7 +579,10 @@ fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palet
         }
     }
 
-    let floors: Vec<Pos> = (0..n as i32).map(|i| Pos::new(i % w, i / w)).filter(|p| l.at(p.x, p.y) == floor).collect();
+    let floors: Vec<Pos> = (0..n as i32)
+        .map(|i| Pos::new(i % w, i / w))
+        .filter(|p| l.at(p.x, p.y) == floor)
+        .collect();
     let up = *r.pick(&floors);
     l.set(up.x, up.y, t("stairs_up"));
     l.up = up;
@@ -495,7 +608,12 @@ fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palet
         let crystal = t(pal.crystal);
         for i in r.perm(floors.len()) {
             let p = floors[i];
-            if l.at(p.x, p.y) != floor || p.manhattan(up) < 4 || p == l.down || boss.map(|b: Pos| p.manhattan(b) < 3).unwrap_or(false) || r.int_n(10) > 0 {
+            if l.at(p.x, p.y) != floor
+                || p.manhattan(up) < 4
+                || p == l.down
+                || boss.map(|b: Pos| p.manhattan(b) < 3).unwrap_or(false)
+                || r.int_n(10) > 0
+            {
                 continue;
             }
             if blockable(&l, p) {
@@ -514,7 +632,10 @@ fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palet
         if l.at(p.x, p.y) != floor || p.manhattan(up) < 8 {
             continue;
         }
-        let walls = DIRS4.iter().filter(|d| l.at(p.x + d.x, p.y + d.y) == wall).count();
+        let walls = DIRS4
+            .iter()
+            .filter(|d| l.at(p.x + d.x, p.y + d.y) == wall)
+            .count();
         if walls == 3 {
             l.set(p.x, p.y, chest);
             chests -= 1;
@@ -536,5 +657,10 @@ fn gen_cave(r: &mut Rng, w: i32, h: i32, depth: i32, max_depth: i32, pal: &Palet
     let monsters = pick(r, (8 + depth * 3) as usize);
     let k = 3 + r.int_n(3);
     let items = pick(r, k as usize);
-    DungeonFloor { level: l, monsters, items, boss }
+    DungeonFloor {
+        level: l,
+        monsters,
+        items,
+        boss,
+    }
 }

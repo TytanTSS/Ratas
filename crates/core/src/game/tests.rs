@@ -21,7 +21,10 @@ pub(crate) fn run(g: &mut Game, ticks: usize) {
 }
 
 fn input(mv: [i8; 2]) -> Input {
-    Input { mv, ..Default::default() }
+    Input {
+        mv,
+        ..Default::default()
+    }
 }
 
 fn cmd(kind: &str, key: &str, index: i32) -> Command {
@@ -36,14 +39,22 @@ pub(crate) fn wild(g: &mut Game, p: Id) -> Pos {
         for x in 6..w - 6 {
             let q = Pos::new(x, y);
             let l = &g.levels["overworld"];
-            let open = (-3..=3).all(|dy| (-3..=3).all(|dx| {
-                let d = l.def(x + dx, y + dy);
-                l.walkable(x + dx, y + dy) && d.damage == 0.0 && d.interact.is_empty() && d.move_cost <= 1.0
-            }));
+            let open = (-3..=3).all(|dy| {
+                (-3..=3).all(|dx| {
+                    let d = l.def(x + dx, y + dy);
+                    l.walkable(x + dx, y + dy)
+                        && d.damage == 0.0
+                        && d.interact.is_empty()
+                        && d.move_cost <= 1.0
+                })
+            });
             if open && !g.in_village(q, 10) && q.dist(start) > 20 && !g.cell_taken("overworld", q) {
                 g.place_for_test(p, "overworld", q);
                 for e in g.on_level("overworld") {
-                    if e != p && g.ents[&e].monster.is_some() && g.ents[&e].pos.dist(q.center()) < 15.0 {
+                    if e != p
+                        && g.ents[&e].monster.is_some()
+                        && g.ents[&e].pos.dist(q.center()) < 15.0
+                    {
                         g.remove(e);
                     }
                 }
@@ -68,7 +79,12 @@ pub(crate) fn spawn_at(g: &mut Game, key: &str, p: Id, offset: Vec2) -> Id {
 
 fn give(g: &mut Game, p: Id, key: &str) -> usize {
     g.add_item(p, ItemStack::new(key));
-    g.ents[&p].p().inventory.iter().position(|s| s.key == key).unwrap()
+    g.ents[&p]
+        .p()
+        .inventory
+        .iter()
+        .position(|s| s.key == key)
+        .unwrap()
 }
 
 #[test]
@@ -93,7 +109,10 @@ fn join_move_and_explore() {
     assert!(moved, "the hero could not move in any direction");
     assert!(!g.ents[&p].p().explored["overworld"].0.is_empty());
     run(&mut g, 200);
-    assert!(g.ents.values().any(|e| e.kind == Kind::Monster), "no monsters spawned");
+    assert!(
+        g.ents.values().any(|e| e.kind == Kind::Monster),
+        "no monsters spawned"
+    );
 }
 
 /// Heroes walk smoothly in eight directions at their own pace.
@@ -111,7 +130,11 @@ fn continuous_diagonal_movement() {
     let end = g.ents[&p].pos;
     let d = end - start;
     assert!((d.x - d.y).abs() < 0.05, "not diagonal: {d:?}");
-    assert!((d.len() - speed).abs() < speed * 0.1, "walked {} in a second at speed {speed}", d.len());
+    assert!(
+        (d.len() - speed).abs() < speed * 0.1,
+        "walked {} in a second at speed {speed}",
+        d.len()
+    );
     // positions between cells
     assert!(end.x.fract() != 0.5 || end.y.fract() != 0.5 || d.len() > 0.0);
     // releasing the keys stops the hero
@@ -133,7 +156,11 @@ fn walls_block_and_slide() {
         run(&mut g, 1);
         let e = &g.ents[&p];
         let l = &g.levels[&lid];
-        assert!(l.circle_fits(e.pos, e.radius() * 0.99, &|x, y| !l.walkable(x, y)), "inside a wall at {:?}", e.pos);
+        assert!(
+            l.circle_fits(e.pos, e.radius() * 0.99, &|x, y| !l.walkable(x, y)),
+            "inside a wall at {:?}",
+            e.pos
+        );
     }
 }
 
@@ -148,12 +175,30 @@ fn dungeon_combat_and_save() {
     let mut kills = 0;
     for _ in 0..300 {
         let pos = g.ents[&p].pos;
-        let target = g.on_level(&lid).into_iter().filter(|o| g.ents[o].kind == Kind::Monster).min_by(|a, b| g.ents[a].pos.dist(pos).partial_cmp(&g.ents[b].pos.dist(pos)).unwrap());
+        let target = g
+            .on_level(&lid)
+            .into_iter()
+            .filter(|o| g.ents[o].kind == Kind::Monster)
+            .min_by(|a, b| {
+                g.ents[a]
+                    .pos
+                    .dist(pos)
+                    .partial_cmp(&g.ents[b].pos.dist(pos))
+                    .unwrap()
+            });
         let Some(t) = target else { break };
         g.move_next_to(p, t);
         let tp = g.ents[&t].pos;
         g.ents.get_mut(&p).unwrap().mp = 1000.0;
-        g.set_input(p, &Input { ability: 1, attack: true, aim: Some([tp.x, tp.y]), ..Default::default() });
+        g.set_input(
+            p,
+            &Input {
+                ability: 1,
+                attack: true,
+                aim: Some([tp.x, tp.y]),
+                ..Default::default()
+            },
+        );
         let before = g.ents[&p].p().kills;
         run(&mut g, 10);
         kills += g.ents[&p].p().kills - before;
@@ -185,13 +230,27 @@ fn projectiles_fly() {
     g.ents.get_mut(&p).unwrap().pm().hotbar[0] = "magic_missile".into();
     g.unlock_ability(p, "magic_missile");
     g.ents.get_mut(&p).unwrap().mp = 100.0;
-    g.set_input(p, &Input { ability: 1, aim: Some([wp.x, wp.y]), ..Default::default() });
+    g.set_input(
+        p,
+        &Input {
+            ability: 1,
+            aim: Some([wp.x, wp.y]),
+            ..Default::default()
+        },
+    );
     run(&mut g, 1);
-    let flying: Vec<&Entity> = g.ents.values().filter(|e| e.kind == Kind::Projectile).collect();
+    let flying: Vec<&Entity> = g
+        .ents
+        .values()
+        .filter(|e| e.kind == Kind::Projectile)
+        .collect();
     assert!(!flying.is_empty(), "no projectile in flight");
     assert!(g.ents[&wolf].hp >= g.ents[&wolf].max_hp, "hit at once");
     run(&mut g, 30);
-    assert!(!g.ents.contains_key(&wolf) || g.ents[&wolf].hp < g.ents[&wolf].max_hp, "the missile never hit");
+    assert!(
+        !g.ents.contains_key(&wolf) || g.ents[&wolf].hp < g.ents[&wolf].max_hp,
+        "the missile never hit"
+    );
 }
 
 /// A mouse-aimed ability goes to the enemy under the cursor, not the nearest.
@@ -204,16 +263,38 @@ fn mouse_aim() {
     let far = spawn_at(&mut g, "wolf", p, Vec2::new(-4.0, 0.0));
     // keep them still
     for w in [near, far] {
-        g.apply_buff(w, &crate::content::BuffDef { key: "freeze".into(), stun: true, duration_ms: 60000, ..Default::default() }, 0);
+        g.apply_buff(
+            w,
+            &crate::content::BuffDef {
+                key: "freeze".into(),
+                stun: true,
+                duration_ms: 60000,
+                ..Default::default()
+            },
+            0,
+        );
     }
     g.unlock_ability(p, "magic_missile");
     g.ents.get_mut(&p).unwrap().pm().hotbar[0] = "magic_missile".into();
     g.ents.get_mut(&p).unwrap().mp = 100.0;
     let fp = g.ents[&far].pos;
-    g.set_input(p, &Input { ability: 1, aim: Some([fp.x, fp.y]), ..Default::default() });
+    g.set_input(
+        p,
+        &Input {
+            ability: 1,
+            aim: Some([fp.x, fp.y]),
+            ..Default::default()
+        },
+    );
     run(&mut g, 30);
-    assert!(g.ents.get(&far).map(|f| f.hp < f.max_hp).unwrap_or(true), "the aimed wolf was not hit");
-    assert!(g.ents[&near].hp >= g.ents[&near].max_hp, "the nearest wolf was hit instead");
+    assert!(
+        g.ents.get(&far).map(|f| f.hp < f.max_hp).unwrap_or(true),
+        "the aimed wolf was not hit"
+    );
+    assert!(
+        g.ents[&near].hp >= g.ents[&near].max_hp,
+        "the nearest wolf was hit instead"
+    );
     // aimed at empty ground, a projectile flies there anyway
     g.remove(near);
     g.remove(far);
@@ -221,9 +302,19 @@ fn mouse_aim() {
     e.cooldowns.clear();
     e.mp = 100.0;
     let pos = e.pos;
-    g.set_input(p, &Input { ability: 1, aim: Some([pos.x, pos.y - 3.0]), ..Default::default() });
+    g.set_input(
+        p,
+        &Input {
+            ability: 1,
+            aim: Some([pos.x, pos.y - 3.0]),
+            ..Default::default()
+        },
+    );
     run(&mut g, 1);
-    let up = g.ents.values().any(|e| e.kind == Kind::Projectile && e.vel.y < 0.0 && e.vel.x.abs() < 0.1);
+    let up = g
+        .ents
+        .values()
+        .any(|e| e.kind == Kind::Projectile && e.vel.y < 0.0 && e.vel.x.abs() < 0.1);
     assert!(up, "no projectile toward the empty ground");
     let f = g.ents[&p].facing;
     assert!((f + std::f32::consts::FRAC_PI_2).abs() < 0.1, "facing {f}");
@@ -236,12 +327,29 @@ fn knight_reach() {
     let p = g.join_for_test("Тест", "warrior");
     wild(&mut g, p);
     let far = spawn_at(&mut g, "wolf", p, Vec2::new(2.0, 0.0));
-    g.apply_buff(far, &crate::content::BuffDef { key: "freeze".into(), stun: true, duration_ms: 60000, ..Default::default() }, 0);
+    g.apply_buff(
+        far,
+        &crate::content::BuffDef {
+            key: "freeze".into(),
+            stun: true,
+            duration_ms: 60000,
+            ..Default::default()
+        },
+        0,
+    );
     g.ents.get_mut(&p).unwrap().facing = 0.0;
     g.attack_facing(p);
-    assert!(g.ents[&far].hp >= g.ents[&far].max_hp, "hit two tiles away without the skill");
+    assert!(
+        g.ents[&far].hp >= g.ents[&far].max_hp,
+        "hit two tiles away without the skill"
+    );
     assert!(!g.in_reach(p, far));
-    g.ents.get_mut(&p).unwrap().pm().skills.insert("long_reach".into(), 1);
+    g.ents
+        .get_mut(&p)
+        .unwrap()
+        .pm()
+        .skills
+        .insert("long_reach".into(), 1);
     g.ents.get_mut(&p).unwrap().recalc();
     assert_eq!(g.ents[&p].stats.reach, 1.0);
     assert!(g.in_reach(p, far));
@@ -252,7 +360,10 @@ fn knight_reach() {
         g.ents.get_mut(&p).unwrap().next_attack = 0.0;
         g.attack_facing(p);
     }
-    assert!(g.ents[&far].hp < g.ents[&far].max_hp, "the long reach did not hit");
+    assert!(
+        g.ents[&far].hp < g.ents[&far].max_hp,
+        "the long reach did not hit"
+    );
     let farther = spawn_at(&mut g, "wolf", p, Vec2::new(0.0, 3.4));
     assert!(!g.in_reach(p, farther), "reach too long");
 }
@@ -266,12 +377,23 @@ fn skills_and_items() {
     g.command(p, &cmd("learn", "swift", 0));
     assert_eq!(g.ents[&p].p().skill("swift"), 1);
     g.command(p, &cmd("learn", "smoke_bomb", 0));
-    assert_eq!(g.ents[&p].p().skill("smoke_bomb"), 0, "smoke bomb requires level 6");
+    assert_eq!(
+        g.ents[&p].p().skill("smoke_bomb"),
+        0,
+        "smoke bomb requires level 6"
+    );
     g.command(p, &cmd("learn", "toughness", 0));
-    assert_eq!(g.ents[&p].p().skill("toughness"), 0, "a warrior skill without the class");
+    assert_eq!(
+        g.ents[&p].p().skill("toughness"),
+        0,
+        "a warrior skill without the class"
+    );
     let before = g.ents[&p].stats.move_ms;
     g.command(p, &cmd("learn", "swift", 0));
-    assert!(g.ents[&p].stats.move_ms < before, "move speed skill had no effect");
+    assert!(
+        g.ents[&p].stats.move_ms < before,
+        "move speed skill had no effect"
+    );
     g.command(p, &cmd("alloc_attr", "dex", 0));
     let base = db().class("rogue").unwrap().attrs["dex"];
     assert_eq!(g.ents[&p].p().attrs["dex"], base + 1.0);
@@ -281,7 +403,14 @@ fn skills_and_items() {
 fn equipment_slots() {
     let mut g = setup();
     let p = g.join_for_test("Тест", "warrior");
-    let eq = |g: &Game, s: &str| g.ents[&p].p().equip.get(s).map(|i| i.key.clone()).unwrap_or_default();
+    let eq = |g: &Game, s: &str| {
+        g.ents[&p]
+            .p()
+            .equip
+            .get(s)
+            .map(|i| i.key.clone())
+            .unwrap_or_default()
+    };
     assert_eq!(eq(&g, SLOT_MAIN), "short_sword");
     assert_eq!(eq(&g, SLOT_OFF), "wooden_shield");
     assert!(g.ents[&p].stats.gear.shield);
@@ -291,13 +420,22 @@ fn equipment_slots() {
     assert!(g.ents[&p].stats.gear.two_hand);
     let i = give(&mut g, p, "round_shield");
     g.equip(p, i, false);
-    assert_eq!((eq(&g, SLOT_MAIN), eq(&g, SLOT_OFF)), ("".into(), "round_shield".into()));
+    assert_eq!(
+        (eq(&g, SLOT_MAIN), eq(&g, SLOT_OFF)),
+        ("".into(), "round_shield".into())
+    );
     let i = give(&mut g, p, "dagger");
     g.equip(p, i, false);
     let i = give(&mut g, p, "short_sword");
     g.equip(p, i, true);
     assert!(g.ents[&p].stats.gear.dual);
-    for r in ["ring_vigor", "ring_mind", "ring_fire", "ring_frost", "ring_storm"] {
+    for r in [
+        "ring_vigor",
+        "ring_mind",
+        "ring_fire",
+        "ring_frost",
+        "ring_storm",
+    ] {
         let i = give(&mut g, p, r);
         g.equip(p, i, false);
     }
@@ -358,9 +496,22 @@ fn pvp_and_party() {
     let m = spawn_at(&mut g, "wolf", a, Vec2::new(0.0, 1.0));
     let hp = g.ents[&b].hp;
     let (f, lvl, pos) = (g.ents[&a].faction, g.ents[&a].level.clone(), g.ents[&a].pos);
-    g.area_damage(Some(a), f, &lvl, pos, 3.0, &Damage::single("fire", 20.0), None, '*', "#fff");
+    g.area_damage(
+        Some(a),
+        f,
+        &lvl,
+        pos,
+        3.0,
+        &Damage::single("fire", 20.0),
+        None,
+        '*',
+        "#fff",
+    );
     assert!(g.ents[&b].hp >= hp, "area damage hit the party");
-    assert!(!g.ents.contains_key(&m) || g.ents[&m].hp < g.ents[&m].max_hp, "area damage missed the wolf");
+    assert!(
+        !g.ents.contains_key(&m) || g.ents[&m].hp < g.ents[&m].max_hp,
+        "area damage missed the wolf"
+    );
     g.command(b, &cmd("party_leave", "", 0));
     assert!(!g.same_party(a, b) && g.party_of(a).is_none());
     g.pvp = false;
@@ -378,10 +529,18 @@ fn death_and_resurrection() {
     g.kill_for_test(b);
     assert!(g.ents[&b].dead && g.ents[&b].pos == pos);
     let snap = g.snapshot(a);
-    assert!(snap.entities.iter().any(|e| e.id == b && e.dead), "the fallen hero is not visible");
+    assert!(
+        snap.entities.iter().any(|e| e.id == b && e.dead),
+        "the fallen hero is not visible"
+    );
     g.command(b, &cmd("respawn", "", 0));
     assert!(g.ents[&b].dead, "respawned before the button works");
-    g.ents.get_mut(&a).unwrap().pm().subclasses.insert("priest".into(), "saint".into());
+    g.ents
+        .get_mut(&a)
+        .unwrap()
+        .pm()
+        .subclasses
+        .insert("priest".into(), "saint".into());
     g.unlock_ability(a, "resurrection");
     g.ents.get_mut(&a).unwrap().mp = 100.0;
     g.use_ability(a, "resurrection", None);
@@ -397,7 +556,13 @@ fn summons_and_decoys() {
     let p = g.join_for_test("Тест", "rogue");
     wild(&mut g, p);
     let wolf = spawn_at(&mut g, "wolf", p, Vec2::new(3.0, 0.0));
-    g.ents.get_mut(&wolf).unwrap().monster.as_mut().unwrap().target = p;
+    g.ents
+        .get_mut(&wolf)
+        .unwrap()
+        .monster
+        .as_mut()
+        .unwrap()
+        .target = p;
     g.unlock_ability(p, "decoy");
     g.ents.get_mut(&p).unwrap().mp = 100.0;
     g.use_ability(p, "decoy", None);
@@ -408,10 +573,24 @@ fn summons_and_decoys() {
     g.unlock_ability(p, "summon_imp");
     g.ents.get_mut(&p).unwrap().mp = 100.0;
     g.use_ability(p, "summon_imp", None);
-    let imp = g.ents.values().find(|e| e.owner == p && e.monster.as_ref().map(|m| m.def == "imp_minion").unwrap_or(false)).map(|e| e.id).expect("imp");
+    let imp = g
+        .ents
+        .values()
+        .find(|e| {
+            e.owner == p
+                && e.monster
+                    .as_ref()
+                    .map(|m| m.def == "imp_minion")
+                    .unwrap_or(false)
+        })
+        .map(|e| e.id)
+        .expect("imp");
     assert!(g.ents[&imp].faction == Faction::Player && !g.hostile(p, imp) && g.hostile(imp, wolf));
     run(&mut g, 150);
-    assert!(!g.ents.contains_key(&wolf) || g.ents[&wolf].hp < g.ents[&wolf].max_hp, "the imp did not attack the wolf");
+    assert!(
+        !g.ents.contains_key(&wolf) || g.ents[&wolf].hp < g.ents[&wolf].max_hp,
+        "the imp did not attack the wolf"
+    );
     g.now += 60000.0;
     run(&mut g, 5);
     assert!(!g.ents.contains_key(&imp), "the summon did not expire");
@@ -424,19 +603,38 @@ fn archer_keeps_distance_and_healer_heals() {
     wild(&mut g, p);
     g.tough_for_test(p);
     let archer = spawn_at(&mut g, "bandit_archer", p, Vec2::new(1.0, 0.0));
-    g.ents.get_mut(&archer).unwrap().monster.as_mut().unwrap().target = p;
+    g.ents
+        .get_mut(&archer)
+        .unwrap()
+        .monster
+        .as_mut()
+        .unwrap()
+        .target = p;
     run(&mut g, 45);
     if let Some(a) = g.ents.get(&archer) {
-        assert!(a.dist(&g.ents[&p]) >= 2.0, "the archer stayed in melee ({})", a.dist(&g.ents[&p]));
+        assert!(
+            a.dist(&g.ents[&p]) >= 2.0,
+            "the archer stayed in melee ({})",
+            a.dist(&g.ents[&p])
+        );
     }
     let shaman = spawn_at(&mut g, "orc_shaman", p, Vec2::new(0.0, 5.0));
     let orc = spawn_at(&mut g, "orc", shaman, Vec2::new(1.0, 0.0));
     let e = g.ents.get_mut(&orc).unwrap();
     e.hp = e.max_hp * 0.3;
     let hp = e.hp;
-    g.ents.get_mut(&shaman).unwrap().monster.as_mut().unwrap().target = p;
+    g.ents
+        .get_mut(&shaman)
+        .unwrap()
+        .monster
+        .as_mut()
+        .unwrap()
+        .target = p;
     run(&mut g, 60);
-    assert!(g.ents.get(&orc).map(|o| o.hp > hp).unwrap_or(false), "the shaman did not heal the orc");
+    assert!(
+        g.ents.get(&orc).map(|o| o.hp > hp).unwrap_or(false),
+        "the shaman did not heal the orc"
+    );
 }
 
 #[test]
@@ -446,8 +644,12 @@ fn squads_guards_and_wanderers() {
     let start = g.start.add(Pos::new(60, 0));
     let mut r = Rng::new(1, 1);
     let ms = g.spawn_squad(&mut r, sq, "overworld", start, 2);
-    let roles: std::collections::HashSet<&str> = ms.iter().map(|m| ai::role_of(g.def_of(*m))).collect();
-    assert!(roles.contains("frontline") && roles.contains("ranged"), "{roles:?}");
+    let roles: std::collections::HashSet<&str> =
+        ms.iter().map(|m| ai::role_of(g.def_of(*m))).collect();
+    assert!(
+        roles.contains("frontline") && roles.contains("ranged"),
+        "{roles:?}"
+    );
     let (mut guards, mut wanderers, mut uniques) = (0, 0, 0);
     for e in g.ents.values() {
         let Some(n) = &e.npc else { continue };
@@ -460,19 +662,30 @@ fn squads_guards_and_wanderers() {
             wanderers += 1;
         }
     }
-    assert!(guards > 0 && wanderers >= 4 && uniques >= 6, "guards {guards} wanderers {wanderers} uniques {uniques}");
+    assert!(
+        guards > 0 && wanderers >= 4 && uniques >= 6,
+        "guards {guards} wanderers {wanderers} uniques {uniques}"
+    );
 }
 
 #[test]
 fn unique_quests() {
     let mut g = setup();
     let p = g.join_for_test("Тест", "warrior");
-    let npc = g.ents.values().find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false)).map(|e| e.id);
+    let npc = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false))
+        .map(|e| e.id);
     let npc = match npc {
         Some(n) => n,
         None => {
             g.admin(p, "/unique morta");
-            g.ents.values().find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false)).unwrap().id
+            g.ents
+                .values()
+                .find(|e| e.npc.as_ref().map(|n| n.unique == "morta").unwrap_or(false))
+                .unwrap()
+                .id
         }
     };
     let u = db().unique("morta").unwrap();
@@ -508,20 +721,35 @@ fn mimic_and_death_sentence() {
     let p = g.join_for_test("Тест", "rogue");
     wild(&mut g, p);
     let mage = spawn_at(&mut g, "bandit_mage", p, Vec2::new(3.0, 0.0));
-    g.apply_buff(mage, &crate::content::BuffDef { key: "freeze".into(), stun: true, duration_ms: 60000, ..Default::default() }, 0);
+    g.apply_buff(
+        mage,
+        &crate::content::BuffDef {
+            key: "freeze".into(),
+            stun: true,
+            duration_ms: 60000,
+            ..Default::default()
+        },
+        0,
+    );
     g.unlock_ability(p, "mimicry");
     g.ents.get_mut(&p).unwrap().mp = 100.0;
     g.use_ability(p, "mimicry", Some(mage));
     assert_eq!(g.ents[&p].p().copied, "m_firebolt");
     g.use_ability(p, "copied", Some(mage));
     run(&mut g, 30);
-    assert!(g.ents.get(&mage).map(|m| m.hp < m.max_hp).unwrap_or(true), "the copied firebolt did not hit");
+    assert!(
+        g.ents.get(&mage).map(|m| m.hp < m.max_hp).unwrap_or(true),
+        "the copied firebolt did not hit"
+    );
     g.ents.get_mut(&p).unwrap().pm().level = 10;
     let weak = spawn_at(&mut g, "wolf", p, Vec2::new(0.0, 2.0));
     g.unlock_ability(p, "death_sentence");
     g.ents.get_mut(&p).unwrap().mp = 100.0;
     g.use_ability(p, "death_sentence", None);
-    assert!(!g.ents.contains_key(&weak), "a weaker creature survived the sentence");
+    assert!(
+        !g.ents.contains_key(&weak),
+        "a weaker creature survived the sentence"
+    );
 }
 
 #[test]
@@ -536,16 +764,32 @@ fn admin_commands() {
     g.admin(p, "/level 10");
     assert_eq!(g.ents[&p].p().level, 10);
     g.admin(p, "/give long sword 2 legendary");
-    let swords: Vec<&ItemStack> = g.ents[&p].p().inventory.iter().filter(|s| s.key == "long_sword").collect();
+    let swords: Vec<&ItemStack> = g.ents[&p]
+        .p()
+        .inventory
+        .iter()
+        .filter(|s| s.key == "long_sword")
+        .collect();
     assert_eq!(swords.len(), 2);
-    assert!(swords.iter().all(|s| s.item_rarity() == LEGENDARY && s.bonus.len() == 4));
+    assert!(swords
+        .iter()
+        .all(|s| s.item_rarity() == LEGENDARY && s.bonus.len() == 4));
     g.admin(p, "/spawn wolf 3 4");
     let pos = g.ents[&p].pos;
-    let wolves: Vec<i32> = g.ents.values().filter(|o| o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0).map(|o| o.monster.as_ref().unwrap().lvl).collect();
+    let wolves: Vec<i32> = g
+        .ents
+        .values()
+        .filter(|o| {
+            o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0
+        })
+        .map(|o| o.monster.as_ref().unwrap().lvl)
+        .collect();
     assert_eq!(wolves.len(), 3);
     assert!(wolves.iter().all(|&l| l == 4));
     g.admin(p, "/kill");
-    assert!(!g.ents.values().any(|o| o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0));
+    assert!(!g.ents.values().any(
+        |o| o.monster.as_ref().map(|m| m.def == "wolf").unwrap_or(false) && o.pos.dist(pos) < 7.0
+    ));
     g.admin(p, "/tp d0-1");
     assert_eq!(g.ents[&p].level, "d0-1");
     g.admin(p, "/time night");
@@ -569,7 +813,10 @@ fn rarity_rolls() {
     for _ in 0..2000 {
         counts[g.roll_rarity_tier(10, 100.0, COMMON) as usize] += 1;
     }
-    assert!(counts[UNCOMMON as usize] > counts[LEGENDARY as usize] && counts[LEGENDARY as usize] > 0, "{counts:?}");
+    assert!(
+        counts[UNCOMMON as usize] > counts[LEGENDARY as usize] && counts[LEGENDARY as usize] > 0,
+        "{counts:?}"
+    );
 }
 
 #[test]
@@ -582,13 +829,23 @@ fn city_life() {
     let trader = g
         .ents
         .values()
-        .find(|e| e.npc.as_ref().map(|n| n.village == city.name && db().npc_role(&n.role).map(|r| r.stock > 0).unwrap_or(false)).unwrap_or(false))
+        .find(|e| {
+            e.npc
+                .as_ref()
+                .map(|n| {
+                    n.village == city.name
+                        && db().npc_role(&n.role).map(|r| r.stock > 0).unwrap_or(false)
+                })
+                .unwrap_or(false)
+        })
         .map(|e| e.id)
         .expect("a city trader");
     g.move_next_to(p, trader);
     g.open_dialogue(p, trader);
     let list = g.trade_list(trader);
-    let role = db().npc_role(&g.ents[&trader].npc.as_ref().unwrap().role).unwrap();
+    let role = db()
+        .npc_role(&g.ents[&trader].npc.as_ref().unwrap().role)
+        .unwrap();
     assert!(list.len() > role.goods.len(), "no daily stock");
     let idx = role.goods.len();
     let key = list[idx].item.key.clone();
@@ -597,9 +854,19 @@ fn city_life() {
     assert_eq!(g.ents[&p].p().inventory.len(), n + 1);
     // townsfolk walk to the tavern at night
     g.admin(p, "/time night");
-    let citizens: Vec<Id> = g.ents.values().filter(|e| e.npc.as_ref().map(|n| n.night.is_some()).unwrap_or(false)).map(|e| e.id).collect();
+    let citizens: Vec<Id> = g
+        .ents
+        .values()
+        .filter(|e| e.npc.as_ref().map(|n| n.night.is_some()).unwrap_or(false))
+        .map(|e| e.id)
+        .collect();
     assert!(!citizens.is_empty());
-    let dist = |g: &Game| citizens.iter().map(|c| g.ents[c].pos.dist(g.schedule_spot(*c))).sum::<f32>();
+    let dist = |g: &Game| {
+        citizens
+            .iter()
+            .map(|c| g.ents[c].pos.dist(g.schedule_spot(*c)))
+            .sum::<f32>()
+    };
     let before = dist(&g);
     run(&mut g, 600);
     assert!(dist(&g) < before, "townsfolk did not go to the tavern");
@@ -609,7 +876,18 @@ fn city_life() {
 fn deeds_open_hidden_skills() {
     let mut g = setup();
     let p = g.join_for_test("Тест", "warrior");
-    let sd = db().b.skills.iter().find(|s| s.deed == "kills" && db().branch(&s.branch).map(|b| b.class == "warrior").unwrap_or(false)).expect("a kills deed");
+    let sd = db()
+        .b
+        .skills
+        .iter()
+        .find(|s| {
+            s.deed == "kills"
+                && db()
+                    .branch(&s.branch)
+                    .map(|b| b.class == "warrior")
+                    .unwrap_or(false)
+        })
+        .expect("a kills deed");
     assert!(!can_learn(g.ents[&p].p(), Some(sd)).is_empty());
     g.deed(p, "kills", sd.deed_count);
     g.check_deeds(p);
@@ -645,10 +923,29 @@ fn soak() {
                 0..=5 => g.set_input(p, &input([(r.int_n(3) - 1) as i8, (r.int_n(3) - 1) as i8])),
                 6 => {
                     let pos = g.ents[&p].pos;
-                    g.set_input(p, &Input { ability: (1 + r.int_n(6)) as i8, aim: Some([pos.x + r.f32() * 8.0 - 4.0, pos.y + r.f32() * 8.0 - 4.0]), ..Default::default() })
+                    g.set_input(
+                        p,
+                        &Input {
+                            ability: (1 + r.int_n(6)) as i8,
+                            aim: Some([pos.x + r.f32() * 8.0 - 4.0, pos.y + r.f32() * 8.0 - 4.0]),
+                            ..Default::default()
+                        },
+                    )
                 }
-                7 => g.set_input(p, &Input { attack: true, ..Default::default() }),
-                8 => g.set_input(p, &Input { interact: true, ..Default::default() }),
+                7 => g.set_input(
+                    p,
+                    &Input {
+                        attack: true,
+                        ..Default::default()
+                    },
+                ),
+                8 => g.set_input(
+                    p,
+                    &Input {
+                        interact: true,
+                        ..Default::default()
+                    },
+                ),
                 9 => {
                     let n = g.ents[&p].p().inventory.len() as i32;
                     if n > 0 {
@@ -675,7 +972,13 @@ fn soak() {
             // nobody is stuck inside a wall
             for e in g.ents.values().filter(|e| e.blocks() && e.alive()) {
                 let l = &g.levels[&e.level];
-                assert!(l.walkable(e.cell().x, e.cell().y) || l.def_at(e.cell()).interact == "door", "{} inside a wall at {:?} ({})", e.name, e.pos, l.def_at(e.cell()).key);
+                assert!(
+                    l.walkable(e.cell().x, e.cell().y) || l.def_at(e.cell()).interact == "door",
+                    "{} inside a wall at {:?} ({})",
+                    e.name,
+                    e.pos,
+                    l.def_at(e.cell()).key
+                );
             }
         }
     }
@@ -722,10 +1025,17 @@ fn fake_api(reply: serde_json::Value) -> String {
 #[test]
 fn npc_dialogue_with_claude() {
     let mut g = setup();
-    let base = fake_api(serde_json::json!({"say": "Волки совсем обнаглели. Помоги нам!", "action": "offer_quest", "item": "", "gold": 0, "quest_monster": "wolf", "quest_count": 3}));
+    let base = fake_api(
+        serde_json::json!({"say": "Волки совсем обнаглели. Помоги нам!", "action": "offer_quest", "item": "", "gold": 0, "quest_monster": "wolf", "quest_count": 3}),
+    );
     g.brain = crate::llm::Brain::with_base("sk-test", "", &base);
     let p = g.join_for_test("Герой", "warrior");
-    let elder = g.ents.values().find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false)).map(|e| e.id).expect("an elder");
+    let elder = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false))
+        .map(|e| e.id)
+        .expect("an elder");
     g.move_next_to(p, elder);
     g.open_dialogue(p, elder);
     let d = g.take_outbox(p).and_then(|o| o.dialogue).expect("dialogue");
@@ -746,6 +1056,12 @@ fn npc_dialogue_with_claude() {
     if let Some(d) = g.take_outbox(p).and_then(|o| o.dialogue) {
         last = Some(d);
     }
-    assert!(last.map(|d| d.text.contains("Помоги нам")).unwrap_or(false), "reply not delivered");
-    assert_eq!(g.ents[&elder].npc.as_ref().unwrap().memory["Герой"].len(), 2);
+    assert!(
+        last.map(|d| d.text.contains("Помоги нам")).unwrap_or(false),
+        "reply not delivered"
+    );
+    assert_eq!(
+        g.ents[&elder].npc.as_ref().unwrap().memory["Герой"].len(),
+        2
+    );
 }

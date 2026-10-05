@@ -57,7 +57,11 @@ impl Game {
 
     /// A citizen of a big city (services and daily stock work only there).
     pub(crate) fn city_npc(&self, npc: Id) -> bool {
-        self.ents[&npc].npc.as_ref().map(|n| !n.village.is_empty() && self.is_city(&n.village)).unwrap_or(false)
+        self.ents[&npc]
+            .npc
+            .as_ref()
+            .map(|n| !n.village.is_empty() && self.is_city(&n.village))
+            .unwrap_or(false)
     }
 
     /// Renews the daily stock of a city trader: random equipment of its
@@ -81,11 +85,24 @@ impl Game {
             .b
             .items
             .iter()
-            .filter(|d| d.weight > 0 && !d.unique && d.rarity.is_empty() && !slot_for(Some(d)).is_empty() && stock_fits(d, &role.stock_kinds))
+            .filter(|d| {
+                d.weight > 0
+                    && !d.unique
+                    && d.rarity.is_empty()
+                    && !slot_for(Some(d)).is_empty()
+                    && stock_fits(d, &role.stock_kinds)
+            })
             .collect();
         let mut stock = Vec::new();
         if !pool.is_empty() {
-            let lvl = self.online.values().filter_map(|id| self.ents.get(id)).map(|p| p.p().level).max().unwrap_or(3).max(3);
+            let lvl = self
+                .online
+                .values()
+                .filter_map(|id| self.ents.get(id))
+                .map(|p| p.p().level)
+                .max()
+                .unwrap_or(3)
+                .max(3);
             for _ in 0..role.stock {
                 let d = pool[self.rng.usize_n(pool.len())];
                 let x = self.rng.f64() * 100.0;
@@ -110,40 +127,53 @@ impl Game {
     /// The fixed goods first, then the daily stock.
     pub(crate) fn trade_list(&mut self, npc: Id) -> Vec<TradeItem> {
         let role = db().npc_role(&self.ents[&npc].npc.as_ref().unwrap().role);
-        let Some(role) = role.filter(|r| r.trader) else { return Vec::new() };
+        let Some(role) = role.filter(|r| r.trader) else {
+            return Vec::new();
+        };
         let mut out: Vec<TradeItem> = role
             .goods
             .iter()
             .map(|k| {
                 let st = ItemStack::new(k);
-                TradeItem { item: item_view(&st), price: st.value() }
+                TradeItem {
+                    item: item_view(&st),
+                    price: st.value(),
+                }
             })
             .collect();
         self.refresh_stock(npc);
         for st in self.ents[&npc].npc.as_ref().unwrap().stock.iter().flatten() {
-            out.push(TradeItem { item: item_view(st), price: stock_price(st) });
+            out.push(TradeItem {
+                item: item_view(st),
+                price: stock_price(st),
+            });
         }
         out
     }
 
     /// Buys item `key` at row idx of the trade list.
     pub(crate) fn buy(&mut self, p: Id, key: &str, idx: i32) {
-        let Some(npc) = self.talking_to(p) else { return };
-        let n = self.ents[&npc].npc.as_ref().unwrap();
-        let Some(role) = db().npc_role(&n.role).filter(|r| r.trader) else { return };
-        let si = idx - role.goods.len() as i32;
-        let stock = n.stock.clone().unwrap_or_default();
-        let (st, price, from_stock) = if si >= 0 && (si as usize) < stock.len() && stock[si as usize].key == key {
-            let st = stock[si as usize].clone();
-            let pr = stock_price(&st);
-            (st, pr, Some(si as usize))
-        } else if role.goods.iter().any(|g| g == key) {
-            let st = ItemStack::new(key);
-            let pr = st.value();
-            (st, pr, None)
-        } else {
+        let Some(npc) = self.talking_to(p) else {
             return;
         };
+        let n = self.ents[&npc].npc.as_ref().unwrap();
+        let Some(role) = db().npc_role(&n.role).filter(|r| r.trader) else {
+            return;
+        };
+        let si = idx - role.goods.len() as i32;
+        let stock = n.stock.clone().unwrap_or_default();
+        let (st, price, from_stock) =
+            if si >= 0 && (si as usize) < stock.len() && stock[si as usize].key == key {
+                let st = stock[si as usize].clone();
+                let pr = stock_price(&st);
+                (st, pr, Some(si as usize))
+            } else if role.goods.iter().any(|g| g == key) {
+                let st = ItemStack::new(key);
+                let pr = st.value();
+                (st, pr, None)
+            } else {
+                return;
+            };
         if self.ents[&p].p().gold < price {
             self.log(p, "#ff8080", format!("Не хватает золота (нужно {price})."));
             return;
@@ -157,9 +187,19 @@ impl Game {
         n.gold += price / 4;
         if let Some(i) = from_stock {
             n.stock.as_mut().unwrap().remove(i);
-            self.send_dialogue(p, npc, "Отличный выбор! Такой вещи больше ни у кого нет.", true, false);
+            self.send_dialogue(
+                p,
+                npc,
+                "Отличный выбор! Такой вещи больше ни у кого нет.",
+                true,
+                false,
+            );
         }
-        self.log(p, "#ffd700", format!("Куплено: {} за {price} золота.", st.name()));
+        self.log(
+            p,
+            "#ffd700",
+            format!("Куплено: {} за {price} золота.", st.name()),
+        );
     }
 
     // ---- services ----
@@ -175,14 +215,29 @@ impl Game {
         let mut opts = Vec::new();
         for s in &role.services {
             match s.as_str() {
-                "rest" => opts.push(DialogueOption { label: format!("Снять комнату и поужинать ({} золота)", rest_price(pl.level)), action: "rest" }),
+                "rest" => opts.push(DialogueOption {
+                    label: format!(
+                        "Снять комнату и поужинать ({} золота)",
+                        rest_price(pl.level)
+                    ),
+                    action: "rest",
+                }),
                 "upgrade" => {
                     if let Some(price) = pl.equip.get(SLOT_MAIN).and_then(upgrade_price) {
-                        opts.push(DialogueOption { label: format!("Улучшить оружие в руке ({price} золота)"), action: "upgrade" });
+                        opts.push(DialogueOption {
+                            label: format!("Улучшить оружие в руке ({price} золота)"),
+                            action: "upgrade",
+                        });
                     }
                 }
-                "song" => opts.push(DialogueOption { label: format!("Спой мне песню ({SONG_PRICE} золота)"), action: "song" }),
-                "bless" => opts.push(DialogueOption { label: format!("Благослови меня ({BLESS_PRICE} золота)"), action: "bless" }),
+                "song" => opts.push(DialogueOption {
+                    label: format!("Спой мне песню ({SONG_PRICE} золота)"),
+                    action: "song",
+                }),
+                "bless" => opts.push(DialogueOption {
+                    label: format!("Благослови меня ({BLESS_PRICE} золота)"),
+                    action: "bless",
+                }),
                 _ => {}
             }
         }
@@ -211,17 +266,34 @@ impl Game {
                 if !self.pay(p, npc, rest_price(plvl)) {
                     return "Комната стоит денег, друг. Приходи, когда разбогатеешь.".into();
                 }
-                let b = buff("rested", "Отдых", 600000, "#ffd8a0", &[("max_hp", 20.0), ("hp_regen", 1.0), ("mp_regen", 0.5)]);
+                let b = buff(
+                    "rested",
+                    "Отдых",
+                    600000,
+                    "#ffd8a0",
+                    &[("max_hp", 20.0), ("hp_regen", 1.0), ("mp_regen", 0.5)],
+                );
                 self.apply_buff(p, &b, npc);
                 let e = self.ents.get_mut(&p).unwrap();
                 e.hp = e.max_hp;
                 e.mp = e.max_mp;
                 self.fx(&level, pos, "Отдых", '\0', &b.color, 1200);
-                self.pick(npc, &["Мягкая постель, горячий ужин — и ты как новенький!", "Выспался? Вот и славно. Дорога ждёт.", "Ужин за счёт заведения. Шучу — уже оплачен."])
+                self.pick(
+                    npc,
+                    &[
+                        "Мягкая постель, горячий ужин — и ты как новенький!",
+                        "Выспался? Вот и славно. Дорога ждёт.",
+                        "Ужин за счёт заведения. Шучу — уже оплачен.",
+                    ],
+                )
             }
             "upgrade" => {
-                let Some(st) = self.ents[&p].p().equip.get(SLOT_MAIN).cloned() else { return "С этим я ничего не сделаю.".into() };
-                let Some(price) = upgrade_price(&st) else { return "С этим я ничего не сделаю.".into() };
+                let Some(st) = self.ents[&p].p().equip.get(SLOT_MAIN).cloned() else {
+                    return "С этим я ничего не сделаю.".into();
+                };
+                let Some(price) = upgrade_price(&st) else {
+                    return "С этим я ничего не сделаю.".into();
+                };
                 if !self.pay(p, npc, price) {
                     return format!("Работа тонкая — {price} золота, не меньше.");
                 }
@@ -231,24 +303,62 @@ impl Game {
                 e.pm().equip.insert(SLOT_MAIN.into(), st.clone());
                 e.recalc();
                 let r = st.item_rarity();
-                self.log(p, rarity_color(r), format!("Улучшено: {} ({}).", st.name(), lower(rarity_name(r))));
-                self.fx(&level, pos, &format!("{}!", rarity_name(r)), '\0', rarity_color(r), 1500);
+                self.log(
+                    p,
+                    rarity_color(r),
+                    format!("Улучшено: {} ({}).", st.name(), lower(rarity_name(r))),
+                );
+                self.fx(
+                    &level,
+                    pos,
+                    &format!("{}!", rarity_name(r)),
+                    '\0',
+                    rarity_color(r),
+                    1500,
+                );
                 format!("Держи. Перековал, заточил, закалил — теперь это {} клинок, не хуже королевского.", lower(rarity_name(r)))
             }
             "song" => {
                 if !self.pay(p, npc, SONG_PRICE) {
                     return "Песня стоит монету, а у тебя и той нет. Ладно, напою бесплатно: ля-ля-ля.".into();
                 }
-                let b = buff("inspired", "Вдохновение", 300000, "#ff80c0", &[("melee_pct", 10.0), ("spell_pct", 10.0), ("ranged_pct", 10.0)]);
+                let b = buff(
+                    "inspired",
+                    "Вдохновение",
+                    300000,
+                    "#ff80c0",
+                    &[
+                        ("melee_pct", 10.0),
+                        ("spell_pct", 10.0),
+                        ("ranged_pct", 10.0),
+                    ],
+                );
                 self.apply_buff(p, &b, npc);
-                self.say(npc, &format!("Ла-ла! О герое по имени {pname} сложат песни!"), 4000.0);
-                self.pick(npc, &["Эта баллада — о тебе! Иди и сделай её правдой.", "Песня о храбреце, что не знал страха. Узнаёшь?", "Пусть мелодия ведёт твой клинок!"])
+                self.say(
+                    npc,
+                    &format!("Ла-ла! О герое по имени {pname} сложат песни!"),
+                    4000.0,
+                );
+                self.pick(
+                    npc,
+                    &[
+                        "Эта баллада — о тебе! Иди и сделай её правдой.",
+                        "Песня о храбреце, что не знал страха. Узнаёшь?",
+                        "Пусть мелодия ведёт твой клинок!",
+                    ],
+                )
             }
             "bless" => {
                 if !self.pay(p, npc, BLESS_PRICE) {
                     return "Свет не торгует, но храм нуждается в пожертвованиях.".into();
                 }
-                let b = buff("blessed", "Благословение", 300000, "#fff0b0", &[("res_all", 10.0), ("res_shadow", 10.0)]);
+                let b = buff(
+                    "blessed",
+                    "Благословение",
+                    300000,
+                    "#fff0b0",
+                    &[("res_all", 10.0), ("res_shadow", 10.0)],
+                );
                 self.apply_buff(p, &b, npc);
                 self.fx(&level, pos, "Благословение", '\0', &b.color, 1200);
                 "Да хранит тебя Свет от тьмы и от дурной стали.".into()
@@ -288,7 +398,9 @@ impl Game {
             }
             1.0
         });
-        let Some(&next) = path.first() else { return false };
+        let Some(&next) = path.first() else {
+            return false;
+        };
         let target = if next == goal && l.walkable(goal.x, goal.y) {
             to
         } else if next == goal {

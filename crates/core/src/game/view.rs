@@ -12,7 +12,13 @@ fn first_char(s: &str) -> char {
 /// Describes an item for the client.
 pub fn item_view(st: &ItemStack) -> ItemView {
     let Some(d) = st.def() else {
-        return ItemView { key: st.key.clone(), name: st.key.clone(), glyph: '?', qty: st.qty, ..Default::default() };
+        return ItemView {
+            key: st.key.clone(),
+            name: st.key.clone(),
+            glyph: '?',
+            qty: st.qty,
+            ..Default::default()
+        };
     };
     let mut desc = Vec::new();
     let rarity = st.item_rarity();
@@ -20,10 +26,23 @@ pub fn item_view(st: &ItemStack) -> ItemView {
         desc.push(rarity_name(rarity).to_string());
     }
     if d.kind == "weapon" {
-        let t = if d.dmg_type.is_empty() { "blunt" } else { &d.dmg_type };
-        let hands = if d.hands >= 2 { "двуручное" } else { "одноручное" };
+        let t = if d.dmg_type.is_empty() {
+            "blunt"
+        } else {
+            &d.dmg_type
+        };
+        let hands = if d.hands >= 2 {
+            "двуручное"
+        } else {
+            "одноручное"
+        };
         let k = st.stat_k();
-        desc.push(format!("Урон {:.0}-{:.0} ({}), {hands}", (d.damage[0] * k).round(), (d.damage[1] * k).round(), damage_type_name(t)));
+        desc.push(format!(
+            "Урон {:.0}-{:.0} ({}), {hands}",
+            (d.damage[0] * k).round(),
+            (d.damage[1] * k).round(),
+            damage_type_name(t)
+        ));
     }
     if d.heal > 0.0 {
         desc.push(format!("+{:.0} здоровья", d.heal));
@@ -61,7 +80,18 @@ fn scaled(m: &crate::content::Stats, k: f64) -> crate::content::Stats {
     if k == 1.0 {
         return m.clone();
     }
-    m.iter().map(|(key, v)| (key.clone(), if v.abs() >= 3.0 { (v * k).round() } else { (v * k * 10.0).round() / 10.0 })).collect()
+    m.iter()
+        .map(|(key, v)| {
+            (
+                key.clone(),
+                if v.abs() >= 3.0 {
+                    (v * k).round()
+                } else {
+                    (v * k * 10.0).round() / 10.0
+                },
+            )
+        })
+        .collect()
 }
 
 /// Formats a number like Go's %g for the small values of stats.
@@ -89,7 +119,11 @@ pub fn buff_desc(b: &BuffDef) -> String {
         parts.push("оглушение".to_string());
     }
     if b.dot_per_sec > 0.0 {
-        let t = if b.dmg_type.is_empty() { "poison" } else { &b.dmg_type };
+        let t = if b.dmg_type.is_empty() {
+            "poison"
+        } else {
+            &b.dmg_type
+        };
         parts.push(format!("{} {}/с", damage_type_name(t), num(b.dot_per_sec)));
     } else if b.dot_per_sec < 0.0 {
         parts.push(format!("лечение {}/с", num(-b.dot_per_sec)));
@@ -100,7 +134,9 @@ pub fn buff_desc(b: &BuffDef) -> String {
 }
 
 pub fn stat_lines(m: &crate::content::Stats) -> Vec<String> {
-    m.iter().map(|(k, v)| format!("{} {}", stat_name(k), signed(*v))).collect()
+    m.iter()
+        .map(|(k, v)| format!("{} {}", stat_name(k), signed(*v)))
+        .collect()
 }
 
 /// The visible effects on an entity.
@@ -134,7 +170,9 @@ fn status_of(e: &Entity) -> u16 {
             if *v < 0.0 && k.starts_with("res_") {
                 st |= STATUS_CURSED;
             }
-            if (*v > 0.0 && k.starts_with("res_") && b.source == e.id) || (*v > 0.0 && k == "res_all") {
+            if (*v > 0.0 && k.starts_with("res_") && b.source == e.id)
+                || (*v > 0.0 && k == "res_all")
+            {
                 st |= STATUS_SHIELDED;
             }
         }
@@ -143,7 +181,14 @@ fn status_of(e: &Entity) -> u16 {
 }
 
 fn buff_views(e: &Entity, now: f64) -> Vec<BuffView> {
-    e.buffs.iter().map(|b| BuffView { name: b.def.name.clone(), color: b.def.color.clone(), left: (b.until - now) as i32 }).collect()
+    e.buffs
+        .iter()
+        .map(|b| BuffView {
+            name: b.def.name.clone(),
+            color: b.def.color.clone(),
+            left: (b.until - now) as i32,
+        })
+        .collect()
 }
 
 impl Game {
@@ -154,7 +199,13 @@ impl Game {
         let p = e.p();
         let vision = self.vision(e) as f32;
         if let Some(t) = self.ents.get(&p.target) {
-            if t.alive() && t.level == e.level && self.hostile(id, p.target) && self.can_see(id, p.target) && self.now - p.target_at < 12000.0 && e.dist(t) <= vision + 2.0 {
+            if t.alive()
+                && t.level == e.level
+                && self.hostile(id, p.target)
+                && self.can_see(id, p.target)
+                && self.now - p.target_at < 12000.0
+                && e.dist(t) <= vision + 2.0
+            {
                 return Some(p.target);
             }
         }
@@ -177,7 +228,12 @@ impl Game {
 
     pub(crate) fn target_view(&self, t: Id) -> TargetView {
         let te = &self.ents[&t];
-        let mut v = TargetView { id: t, name: te.name.clone(), color: te.color.clone(), ..Default::default() };
+        let mut v = TargetView {
+            id: t,
+            name: te.name.clone(),
+            color: te.color.clone(),
+            ..Default::default()
+        };
         if te.max_hp > 0.0 {
             v.hp = (100.0 * te.hp / te.max_hp).clamp(0.0, 100.0) as u8;
         }
@@ -249,11 +305,18 @@ impl Game {
             you.copied = p.copied.clone();
             you.copied_left = (p.copied_end - now) as i32;
         }
-        you.invites = p.invites.iter().filter(|(from, at)| now - **at < 120000.0 && self.online.contains_key(*from)).map(|(f, _)| f.clone()).collect();
+        you.invites = p
+            .invites
+            .iter()
+            .filter(|(from, at)| now - **at < 120000.0 && self.online.contains_key(*from))
+            .map(|(f, _)| f.clone())
+            .collect();
         you.invites.sort();
         if let Some(pt) = self.party_of(id) {
             for n in &pt.members {
-                let Some(&mid) = self.online.get(n) else { continue };
+                let Some(&mid) = self.online.get(n) else {
+                    continue;
+                };
                 if mid == id {
                     continue;
                 }
@@ -318,7 +381,11 @@ impl Game {
                 ..Default::default()
             };
             let d = db();
-            if let Some(m) = o.monster.as_ref().filter(|m| m.def == "illusion" && self.ents.contains_key(&o.owner)) {
+            if let Some(m) = o
+                .monster
+                .as_ref()
+                .filter(|m| m.def == "illusion" && self.ents.contains_key(&o.owner))
+            {
                 // illusions look like their maker
                 let _ = m;
                 let own = &self.ents[&o.owner];
@@ -374,7 +441,11 @@ impl Game {
             time_of_day: self.time_of_day(),
             you,
             entities: ents,
-            fx: self.fx.get(&self.ents[&id].level).cloned().unwrap_or_default(),
+            fx: self
+                .fx
+                .get(&self.ents[&id].level)
+                .cloned()
+                .unwrap_or_default(),
             online: self.online.keys().cloned().collect(),
         }
     }
@@ -388,28 +459,56 @@ impl Game {
         let ow = self.levels.get("overworld");
         let empty = crate::world::Bitset::default();
         let bs = p.explored.get("overworld").unwrap_or(&empty);
-        let seen = |q: Pos| ow.map(|l| l.inside(q.x, q.y) && bs.get(l.idx(q))).unwrap_or(false);
+        let seen = |q: Pos| {
+            ow.map(|l| l.inside(q.x, q.y) && bs.get(l.idx(q)))
+                .unwrap_or(false)
+        };
         for v in &self.villages {
-            out.push(Place { name: v.name.clone(), kind: if v.city { "city" } else { "village" }.into(), x: v.center.x, y: v.center.y });
+            out.push(Place {
+                name: v.name.clone(),
+                kind: if v.city { "city" } else { "village" }.into(),
+                x: v.center.x,
+                y: v.center.y,
+            });
         }
         for en in &self.entrances {
             if seen(en.pos) {
-                out.push(Place { name: en.name.clone(), kind: format!("dungeon:{}", en.theme), x: en.pos.x, y: en.pos.y });
+                out.push(Place {
+                    name: en.name.clone(),
+                    kind: format!("dungeon:{}", en.theme),
+                    x: en.pos.x,
+                    y: en.pos.y,
+                });
             }
         }
         for &i in &p.found {
             if let Some(lm) = self.landmarks.get(i) {
-                out.push(Place { name: lm.name.clone(), kind: lm.kind.clone(), x: lm.pos.x, y: lm.pos.y });
+                out.push(Place {
+                    name: lm.name.clone(),
+                    kind: lm.kind.clone(),
+                    x: lm.pos.x,
+                    y: lm.pos.y,
+                });
             }
         }
         for (i, c) in centers.iter().enumerate() {
             if seen(*c) {
-                out.push(Place { name: self.regions[i].name.clone(), kind: format!("region:{}", self.regions[i].kind), x: c.x, y: c.y });
+                out.push(Place {
+                    name: self.regions[i].name.clone(),
+                    kind: format!("region:{}", self.regions[i].kind),
+                    x: c.x,
+                    y: c.y,
+                });
             }
         }
         for q in &p.quests {
             if let (Some(at), false) = (q.at, q.done) {
-                out.push(Place { name: q.where_.clone(), kind: "quest".into(), x: at.x, y: at.y });
+                out.push(Place {
+                    name: q.where_.clone(),
+                    kind: "quest".into(),
+                    x: at.x,
+                    y: at.y,
+                });
             }
         }
         out
@@ -420,7 +519,9 @@ impl Game {
         if self.region_at.len() == self.regions.len() && !self.regions.is_empty() {
             return self.region_at.clone();
         }
-        let Some(l) = self.levels.get("overworld") else { return Vec::new() };
+        let Some(l) = self.levels.get("overworld") else {
+            return Vec::new();
+        };
         if self.region_map.len() != (l.w * l.h) as usize {
             return Vec::new();
         }
@@ -508,14 +609,27 @@ impl Game {
                 qv.x = at.x;
                 qv.y = at.y;
                 if e.level == "overworld" && !q.done {
-                    qv.where_ = format!("{} — {}, ~{} шагов", q.where_, dialogue::compass_ru(e.cell(), at), e.cell().dist(at));
+                    qv.where_ = format!(
+                        "{} — {}, ~{} шагов",
+                        q.where_,
+                        dialogue::compass_ru(e.cell(), at),
+                        e.cell().dist(at)
+                    );
                 }
             }
-            qv.reward = if q.reward.is_empty() { format!("{} золота", q.gold) } else { reward_name(&q.reward) };
+            qv.reward = if q.reward.is_empty() {
+                format!("{} золота", q.gold)
+            } else {
+                reward_name(&q.reward)
+            };
             sh.quests.push(qv);
         }
         for c in &p.classes {
-            sh.classes.push(ClassView { key: c.clone(), level: class_level(p, c), subclass: p.subclasses.get(c).cloned().unwrap_or_default() });
+            sh.classes.push(ClassView {
+                key: c.clone(),
+                level: class_level(p, c),
+                subclass: p.subclasses.get(c).cloned().unwrap_or_default(),
+            });
         }
         sh
     }
@@ -530,7 +644,12 @@ impl Game {
             w: l.w,
             h: l.h,
             tiles: compress(&l.tiles),
-            explored: e.p().explored.get(&l.id).map(|b| b.0.clone()).unwrap_or_default(),
+            explored: e
+                .p()
+                .explored
+                .get(&l.id)
+                .map(|b| b.0.clone())
+                .unwrap_or_default(),
             lit: l.lit,
             depth: l.depth,
             theme: l.theme.clone(),
@@ -541,5 +660,8 @@ impl Game {
 /// What a hero visibly wears: right hand, left hand, head, chest, back.
 fn gear_of(e: &Entity) -> Vec<String> {
     let eq = &e.p().equip;
-    [SLOT_MAIN, SLOT_OFF, SLOT_HEAD, SLOT_CHEST, SLOT_BACK].iter().map(|s| eq.get(*s).map(|i| i.key.clone()).unwrap_or_default()).collect()
+    [SLOT_MAIN, SLOT_OFF, SLOT_HEAD, SLOT_CHEST, SLOT_BACK]
+        .iter()
+        .map(|s| eq.get(*s).map(|i| i.key.clone()).unwrap_or_default())
+        .collect()
 }

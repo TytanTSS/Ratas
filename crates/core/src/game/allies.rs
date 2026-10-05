@@ -31,7 +31,15 @@ pub(crate) fn monster_state(def: &MonsterDef, lvl: i32, home: Vec2) -> (MonsterS
 impl Game {
     /// Creates a villager, guard or wanderer; NPCs with a combat profile
     /// fight monsters on the players' side.
-    pub(crate) fn make_npc(&mut self, role: &NpcRoleDef, name: &str, village: &str, p: Pos, lvl: i32, gold: i32) -> Id {
+    pub(crate) fn make_npc(
+        &mut self,
+        role: &NpcRoleDef,
+        name: &str,
+        village: &str,
+        p: Pos,
+        lvl: i32,
+        gold: i32,
+    ) -> Id {
         let mut e = Entity {
             kind: Kind::Npc,
             name: format!("{name} ({})", role.name),
@@ -43,7 +51,14 @@ impl Game {
             hp: 50.0,
             max_hp: 50.0,
             facing: std::f32::consts::FRAC_PI_2,
-            npc: Some(Box::new(NpcState { role: role.key.clone(), pname: name.into(), home: p.center(), village: village.into(), gold, ..Default::default() })),
+            npc: Some(Box::new(NpcState {
+                role: role.key.clone(),
+                pname: name.into(),
+                home: p.center(),
+                village: village.into(),
+                gold,
+                ..Default::default()
+            })),
             ..Default::default()
         };
         if let Some(def) = db().monster(&role.combat) {
@@ -65,7 +80,9 @@ impl Game {
             }
             let n = r.range(role.count[0], role.count[1]);
             for _ in 0..n {
-                let Some(p) = self.wild_spot(r, 12, 60) else { continue };
+                let Some(p) = self.wild_spot(r, 12, 60) else {
+                    continue;
+                };
                 let name = person_name(r);
                 let lvl = self.overworld_level_at(p, false) + 2;
                 let gold = 20 + r.int_n(60);
@@ -81,7 +98,10 @@ impl Game {
         for _ in 0..400 {
             let p = if !self.villages.is_empty() {
                 let v = r.pick(&self.villages).center;
-                let p = Pos::new(v.x + r.int_n(2 * max_d + 1) - max_d, v.y + r.int_n(2 * max_d + 1) - max_d);
+                let p = Pos::new(
+                    v.x + r.int_n(2 * max_d + 1) - max_d,
+                    v.y + r.int_n(2 * max_d + 1) - max_d,
+                );
                 if p.manhattan(v) < min_d {
                     continue;
                 }
@@ -90,7 +110,12 @@ impl Game {
                 Pos::new(r.int_n(l.w), r.int_n(l.h))
             };
             let def = l.def_at(p);
-            if l.walkable(p.x, p.y) && def.interact.is_empty() && def.damage == 0.0 && !self.in_village(p, 4) && !self.cell_taken("overworld", p) {
+            if l.walkable(p.x, p.y)
+                && def.interact.is_empty()
+                && def.damage == 0.0
+                && !self.in_village(p, 4)
+                && !self.cell_taken("overworld", p)
+            {
                 return Some(p);
             }
         }
@@ -116,7 +141,11 @@ impl Game {
             if n.travel.is_none() && now < n.travel_until {
                 return;
             }
-            let mut goals: Vec<Vec2> = self.villages.iter().map(|v| Pos::new(v.center.x, v.center.y + 3).center()).collect();
+            let mut goals: Vec<Vec2> = self
+                .villages
+                .iter()
+                .map(|v| Pos::new(v.center.x, v.center.y + 3).center())
+                .collect();
             goals.extend(self.landmarks.iter().map(|l| l.pos.center()));
             if goals.is_empty() {
                 return;
@@ -164,7 +193,9 @@ impl Game {
     /// Brings fallen NPCs back to their homes.
     pub(crate) fn revive_npcs(&mut self) {
         let now = self.now;
-        let (ready, kept): (Vec<PendingNpc>, Vec<PendingNpc>) = std::mem::take(&mut self.revivals).into_iter().partition(|p| now >= p.at);
+        let (ready, kept): (Vec<PendingNpc>, Vec<PendingNpc>) = std::mem::take(&mut self.revivals)
+            .into_iter()
+            .partition(|p| now >= p.at);
         self.revivals = kept;
         for pn in ready {
             let mut e = pn.e;
@@ -192,7 +223,11 @@ impl Game {
         }
         let gone = match self.ents.get(&e.owner) {
             None => true,
-            Some(o) => (e.expires > 0.0 && self.now >= e.expires) || o.level != e.level || (o.player.is_some() && o.dead),
+            Some(o) => {
+                (e.expires > 0.0 && self.now >= e.expires)
+                    || o.level != e.level
+                    || (o.player.is_some() && o.dead)
+            }
         };
         if gone {
             let (level, pos) = (e.level.clone(), e.pos);

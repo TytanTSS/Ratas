@@ -12,7 +12,9 @@ impl Eq for Node {}
 impl Ord for Node {
     fn cmp(&self, o: &Self) -> Ordering {
         // a min-heap on f
-        o.f.partial_cmp(&self.f).unwrap_or(Ordering::Equal).then_with(|| o.idx.cmp(&self.idx))
+        o.f.partial_cmp(&self.f)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| o.idx.cmp(&self.idx))
     }
 }
 impl PartialOrd for Node {
@@ -26,7 +28,15 @@ impl PartialOrd for Node {
 /// always enterable. With diagonal moves a corner may not be cut: both
 /// orthogonal neighbours must be passable. If the node budget runs out, the
 /// path to the explored cell closest to the goal is returned.
-pub fn find_path(w: i32, h: i32, from: Pos, to: Pos, max_nodes: usize, diagonal: bool, cost: &mut dyn FnMut(i32, i32) -> f64) -> Vec<Pos> {
+pub fn find_path(
+    w: i32,
+    h: i32,
+    from: Pos,
+    to: Pos,
+    max_nodes: usize,
+    diagonal: bool,
+    cost: &mut dyn FnMut(i32, i32) -> f64,
+) -> Vec<Pos> {
     if from == to {
         return Vec::new();
     }
@@ -48,7 +58,10 @@ pub fn find_path(w: i32, h: i32, from: Pos, to: Pos, max_nodes: usize, diagonal:
     };
     let mut open = BinaryHeap::new();
     g.insert(start, 0.0);
-    open.push(Node { f: hfn(start), idx: start });
+    open.push(Node {
+        f: hfn(start),
+        idx: start,
+    });
     let (mut best, mut best_h) = (start, hfn(start));
     let mut expanded = 0;
     let dirs: &[Pos] = if diagonal { &DIRS8 } else { &DIRS4 };
@@ -87,7 +100,9 @@ pub fn find_path(w: i32, h: i32, from: Pos, to: Pos, max_nodes: usize, diagonal:
                 let b = (cx, cy + d.y);
                 let ia = a.1 as usize * wi + a.0 as usize;
                 let ib = b.1 as usize * wi + b.0 as usize;
-                if (ia != goal && cell_cost(a.0, a.1, cost) < 0.0) || (ib != goal && cell_cost(b.0, b.1, cost) < 0.0) {
+                if (ia != goal && cell_cost(a.0, a.1, cost) < 0.0)
+                    || (ib != goal && cell_cost(b.0, b.1, cost) < 0.0)
+                {
                     continue;
                 }
             }
@@ -114,7 +129,10 @@ pub fn find_path(w: i32, h: i32, from: Pos, to: Pos, max_nodes: usize, diagonal:
                 best = ni;
                 best_h = hv;
             }
-            open.push(Node { f: ng + hv, idx: ni });
+            open.push(Node {
+                f: ng + hv,
+                idx: ni,
+            });
         }
     }
     if best == start {
@@ -138,12 +156,36 @@ mod tests {
     fn path_around_wall() {
         // wall at x=5 except y=9
         let mut cost = |x: i32, y: i32| if x == 5 && y != 9 { -1.0 } else { 1.0 };
-        let p = find_path(10, 10, Pos::new(0, 0), Pos::new(9, 0), 10000, true, &mut cost);
+        let p = find_path(
+            10,
+            10,
+            Pos::new(0, 0),
+            Pos::new(9, 0),
+            10000,
+            true,
+            &mut cost,
+        );
         assert_eq!(*p.last().unwrap(), Pos::new(9, 0));
         assert!(p.iter().any(|c| *c == Pos::new(5, 9)));
-        let p4 = find_path(10, 10, Pos::new(0, 0), Pos::new(3, 3), 1000, false, &mut |_, _| 1.0);
+        let p4 = find_path(
+            10,
+            10,
+            Pos::new(0, 0),
+            Pos::new(3, 3),
+            1000,
+            false,
+            &mut |_, _| 1.0,
+        );
         assert_eq!(p4.len(), 6);
-        let p8 = find_path(10, 10, Pos::new(0, 0), Pos::new(3, 3), 1000, true, &mut |_, _| 1.0);
+        let p8 = find_path(
+            10,
+            10,
+            Pos::new(0, 0),
+            Pos::new(3, 3),
+            1000,
+            true,
+            &mut |_, _| 1.0,
+        );
         assert_eq!(p8.len(), 3);
     }
 }

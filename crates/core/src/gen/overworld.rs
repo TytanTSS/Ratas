@@ -22,7 +22,10 @@ impl Rect {
         x >= self.x && y >= self.y && x < self.x + self.w && y < self.y + self.h
     }
     pub fn overlaps(&self, o: &Rect, gap: i32) -> bool {
-        self.x - gap < o.x + o.w && o.x - gap < self.x + self.w && self.y - gap < o.y + o.h && o.y - gap < self.y + self.h
+        self.x - gap < o.x + o.w
+            && o.x - gap < self.x + self.w
+            && self.y - gap < o.y + o.h
+            && o.y - gap < self.y + self.h
     }
 }
 
@@ -106,12 +109,16 @@ pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
             let i = (y * w + x) as usize;
             let (fx, fy) = (x as f64 / 48.0, y as f64 / 48.0);
             let e = (elev_n.fbm(fx, fy, 6) + 1.0) / 2.0;
-            let (nx, ny) = (x as f64 / w as f64 * 2.0 - 1.0, y as f64 / h as f64 * 2.0 - 1.0);
+            let (nx, ny) = (
+                x as f64 / w as f64 * 2.0 - 1.0,
+                y as f64 / h as f64 * 2.0 - 1.0,
+            );
             let d = 1.0 - (1.0 - nx * nx) * (1.0 - ny * ny);
             e_[i] = e - 0.55 * d * d;
             m_[i] = (moist_n.fbm(fx * 0.8 + 100.0, fy * 0.8 + 100.0, 4) + 1.0) / 2.0;
             d_[i] = detail_n.fbm(x as f64 / 6.0, y as f64 / 6.0, 2);
-            tm[i] = y as f64 / h as f64 * 1.1 + temp_n.fbm(fx * 0.6 + 50.0, fy * 0.6 + 50.0, 3) * 0.55;
+            tm[i] =
+                y as f64 / h as f64 * 1.1 + temp_n.fbm(fx * 0.6 + 50.0, fy * 0.6 + 50.0, 3) * 0.55;
         }
     }
     let eq = quantiles(&e_);
@@ -263,7 +270,16 @@ pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
         let i = main.iter().position(|&b| b).unwrap_or(0) as i32;
         Pos::new(i % w, i / w)
     };
-    Overworld { name, level: l, villages, entrances, start, regions, region_map, landmarks }
+    Overworld {
+        name,
+        level: l,
+        villages,
+        entrances,
+        start,
+        regions,
+        region_map,
+        landmarks,
+    }
 }
 
 /// A function mapping q in [0,1] to the value at that quantile.
@@ -392,15 +408,23 @@ pub fn find_free(l: &Level, p: Pos) -> Pos {
 
 pub fn is_ground(tile: u8) -> bool {
     let def = db().tile(tile);
-    matches!(def.biome.as_str(), "plains" | "forest" | "sand" | "hills" | "swamp" | "desert" | "tundra" | "ash" | "cursed")
-        && def.walkable
+    matches!(
+        def.biome.as_str(),
+        "plains" | "forest" | "sand" | "hills" | "swamp" | "desert" | "tundra" | "ash" | "cursed"
+    ) && def.walkable
         && def.damage == 0.0
 }
 
 const VILLAGE_W: i32 = 26;
 const VILLAGE_H: i32 = 18;
 
-fn place_villages(r: &mut Rng, l: &mut Level, main: &[bool], cities: &[Village], used: &mut HashSet<String>) -> Vec<Village> {
+fn place_villages(
+    r: &mut Rng,
+    l: &mut Level,
+    main: &[bool],
+    cities: &[Village],
+    used: &mut HashSet<String>,
+) -> Vec<Village> {
     let mut vs: Vec<Village> = Vec::new();
     let want = 4 + r.int_n(2) as usize;
     for _ in 0..4000 {
@@ -427,7 +451,9 @@ fn place_villages(r: &mut Rng, l: &mut Level, main: &[bool], cities: &[Village],
         if good * 100 / total < 85 {
             continue;
         }
-        let mut far = vs.iter().all(|v| !((v.center.x - cx).abs() < 50 && (v.center.y - cy).abs() < 40));
+        let mut far = vs
+            .iter()
+            .all(|v| !((v.center.x - cx).abs() < 50 && (v.center.y - cy).abs() < 40));
         if cities.iter().any(|c| c.area.overlaps(&area, 12)) {
             far = false;
         }
@@ -441,14 +467,27 @@ fn place_villages(r: &mut Rng, l: &mut Level, main: &[bool], cities: &[Village],
 }
 
 fn build_village(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Village {
-    let mut v = Village { name, center: area.center(), area, ..Default::default() };
+    let mut v = Village {
+        name,
+        center: area.center(),
+        area,
+        ..Default::default()
+    };
     // clear an ellipse of grass
     for y in area.y..area.y + area.h {
         for x in area.x..area.x + area.w {
             let dx = (x - v.center.x) as f64 / (area.w / 2) as f64;
             let dy = (y - v.center.y) as f64 / (area.h / 2) as f64;
             if dx * dx + dy * dy <= 1.05 {
-                l.set(x, y, if r.int_n(2) == 0 { t("grass") } else { t("grass2") });
+                l.set(
+                    x,
+                    y,
+                    if r.int_n(2) == 0 {
+                        t("grass")
+                    } else {
+                        t("grass2")
+                    },
+                );
             }
         }
     }
@@ -470,7 +509,15 @@ fn build_village(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Villag
         for y in hy..hy + hh {
             for x in hx..hx + hw {
                 let wall = x == hx || y == hy || x == hx + hw - 1 || y == hy + hh - 1;
-                l.set(x, y, if wall { t("house_wall") } else { t("house_floor") });
+                l.set(
+                    x,
+                    y,
+                    if wall {
+                        t("house_wall")
+                    } else {
+                        t("house_floor")
+                    },
+                );
             }
         }
         // door on the wall facing the well
@@ -496,13 +543,20 @@ fn build_village(r: &mut Rng, l: &mut Level, area: Rect, name: String) -> Villag
         let cnt = r.range(role.count[0], role.count[1]);
         for _ in 0..cnt {
             let p = match role.key.as_str() {
-                "elder" | "merchant" | "smith" | "healer" | "priest" if house_spot < houses.len() => {
+                "elder" | "merchant" | "smith" | "healer" | "priest"
+                    if house_spot < houses.len() =>
+                {
                     house_spot += 1;
                     houses[house_spot - 1].center()
                 }
                 _ => village_free(r, l, &area, c),
             };
-            v.npcs.push(NpcSpawn { role: role.key.clone(), name: person_name(r), pos: p, night: Pos::default() });
+            v.npcs.push(NpcSpawn {
+                role: role.key.clone(),
+                name: person_name(r),
+                pos: p,
+                night: Pos::default(),
+            });
         }
     }
     v
@@ -523,8 +577,22 @@ fn village_free(r: &mut Rng, l: &Level, area: &Rect, c: Pos) -> Pos {
 pub fn built_up(key: &str) -> bool {
     matches!(
         key,
-        "well" | "house_wall" | "door" | "house_floor" | "city_wall" | "stone_wall" | "stone_floor" | "carpet" | "fountain"
-            | "market_stall" | "lamp_post" | "statue" | "altar" | "brazier" | "crystal" | "chest_open"
+        "well"
+            | "house_wall"
+            | "door"
+            | "house_floor"
+            | "city_wall"
+            | "stone_wall"
+            | "stone_floor"
+            | "carpet"
+            | "fountain"
+            | "market_stall"
+            | "lamp_post"
+            | "statue"
+            | "altar"
+            | "brazier"
+            | "crystal"
+            | "chest_open"
     )
 }
 
@@ -572,14 +640,23 @@ fn build_roads(l: &mut Level, vs: &[Village]) {
                     def.move_cost
                 }
             };
-            find_path(lv.w, lv.h, from, to, (lv.w * lv.h) as usize, false, &mut cost)
+            find_path(
+                lv.w,
+                lv.h,
+                from,
+                to,
+                (lv.w * lv.h) as usize,
+                false,
+                &mut cost,
+            )
         };
         for p in path {
             let tt = l.at(p.x, p.y);
             let key = &db().tile(tt).key;
             if tt == water || tt == deep {
                 l.set(p.x, p.y, bridge);
-            } else if built_up(key) || key == "city_gate" || key == "cobblestone" || key == "garden" {
+            } else if built_up(key) || key == "city_gate" || key == "cobblestone" || key == "garden"
+            {
             } else {
                 l.set(p.x, p.y, road);
             }
@@ -605,8 +682,13 @@ fn place_entrances(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village]) ->
         if (p.x - start.x).abs() < 25 && (p.y - start.y).abs() < 20 {
             continue;
         }
-        let mut ok = !vs.iter().any(|v| v.area.overlaps(&Rect::new(x - 3, y - 3, 7, 7), 2));
-        if es.iter().any(|e| (e.pos.x - x).abs() < 30 && (e.pos.y - y).abs() < 25) {
+        let mut ok = !vs
+            .iter()
+            .any(|v| v.area.overlaps(&Rect::new(x - 3, y - 3, 7, 7), 2));
+        if es
+            .iter()
+            .any(|e| (e.pos.x - x).abs() < 30 && (e.pos.y - y).abs() < 25)
+        {
             ok = false;
         }
         if !ok {
@@ -618,7 +700,12 @@ fn place_entrances(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village]) ->
             continue;
         }
         let name = pick_unique(r, dungeon_names(theme), &mut used);
-        es.push(Entrance { pos: p, theme: theme.into(), name, max_depth: 0 });
+        es.push(Entrance {
+            pos: p,
+            theme: theme.into(),
+            name,
+            max_depth: 0,
+        });
     }
     // deeper dungeons further from the start
     es.sort_by_key(|e| e.pos.dist_sq(start));
@@ -629,7 +716,10 @@ fn place_entrances(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village]) ->
     for (theme, biome) in REGIONAL_DUNGEONS {
         for attempt in 0..5000 {
             let (x, y) = (4 + r.int_n(l.w - 8), 4 + r.int_n(l.h - 8));
-            if !main[(y * l.w + x) as usize] || !is_ground(l.at(x, y)) || l.def(x, y).biome != *biome {
+            if !main[(y * l.w + x) as usize]
+                || !is_ground(l.at(x, y))
+                || l.def(x, y).biome != *biome
+            {
                 continue;
             }
             let mut inside = 0;
@@ -643,11 +733,19 @@ fn place_entrances(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village]) ->
             if inside < 13 * 13 * 3 / 4 && attempt < 4000 {
                 continue;
             }
-            if es.iter().any(|e| (e.pos.x - x).abs() < 16 && (e.pos.y - y).abs() < 12) {
+            if es
+                .iter()
+                .any(|e| (e.pos.x - x).abs() < 16 && (e.pos.y - y).abs() < 12)
+            {
                 continue;
             }
             let name = pick_unique(r, dungeon_names(theme), &mut used);
-            es.push(Entrance { pos: Pos::new(x, y), theme: theme.to_string(), name, max_depth: 4 });
+            es.push(Entrance {
+                pos: Pos::new(x, y),
+                theme: theme.to_string(),
+                name,
+                max_depth: 4,
+            });
             break;
         }
     }

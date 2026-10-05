@@ -39,7 +39,9 @@ impl Game {
         if a == b {
             return false;
         }
-        let (Some(ae), Some(be)) = (self.ents.get(&a), self.ents.get(&b)) else { return false };
+        let (Some(ae), Some(be)) = (self.ents.get(&a), self.ents.get(&b)) else {
+            return false;
+        };
         if !ae.alive() || !be.alive() {
             return false;
         }
@@ -53,8 +55,13 @@ impl Game {
         if fa == Faction::Monster {
             return false;
         }
-        let (Some(pa), Some(pb)) = (self.controller(a), self.controller(b)) else { return false };
-        pa != pb && self.ents[&pa].player.is_some() && self.ents[&pb].player.is_some() && self.pvp(pa, pb)
+        let (Some(pa), Some(pb)) = (self.controller(a), self.controller(b)) else {
+            return false;
+        };
+        pa != pb
+            && self.ents[&pa].player.is_some()
+            && self.ents[&pb].player.is_some()
+            && self.pvp(pa, pb)
     }
 
     /// Whether c may heal or bless o (alive or not).
@@ -62,15 +69,22 @@ impl Game {
         if c == o {
             return true;
         }
-        let (Some(ce), Some(oe)) = (self.ents.get(&c), self.ents.get(&o)) else { return false };
+        let (Some(ce), Some(oe)) = (self.ents.get(&c), self.ents.get(&o)) else {
+            return false;
+        };
         if ce.faction != oe.faction || ce.faction == Faction::Neutral {
             return false;
         }
         if ce.faction == Faction::Monster {
             return true;
         }
-        let (Some(pa), Some(pb)) = (self.controller(c), self.controller(o)) else { return false };
-        pa == pb || self.ents[&pa].player.is_none() || self.ents[&pb].player.is_none() || !self.pvp(pa, pb)
+        let (Some(pa), Some(pb)) = (self.controller(c), self.controller(o)) else {
+            return false;
+        };
+        pa == pb
+            || self.ents[&pa].player.is_none()
+            || self.ents[&pb].player.is_none()
+            || !self.pvp(pa, pb)
     }
 
     /// Can these two players hurt each other?
@@ -90,7 +104,10 @@ impl Game {
     pub(crate) fn in_village(&self, p: Pos, margin: i32) -> bool {
         self.villages.iter().any(|v| {
             let a = v.area;
-            p.x >= a.x - margin && p.y >= a.y - margin && p.x < a.x + a.w + margin && p.y < a.y + a.h + margin
+            p.x >= a.x - margin
+                && p.y >= a.y - margin
+                && p.x < a.x + a.w + margin
+                && p.y < a.y + a.h + margin
         })
     }
 
@@ -112,8 +129,14 @@ impl Game {
     }
 
     pub(crate) fn party_log(&mut self, pid: i32, color: &str, text: String) {
-        let Some(pt) = self.parties.get(&pid) else { return };
-        let ids: Vec<Id> = pt.members.iter().filter_map(|n| self.online.get(n).copied()).collect();
+        let Some(pt) = self.parties.get(&pid) else {
+            return;
+        };
+        let ids: Vec<Id> = pt
+            .members
+            .iter()
+            .filter_map(|n| self.online.get(n).copied())
+            .collect();
         for m in ids {
             self.log(m, color, text.clone());
         }
@@ -139,7 +162,11 @@ impl Game {
         let tp = self.ents.get_mut(&t).unwrap().pm();
         tp.invites.insert(me.clone(), now);
         tp.dirty = true;
-        self.log(t, "#80ffa0", format!("{me} приглашает вас в группу. Окно группы — G."));
+        self.log(
+            t,
+            "#80ffa0",
+            format!("{me} приглашает вас в группу. Окно группы — G."),
+        );
         self.log(id, "#80ffa0", format!("Приглашение отправлено: {name}."));
     }
 
@@ -161,7 +188,14 @@ impl Game {
                 self.party_seq += 1;
                 let pid = self.party_seq;
                 let iname = self.ents[&inv].name.clone();
-                self.parties.insert(pid, Party { id: pid, leader: iname.clone(), members: vec![iname] });
+                self.parties.insert(
+                    pid,
+                    Party {
+                        id: pid,
+                        leader: iname.clone(),
+                        members: vec![iname],
+                    },
+                );
                 let ip = self.ents.get_mut(&inv).unwrap().pm();
                 ip.party_id = pid;
                 ip.dirty = true;
@@ -176,7 +210,11 @@ impl Game {
             self.party_leave(id);
         }
         let name = self.ents[&id].name.clone();
-        self.parties.get_mut(&pid).unwrap().members.push(name.clone());
+        self.parties
+            .get_mut(&pid)
+            .unwrap()
+            .members
+            .push(name.clone());
         let p = self.ents.get_mut(&id).unwrap().pm();
         p.party_id = pid;
         p.dirty = true;
@@ -194,7 +232,9 @@ impl Game {
     }
 
     pub(crate) fn party_leave(&mut self, id: Id) {
-        let Some(pid) = self.party_of(id).map(|p| p.id) else { return };
+        let Some(pid) = self.party_of(id).map(|p| p.id) else {
+            return;
+        };
         let name = self.ents[&id].name.clone();
         self.remove_from_party(pid, &name);
         self.log(id, "#c0c0c0", "Вы покинули группу.".into());
@@ -216,7 +256,9 @@ impl Game {
     }
 
     pub(crate) fn remove_from_party(&mut self, pid: i32, name: &str) {
-        let Some(pt) = self.parties.get_mut(&pid) else { return };
+        let Some(pt) = self.parties.get_mut(&pid) else {
+            return;
+        };
         pt.members.retain(|n| n != name);
         if let Some(m) = self.online.get(name).copied() {
             let p = self.ents.get_mut(&m).unwrap().pm();
@@ -258,7 +300,11 @@ impl Game {
     pub fn party_members(&self, id: Id) -> Vec<Id> {
         match self.party_of(id) {
             None => Vec::new(),
-            Some(pt) => pt.members.iter().filter_map(|n| self.online.get(n).copied()).collect(),
+            Some(pt) => pt
+                .members
+                .iter()
+                .filter_map(|n| self.online.get(n).copied())
+                .collect(),
         }
     }
 }

@@ -139,8 +139,15 @@ impl Game {
             if !affix_fits(stat, d) {
                 continue;
             }
-            let mut v = base * (1.0 + depth as f64 * 0.4) * self.roll(0.8, 1.2) * RARITY_POWER[clamp_rarity(st.rarity)];
-            v = if v >= 3.0 { v.round() } else { (v * 10.0).round() / 10.0 };
+            let mut v = base
+                * (1.0 + depth as f64 * 0.4)
+                * self.roll(0.8, 1.2)
+                * RARITY_POWER[clamp_rarity(st.rarity)];
+            v = if v >= 3.0 {
+                v.round()
+            } else {
+                (v * 10.0).round() / 10.0
+            };
             st.bonus.insert(stat.into(), v);
             if st.suffix.is_empty() {
                 st.suffix = suffix.into(); // the name tells the first bonus, the colour the rarity

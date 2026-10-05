@@ -1332,7 +1332,7 @@ pub fn class_window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
 
 pub fn chat(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     let s = g.s;
-    let w = (520.0 * s).min(screen_width() * 0.4);
+    let w = (520.0 * s).min(screen_width() / 2.0 - 280.0 * s).max(220.0 * s);
     let r = Rect::new(12.0 * s, screen_height() - 44.0 * s, w, 32.0 * s);
     let label = tr("Сказать:");
     let lw = g.measure(&label, 14.0 * s, true) + 10.0 * s;

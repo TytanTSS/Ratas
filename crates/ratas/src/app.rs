@@ -452,6 +452,7 @@ impl App {
                     sess.debug(
                         auto.get(2).map(|s| s.as_str()).unwrap_or(""),
                         auto.get(3).map(|s| s.as_str()).unwrap_or(""),
+                        auto.get(4).map(|s| s.as_str()).unwrap_or(""),
                         self.t > auto_at - 1.5,
                     );
                 }

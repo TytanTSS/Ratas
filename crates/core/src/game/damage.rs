@@ -27,7 +27,13 @@ pub struct Damage {
 
 impl Damage {
     pub fn single(t: &str, v: f64) -> Damage {
-        Damage { parts: vec![DmgPart { kind: t.into(), amount: v }], ..Default::default() }
+        Damage {
+            parts: vec![DmgPart {
+                kind: t.into(),
+                amount: v,
+            }],
+            ..Default::default()
+        }
     }
     pub fn add(&mut self, t: &str, v: f64) {
         if v <= 0.0 {
@@ -35,7 +41,10 @@ impl Damage {
         }
         match self.parts.iter_mut().find(|p| p.kind == t) {
             Some(p) => p.amount += v,
-            None => self.parts.push(DmgPart { kind: t.into(), amount: v }),
+            None => self.parts.push(DmgPart {
+                kind: t.into(),
+                amount: v,
+            }),
         }
     }
     pub fn merge(&mut self, o: &Damage, k: f64) {
@@ -65,7 +74,9 @@ impl Damage {
 }
 
 fn is_physical(t: &str) -> bool {
-    db().damage_type(t).map(|d| d.group == "physical").unwrap_or(true)
+    db().damage_type(t)
+        .map(|d| d.group == "physical")
+        .unwrap_or(true)
 }
 
 /// Positive armor has diminishing returns, broken (negative) armor makes
@@ -127,11 +138,15 @@ impl Game {
             dmg += s.str_ * 0.6;
         }
         dmg *= (1.0 + s.melee_pct / 100.0).max(0.0);
-        let mut d = Damage { leech: s.life_leech, ..Default::default() };
+        let mut d = Damage {
+            leech: s.life_leech,
+            ..Default::default()
+        };
         d.add(&s.weapon_type, dmg);
         if s.gear.dual {
             // the second weapon strikes along at half strength
-            let v = self.roll(s.off_dmg[0], s.off_dmg[1]) * 0.5 * (1.0 + s.melee_pct / 100.0).max(0.0);
+            let v =
+                self.roll(s.off_dmg[0], s.off_dmg[1]) * 0.5 * (1.0 + s.melee_pct / 100.0).max(0.0);
             d.add(&s.off_type, v);
         }
         for t in &db().b.damage_types {
@@ -180,7 +195,11 @@ impl Game {
     /// The damage of an ability without the critical roll.
     pub(crate) fn ability_damage(&mut self, c: Id, a: &AbilityDef) -> Damage {
         let s = self.ents[&c].stats.clone();
-        let mut d = Damage { leech: a.leech + s.life_leech, backstab: a.backstab, ..Default::default() };
+        let mut d = Damage {
+            leech: a.leech + s.life_leech,
+            backstab: a.backstab,
+            ..Default::default()
+        };
         if a.damage[1] > 0.0 {
             let v = self.ability_power(c, a);
             if !a.split.is_empty() {
@@ -208,7 +227,9 @@ impl Game {
     /// actually taken.
     pub(crate) fn damage(&mut self, src: Option<Id>, dst: Id, d: Damage) -> f64 {
         let src = src.filter(|s| self.ents.contains_key(s));
-        let Some(de) = self.ents.get(&dst) else { return 0.0 };
+        let Some(de) = self.ents.get(&dst) else {
+            return 0.0;
+        };
         if !de.alive() || d.parts.is_empty() {
             return 0.0;
         }
@@ -325,7 +346,12 @@ impl Game {
         let Some(mut s) = src else { return };
         if let Some(se) = self.ents.get(&s) {
             if se.kind == Kind::Projectile {
-                match se.proj.as_ref().map(|p| p.owner).filter(|o| self.ents.contains_key(o)) {
+                match se
+                    .proj
+                    .as_ref()
+                    .map(|p| p.owner)
+                    .filter(|o| self.ents.contains_key(o))
+                {
                     Some(o) => s = o,
                     None => return,
                 }
@@ -377,7 +403,9 @@ impl Game {
         if self.ents[&src].stats.stealthed {
             return true;
         }
-        let Some(m) = self.ents[&dst].monster.as_ref() else { return false };
+        let Some(m) = self.ents[&dst].monster.as_ref() else {
+            return false;
+        };
         if m.target == 0 || !self.ents.contains_key(&m.target) {
             return false;
         }
@@ -387,7 +415,15 @@ impl Game {
     /// No other enemy of src stands near it (duels).
     pub(crate) fn alone(&self, src: Id, dst: Id) -> bool {
         let se = &self.ents[&src];
-        !self.on_level(&se.level).into_iter().any(|o| o != dst && self.ents.get(&o).map(|oe| oe.dist(se) <= 4.0).unwrap_or(false) && self.hostile(src, o))
+        !self.on_level(&se.level).into_iter().any(|o| {
+            o != dst
+                && self
+                    .ents
+                    .get(&o)
+                    .map(|oe| oe.dist(se) <= 4.0)
+                    .unwrap_or(false)
+                && self.hostile(src, o)
+        })
     }
 
     pub(crate) fn break_stealth(&mut self, id: Id) {
@@ -407,7 +443,14 @@ impl Game {
         e.hp = (e.hp + amount).min(e.max_hp);
         let (level, pos) = (e.level.clone(), e.pos);
         if amount >= 2.0 {
-            self.fx(&level, pos, &format!("+{}", amount.round() as i64), '\0', "#60ff90", 600);
+            self.fx(
+                &level,
+                pos,
+                &format!("+{}", amount.round() as i64),
+                '\0',
+                "#60ff90",
+                600,
+            );
         }
     }
 
@@ -436,13 +479,22 @@ impl Game {
     }
 
     pub(crate) fn heal(&mut self, id: Id, amount: f64) {
-        let Some(e) = self.ents.get_mut(&id) else { return };
+        let Some(e) = self.ents.get_mut(&id) else {
+            return;
+        };
         if !e.alive() {
             return;
         }
         e.hp = (e.hp + amount).min(e.max_hp);
         let (level, pos) = (e.level.clone(), e.pos);
-        self.fx(&level, pos, &format!("+{}", amount.round() as i64), '\0', "#60ff60", 800);
+        self.fx(
+            &level,
+            pos,
+            &format!("+{}", amount.round() as i64),
+            '\0',
+            "#60ff60",
+            800,
+        );
     }
 }
 

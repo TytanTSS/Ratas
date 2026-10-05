@@ -87,6 +87,7 @@ pub struct Session {
     held: [i8; 2],
     hello_sent: bool,
     debug_move: Option<[i8; 2]>,
+    debug_cmds: bool,
 }
 
 impl Session {
@@ -131,6 +132,7 @@ impl Session {
             held: [0, 0],
             hello_sent: false,
             debug_move: None,
+            debug_cmds: false,
         }
     }
 
@@ -181,7 +183,13 @@ impl Session {
     }
 
     /// Scripted checks: open a window, hold a direction.
-    pub fn debug(&mut self, window: &str, mv: &str, late: bool) {
+    pub fn debug(&mut self, window: &str, mv: &str, cmds: &str, late: bool) {
+        if !cmds.is_empty() && !self.debug_cmds && self.snap.is_some() {
+            self.debug_cmds = true;
+            for c in cmds.split('|') {
+                self.cmd_text("admin", c.trim());
+            }
+        }
         if let Some((x, y)) = mv.split_once(',') {
             self.debug_move = Some([x.trim().parse().unwrap_or(0), y.trim().parse().unwrap_or(0)]);
         }

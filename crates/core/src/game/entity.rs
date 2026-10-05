@@ -38,10 +38,18 @@ pub struct ItemStack {
 
 impl ItemStack {
     pub fn new(key: &str) -> ItemStack {
-        ItemStack { key: key.into(), qty: 1, ..Default::default() }
+        ItemStack {
+            key: key.into(),
+            qty: 1,
+            ..Default::default()
+        }
     }
     pub fn qty(key: &str, qty: i32) -> ItemStack {
-        ItemStack { key: key.into(), qty, ..Default::default() }
+        ItemStack {
+            key: key.into(),
+            qty,
+            ..Default::default()
+        }
     }
     pub fn def(&self) -> Option<&'static ItemDef> {
         db().item(&self.key)
@@ -60,7 +68,8 @@ impl ItemStack {
         if self.rarity == 0 && n > 0 {
             return v as i32; // a magic item of an old save
         }
-        (v * RARITY_VALUE[clamp_rarity(self.item_rarity())] / RARITY_VALUE[clamp_rarity(def_rarity(Some(d)))]) as i32
+        (v * RARITY_VALUE[clamp_rarity(self.item_rarity())]
+            / RARITY_VALUE[clamp_rarity(def_rarity(Some(d)))]) as i32
     }
 }
 
@@ -498,12 +507,20 @@ impl Entity {
                     }
                     s.weapon_on_hit = def.on_hit.clone();
                     s.on_hit_pct = def.on_hit_pct;
-                    s.gear.weapon = if def.weapon.is_empty() { "sword".into() } else { def.weapon.clone() };
+                    s.gear.weapon = if def.weapon.is_empty() {
+                        "sword".into()
+                    } else {
+                        def.weapon.clone()
+                    };
                     s.gear.two_hand = def.hands >= 2;
                     s.gear.ranged = def.weapon == "bow" || def.weapon == "crossbow";
                 } else if slot == SLOT_OFF && def.kind == "weapon" {
                     s.off_dmg = [(def.damage[0] * k).round(), (def.damage[1] * k).round()];
-                    s.off_type = if def.dmg_type.is_empty() { "blunt".into() } else { def.dmg_type.clone() };
+                    s.off_type = if def.dmg_type.is_empty() {
+                        "blunt".into()
+                    } else {
+                        def.dmg_type.clone()
+                    };
                     s.off_on_hit = def.on_hit.clone();
                     s.off_pct = def.on_hit_pct;
                     s.gear.dual = true;
@@ -596,8 +613,16 @@ impl Entity {
         s.attack_ms = base_attack / (1.0 + s.attack_speed / 100.0).max(0.25);
         s.mods = mods;
         if self.player.is_some() {
-            let frac_hp = if self.max_hp > 0.0 { self.hp / self.max_hp } else { 1.0 };
-            let frac_mp = if self.max_mp > 0.0 { self.mp / self.max_mp } else { 1.0 };
+            let frac_hp = if self.max_hp > 0.0 {
+                self.hp / self.max_hp
+            } else {
+                1.0
+            };
+            let frac_mp = if self.max_mp > 0.0 {
+                self.mp / self.max_mp
+            } else {
+                1.0
+            };
             self.max_hp = s.max_hp;
             self.max_mp = s.max_mp;
             self.hp = (frac_hp * self.max_hp).clamp(0.0, self.max_hp);

@@ -11,7 +11,9 @@ use crate::content::{db, TileDef};
 use serde::{Deserialize, Serialize};
 
 /// A tile cell.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord,
+)]
 pub struct Pos {
     pub x: i32,
     pub y: i32,
@@ -117,7 +119,12 @@ impl std::ops::AddAssign for Vec2 {
 }
 
 /// The four cardinal neighbours.
-pub const DIRS4: [Pos; 4] = [Pos::new(0, -1), Pos::new(1, 0), Pos::new(0, 1), Pos::new(-1, 0)];
+pub const DIRS4: [Pos; 4] = [
+    Pos::new(0, -1),
+    Pos::new(1, 0),
+    Pos::new(0, 1),
+    Pos::new(-1, 0),
+];
 /// All eight neighbours, cardinal first.
 pub const DIRS8: [Pos; 8] = [
     Pos::new(0, -1),
@@ -208,7 +215,13 @@ impl Level {
     /// Moves a circle of radius r from `from` by `delta`, sliding along cells
     /// it cannot enter. Each axis moves separately, so walking diagonally
     /// into a wall slides along it. Returns the new position.
-    pub fn slide(&self, from: Vec2, delta: Vec2, r: f32, blocked: &dyn Fn(i32, i32) -> bool) -> Vec2 {
+    pub fn slide(
+        &self,
+        from: Vec2,
+        delta: Vec2,
+        r: f32,
+        blocked: &dyn Fn(i32, i32) -> bool,
+    ) -> Vec2 {
         // long moves are split so a fast mover cannot tunnel through a wall
         let steps = ((delta.len() / (r.max(0.1) * 0.9)).ceil() as i32).max(1);
         let d = delta * (1.0 / steps as f32);
@@ -241,7 +254,11 @@ fn push_axis(p: Vec2, d: f32, r: f32, x_axis: bool, blocked: &dyn Fn(i32, i32) -
     let (mut lo, mut hi) = (0.0f32, 1.0f32);
     for _ in 0..8 {
         let mid = (lo + hi) / 2.0;
-        let q = if x_axis { Vec2::new(p.x + d * mid, p.y) } else { Vec2::new(p.x, p.y + d * mid) };
+        let q = if x_axis {
+            Vec2::new(p.x + d * mid, p.y)
+        } else {
+            Vec2::new(p.x, p.y + d * mid)
+        };
         if circle_hits(q, r, blocked) {
             hi = mid;
         } else {

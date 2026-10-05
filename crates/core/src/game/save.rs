@@ -33,7 +33,10 @@ pub struct SaveData {
 }
 
 fn now_secs() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 impl Game {
@@ -58,8 +61,19 @@ impl Game {
             champions: self.champions.clone(),
             chronicle: self.chronicle.clone(),
             levels: ids.into_iter().map(|id| self.levels[id].clone()).collect(),
-            entities: self.ents.values().filter(|e| e.kind != Kind::Projectile && e.kind != Kind::Player).cloned().collect(),
-            characters: self.online.values().filter_map(|id| self.ents.get(id)).cloned().chain(self.offline.values().cloned()).collect(),
+            entities: self
+                .ents
+                .values()
+                .filter(|e| e.kind != Kind::Projectile && e.kind != Kind::Player)
+                .cloned()
+                .collect(),
+            characters: self
+                .online
+                .values()
+                .filter_map(|id| self.ents.get(id))
+                .cloned()
+                .chain(self.offline.values().cloned())
+                .collect(),
             saved_at: now_secs(),
         };
         if let Some(dir) = path.parent() {
@@ -67,9 +81,15 @@ impl Game {
         }
         let tmp = path.with_extension("sav.tmp");
         let f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-        let mut zw = flate2::write::GzEncoder::new(std::io::BufWriter::new(f), flate2::Compression::default());
+        let mut zw = flate2::write::GzEncoder::new(
+            std::io::BufWriter::new(f),
+            flate2::Compression::default(),
+        );
         serde_json::to_writer(&mut zw, &sd).map_err(|e| e.to_string())?;
-        zw.finish().map_err(|e| e.to_string())?.flush().map_err(|e| e.to_string())?;
+        zw.finish()
+            .map_err(|e| e.to_string())?
+            .flush()
+            .map_err(|e| e.to_string())?;
         std::fs::rename(&tmp, path).map_err(|e| e.to_string())
     }
 
@@ -123,10 +143,15 @@ pub fn read_save(path: &Path) -> Result<SaveData, String> {
     zr.read_to_end(&mut data).map_err(|e| e.to_string())?;
     let sd: SaveData = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
     if sd.version > SAVE_VERSION {
-        return Err(format!("сохранение из более новой версии игры ({})", sd.version));
+        return Err(format!(
+            "сохранение из более новой версии игры ({})",
+            sd.version
+        ));
     }
     if sd.version < SAVE_VERSION {
-        return Err("сохранение из старой версии игры (до перехода на Rust) не поддерживается".into());
+        return Err(
+            "сохранение из старой версии игры (до перехода на Rust) не поддерживается".into(),
+        );
     }
     Ok(sd)
 }
@@ -147,7 +172,9 @@ pub struct SaveInfo {
 /// Save files in dir, newest first.
 pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
     let mut out = Vec::new();
-    let Ok(rd) = std::fs::read_dir(dir) else { return out };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return out;
+    };
     for e in rd.flatten() {
         let p = e.path();
         if p.extension().and_then(|x| x.to_str()) != Some("sav") {
@@ -165,7 +192,8 @@ pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
         };
         for c in &sd.characters {
             if let Some(pl) = &c.player {
-                info.characters.push(format!("{} (ур.{})", c.name, pl.level));
+                info.characters
+                    .push(format!("{} (ур.{})", c.name, pl.level));
                 info.names.push(pl.account.clone());
             }
         }

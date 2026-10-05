@@ -16,7 +16,11 @@ impl Game {
             color: def.color.clone(),
             level: level.into(),
             pos: p.center(),
-            faction: if def.ally { Faction::Player } else { Faction::Monster },
+            faction: if def.ally {
+                Faction::Player
+            } else {
+                Faction::Monster
+            },
             hp,
             max_hp: hp,
             facing: std::f32::consts::FRAC_PI_2,
@@ -27,7 +31,9 @@ impl Game {
     }
 
     pub(crate) fn spawn_npc(&mut self, n: &NpcSpawn, village: &str, r: &mut Rng) {
-        let Some(role) = db().npc_role(&n.role) else { return };
+        let Some(role) = db().npc_role(&n.role) else {
+            return;
+        };
         let l = &self.levels["overworld"];
         let mut p = n.pos;
         if !l.walkable(p.x, p.y) || self.cell_taken("overworld", p) {
@@ -54,15 +60,28 @@ impl Game {
 
     /// Places a mixed squad around p: the frontline in front, the archers and
     /// casters a little behind.
-    pub(crate) fn spawn_squad(&mut self, r: &mut Rng, sq: &SquadDef, level: &str, p: Pos, lvl: i32) -> Vec<Id> {
+    pub(crate) fn spawn_squad(
+        &mut self,
+        r: &mut Rng,
+        sq: &SquadDef,
+        level: &str,
+        p: Pos,
+        lvl: i32,
+    ) -> Vec<Id> {
         self.squad_seq += 1;
         let squad = self.squad_seq;
         let mut out = Vec::new();
         for mem in &sq.members {
-            let Some(def) = db().monster(&mem.monster) else { continue };
+            let Some(def) = db().monster(&mem.monster) else {
+                continue;
+            };
             let n = r.range(mem.count[0], mem.count[1]);
             for _ in 0..n {
-                let at = if ai::squishy(def) { p.add(Pos::new(r.int_n(5) - 2, 2)) } else { p };
+                let at = if ai::squishy(def) {
+                    p.add(Pos::new(r.int_n(5) - 2, 2))
+                } else {
+                    p
+                };
                 let q = self.free_spot(level, at);
                 if q.dist(p) > 6 {
                     continue;
@@ -78,7 +97,14 @@ impl Game {
     }
 
     /// Places a pack around p.
-    pub(crate) fn spawn_group(&mut self, r: &mut Rng, def: &MonsterDef, level: &str, p: Pos, lvl: i32) -> Vec<Id> {
+    pub(crate) fn spawn_group(
+        &mut self,
+        r: &mut Rng,
+        def: &MonsterDef,
+        level: &str,
+        p: Pos,
+        lvl: i32,
+    ) -> Vec<Id> {
         let n = r.range(def.group[0].max(1), def.group[1].max(1));
         let mut out = Vec::new();
         for _ in 0..n {
@@ -94,7 +120,12 @@ impl Game {
     /// Places persistent elite enemies across the map: every kind of elite
     /// at least once in a fitting biome, more if there is room.
     pub(crate) fn populate_overworld(&mut self, r: &mut Rng) {
-        let elites: Vec<&MonsterDef> = db().b.monsters.iter().filter(|m| m.elite && !m.boss && m.depth[0] == 0).collect();
+        let elites: Vec<&MonsterDef> = db()
+            .b
+            .monsters
+            .iter()
+            .filter(|m| m.elite && !m.boss && m.depth[0] == 0)
+            .collect();
         let (w, h) = {
             let l = &self.levels["overworld"];
             (l.w, l.h)
@@ -109,7 +140,12 @@ impl Game {
                     let p = Pos::new(r.int_n(w), r.int_n(h));
                     let l = &self.levels["overworld"];
                     let biome = l.def_at(p).biome.clone();
-                    if !l.walkable(p.x, p.y) || !def.themes.contains(&biome) || self.in_village(p, 25) || p.manhattan(self.start) < 60 || self.cell_taken("overworld", p) {
+                    if !l.walkable(p.x, p.y)
+                        || !def.themes.contains(&biome)
+                        || self.in_village(p, 25)
+                        || p.manhattan(self.start) < 60
+                        || self.cell_taken("overworld", p)
+                    {
                         continue;
                     }
                     let lvl = self.overworld_level_at(p, false);
@@ -138,13 +174,26 @@ impl Game {
                 let Some(def) = db().monster(k) else { continue };
                 let at = lm.pos.add(Pos::new(r.int_n(5) - 2, 1));
                 for m in self.spawn_group(r, def, "overworld", at, lvl) {
-                    self.ents.get_mut(&m).unwrap().monster.as_mut().unwrap().persistent = true;
+                    self.ents
+                        .get_mut(&m)
+                        .unwrap()
+                        .monster
+                        .as_mut()
+                        .unwrap()
+                        .persistent = true;
                 }
             }
         }
     }
 
-    pub(crate) fn populate_dungeon(&mut self, level: &str, monsters: &[Pos], items: &[Pos], boss: Option<Pos>, ent: &crate::gen::Entrance) {
+    pub(crate) fn populate_dungeon(
+        &mut self,
+        level: &str,
+        monsters: &[Pos],
+        items: &[Pos],
+        boss: Option<Pos>,
+        ent: &crate::gen::Entrance,
+    ) {
         let mut r = Rng::labeled(self.seed, &format!("pop-{level}"));
         let depth = self.levels[level].depth;
         let lvl = depth + (ent.max_depth - 3).max(0);
@@ -155,15 +204,26 @@ impl Game {
                     continue;
                 }
             }
-            let Some(def) = pick_monster(&mut r, &ent.theme, depth, false, true) else { continue };
+            let Some(def) = pick_monster(&mut r, &ent.theme, depth, false, true) else {
+                continue;
+            };
             self.spawn_group(&mut r, def, level, p, lvl);
         }
         if let Some(bp) = boss {
-            let bosses: Vec<&MonsterDef> = db().b.monsters.iter().filter(|m| m.boss && m.themes.contains(&ent.theme)).collect();
+            let bosses: Vec<&MonsterDef> = db()
+                .b
+                .monsters
+                .iter()
+                .filter(|m| m.boss && m.themes.contains(&ent.theme))
+                .collect();
             if !bosses.is_empty() {
                 let def = bosses[r.usize_n(bosses.len())];
                 let l = &self.levels[level];
-                let bp = if l.walkable(bp.x, bp.y) && !self.cell_taken(level, bp) { bp } else { self.free_spot(level, bp) };
+                let bp = if l.walkable(bp.x, bp.y) && !self.cell_taken(level, bp) {
+                    bp
+                } else {
+                    self.free_spot(level, bp)
+                };
                 self.new_monster(def, level, bp, lvl + 1);
                 if let Some(minion) = pick_monster(&mut r, &ent.theme, depth, false, false) {
                     self.spawn_group(&mut r, minion, level, bp.add(Pos::new(0, 2)), lvl);
@@ -188,7 +248,13 @@ impl Game {
         if !self.levels.contains_key("overworld") {
             return;
         }
-        let players: Vec<Vec2> = self.online.values().filter_map(|id| self.ents.get(id)).filter(|p| p.level == "overworld" && !p.dead).map(|p| p.pos).collect();
+        let players: Vec<Vec2> = self
+            .online
+            .values()
+            .filter_map(|id| self.ents.get(id))
+            .filter(|p| p.level == "overworld" && !p.dead)
+            .map(|p| p.pos)
+            .collect();
         if players.is_empty() {
             return;
         }
@@ -219,7 +285,11 @@ impl Game {
                 let dist = 22.0 + rng.f32() * 12.0;
                 let q = (pp + Vec2::from_angle(ang) * dist).cell();
                 let ow = &self.levels["overworld"];
-                if !ow.walkable(q.x, q.y) || !ow.def_at(q).interact.is_empty() || self.in_village(q, 6) || self.cell_taken("overworld", q) {
+                if !ow.walkable(q.x, q.y)
+                    || !ow.def_at(q).interact.is_empty()
+                    || self.in_village(q, 6)
+                    || self.cell_taken("overworld", q)
+                {
                     continue;
                 }
                 if players.iter().any(|o| o.dist(q.center()) < 16.0) {
@@ -233,7 +303,9 @@ impl Game {
                         break;
                     }
                 }
-                let Some(def) = pick_monster(&mut rng, &biome, 0, night, false) else { continue };
+                let Some(def) = pick_monster(&mut rng, &biome, 0, night, false) else {
+                    continue;
+                };
                 self.spawn_group(&mut rng, def, "overworld", q, lvl);
                 break;
             }
@@ -244,11 +316,22 @@ impl Game {
 }
 
 /// A weighted random non-boss monster matching theme and depth.
-pub(crate) fn pick_monster(r: &mut Rng, theme: &str, depth: i32, night: bool, allow_elite: bool) -> Option<&'static MonsterDef> {
+pub(crate) fn pick_monster(
+    r: &mut Rng,
+    theme: &str,
+    depth: i32,
+    night: bool,
+    allow_elite: bool,
+) -> Option<&'static MonsterDef> {
     let mut pool = Vec::new();
     let mut total = 0;
     for m in &db().b.monsters {
-        if m.boss || m.ally || m.weight <= 0 || (m.elite && !allow_elite) || !m.themes.iter().any(|t| t == theme) {
+        if m.boss
+            || m.ally
+            || m.weight <= 0
+            || (m.elite && !allow_elite)
+            || !m.themes.iter().any(|t| t == theme)
+        {
             continue;
         }
         // depth [0,0]: overworld only; [0,n]: overworld and dungeon floors 1..n
@@ -276,7 +359,12 @@ pub(crate) fn pick_monster(r: &mut Rng, theme: &str, depth: i32, night: bool, al
 }
 
 /// A weighted random squad for a theme and depth.
-pub(crate) fn pick_squad(r: &mut Rng, theme: &str, depth: i32, night: bool) -> Option<&'static SquadDef> {
+pub(crate) fn pick_squad(
+    r: &mut Rng,
+    theme: &str,
+    depth: i32,
+    night: bool,
+) -> Option<&'static SquadDef> {
     let mut pool = Vec::new();
     let mut total = 0;
     for sq in &db().b.squads {

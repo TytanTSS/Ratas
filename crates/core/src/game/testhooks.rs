@@ -50,7 +50,12 @@ impl Game {
     /// Gives an item and puts it on (left: into the left hand).
     pub fn equip_for_test(&mut self, id: Id, key: &str, left: bool) {
         self.add_item(id, ItemStack::new(key));
-        if let Some(i) = self.ents[&id].p().inventory.iter().position(|s| s.key == key) {
+        if let Some(i) = self.ents[&id]
+            .p()
+            .inventory
+            .iter()
+            .position(|s| s.key == key)
+        {
             self.equip(id, i, left);
         }
     }
@@ -94,7 +99,12 @@ impl Game {
             key: "test_tough".into(),
             name: "Испытание".into(),
             duration_ms: 3600000,
-            stats: [("max_hp".to_string(), 50000.0), ("hp_regen".to_string(), 500.0)].into_iter().collect(),
+            stats: [
+                ("max_hp".to_string(), 50000.0),
+                ("hp_regen".to_string(), 500.0),
+            ]
+            .into_iter()
+            .collect(),
             ..Default::default()
         };
         self.apply_buff(id, &b, id);

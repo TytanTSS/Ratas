@@ -9,7 +9,9 @@ use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, sync_channel, Receiver, RecvTimeoutError, Sender, SyncSender, TrySendError};
+use std::sync::mpsc::{
+    channel, sync_channel, Receiver, RecvTimeoutError, Sender, SyncSender, TrySendError,
+};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -17,7 +19,11 @@ use std::time::{Duration, Instant};
 type Call = Box<dyn FnOnce(&mut Game) + Send>;
 
 enum Event {
-    Attach { sid: u64, out: SyncSender<ServerMsg>, host: bool },
+    Attach {
+        sid: u64,
+        out: SyncSender<ServerMsg>,
+        host: bool,
+    },
     Msg(u64, ClientMsg),
     Gone(u64),
     Call(Call),
@@ -89,7 +95,15 @@ impl Server {
         let h = std::thread::Builder::new()
             .name("ratas-game".into())
             .stack_size(16 << 20)
-            .spawn(move || Loop { game, sessions: HashMap::new(), opts, rx }.run())
+            .spawn(move || {
+                Loop {
+                    game,
+                    sessions: HashMap::new(),
+                    opts,
+                    rx,
+                }
+                .run()
+            })
             .expect("game thread");
         *shared.thread.lock().unwrap() = Some(h);
         Server { inbox: tx, shared }
@@ -106,12 +120,16 @@ impl Server {
     }
 
     /// Runs f on the game thread and returns its result.
-    pub fn call<R: Send + 'static>(&self, f: impl FnOnce(&mut Game) -> R + Send + 'static) -> Option<R> {
+    pub fn call<R: Send + 'static>(
+        &self,
+        f: impl FnOnce(&mut Game) -> R + Send + 'static,
+    ) -> Option<R> {
         let (tx, rx) = channel();
-        self.inbox.send(Event::Call(Box::new(move |g| {
-            let _ = tx.send(f(g));
-        })))
-        .ok()?;
+        self.inbox
+            .send(Event::Call(Box::new(move |g| {
+                let _ = tx.send(f(g));
+            })))
+            .ok()?;
         rx.recv().ok()
     }
 
@@ -119,7 +137,11 @@ impl Server {
     pub fn connect_local(&self) -> Conn {
         let sid = self.sid();
         let (out, rx) = sync_channel(512);
-        let _ = self.inbox.send(Event::Attach { sid, out, host: true });
+        let _ = self.inbox.send(Event::Attach {
+            sid,
+            out,
+            host: true,
+        });
         let inbox = Mutex::new(self.inbox.clone());
         Conn {
             send: Box::new(move |m| inbox.lock().unwrap().send(Event::Msg(sid, m)).is_ok()),
@@ -147,14 +169,23 @@ impl Server {
 
     /// The address the server listens on ("" = not open for network).
     pub fn listening(&self) -> String {
-        self.shared.listening.lock().unwrap().clone().unwrap_or_default()
+        self.shared
+            .listening
+            .lock()
+            .unwrap()
+            .clone()
+            .unwrap_or_default()
     }
 
     fn attach_tcp(&self, s: TcpStream) {
         let _ = s.set_nodelay(true);
         let sid = self.sid();
         let (out, rx) = sync_channel::<ServerMsg>(512);
-        let _ = self.inbox.send(Event::Attach { sid, out, host: false });
+        let _ = self.inbox.send(Event::Attach {
+            sid,
+            out,
+            host: false,
+        });
         let Ok(ws) = s.try_clone() else { return };
         std::thread::spawn(move || {
             let _ = ws.set_write_timeout(Some(Duration::from_secs(10)));
@@ -200,7 +231,10 @@ impl Server {
 /// Connects to a server over the network.
 pub fn connect_tcp(addr: &str) -> std::io::Result<Conn> {
     use std::net::ToSocketAddrs;
-    let sa = addr.to_socket_addrs()?.next().ok_or_else(|| std::io::Error::other("bad address"))?;
+    let sa = addr
+        .to_socket_addrs()?
+        .next()
+        .ok_or_else(|| std::io::Error::other("bad address"))?;
     let s = TcpStream::connect_timeout(&sa, Duration::from_secs(8))?;
     let _ = s.set_nodelay(true);
     let (tx, crx) = channel::<ClientMsg>();
@@ -223,7 +257,10 @@ pub fn connect_tcp(addr: &str) -> std::io::Result<Conn> {
         }
     });
     let tx = Mutex::new(tx);
-    Ok(Conn { send: Box::new(move |m| tx.lock().unwrap().send(m).is_ok()), rx })
+    Ok(Conn {
+        send: Box::new(move |m| tx.lock().unwrap().send(m).is_ok()),
+        rx,
+    })
 }
 
 struct Loop {
@@ -263,7 +300,10 @@ impl Loop {
             match self.rx.recv_timeout(next - now) {
                 Ok(Event::Stop) => {
                     for s in self.sessions.values() {
-                        let _ = s.out.try_send(ServerMsg { kick: "Сервер остановлен.".into(), ..Default::default() });
+                        let _ = s.out.try_send(ServerMsg {
+                            kick: "Сервер остановлен.".into(),
+                            ..Default::default()
+                        });
                     }
                     let sids: Vec<u64> = self.sessions.keys().copied().collect();
                     for sid in sids {
@@ -279,32 +319,38 @@ impl Loop {
     }
 
     fn autosave(&mut self) {
-        let Some(path) = self.opts.save_path.clone() else { return };
+        let Some(path) = self.opts.save_path.clone() else {
+            return;
+        };
         if self.game.online.is_empty() {
             return;
         }
         match self.game.save(&path) {
             Ok(()) => self.game.log_all("#707070", "Автосохранение.".into()),
-            Err(e) => self.log(&format!("autosave failed: {e}")),
+            Err(e) => self.log(&format!("автосохранение не удалось: {e}")),
         }
     }
 
     fn send(&mut self, sid: u64, m: ServerMsg) {
-        let Some(s) = self.sessions.get(&sid) else { return };
+        let Some(s) = self.sessions.get(&sid) else {
+            return;
+        };
         let only_snap = m.only_snap();
         match s.out.try_send(m) {
             Ok(()) => {}
             Err(TrySendError::Full(_)) if only_snap => {} // a slow client skips frames
             Err(_) => {
                 let name = s.name.clone();
-                self.log(&format!("client {name} too slow, dropping"));
+                self.log(&format!("клиент {name} не успевает за сервером и отключён"));
                 self.drop_session(sid);
             }
         }
     }
 
     fn drop_session(&mut self, sid: u64) {
-        let Some(s) = self.sessions.remove(&sid) else { return };
+        let Some(s) = self.sessions.remove(&sid) else {
+            return;
+        };
         if s.entity.is_some() {
             self.game.leave(&s.name);
         }
@@ -317,12 +363,23 @@ impl Loop {
         match ev {
             Event::Call(f) => f(&mut self.game),
             Event::Attach { sid, out, host } => {
-                self.sessions.insert(sid, Session { out, host, name: String::new(), lang: String::new(), entity: None, level: String::new(), pending: false });
+                self.sessions.insert(
+                    sid,
+                    Session {
+                        out,
+                        host,
+                        name: String::new(),
+                        lang: String::new(),
+                        entity: None,
+                        level: String::new(),
+                        pending: false,
+                    },
+                );
             }
             Event::Gone(sid) => {
                 if let Some(s) = self.sessions.get(&sid) {
                     let n = s.name.clone();
-                    self.log(&format!("{n} disconnected"));
+                    self.log(&format!("{n} покидает мир"));
                 }
                 self.drop_session(sid);
             }
@@ -332,7 +389,9 @@ impl Loop {
     }
 
     fn message(&mut self, sid: u64, m: ClientMsg) {
-        let Some(s) = self.sessions.get(&sid) else { return };
+        let Some(s) = self.sessions.get(&sid) else {
+            return;
+        };
         match m {
             ClientMsg::Hello(h) => self.hello(sid, h),
             ClientMsg::Cmd(c) if s.entity.is_none() => {
@@ -369,19 +428,36 @@ impl Loop {
     }
 
     fn is_admin(&self, sid: u64) -> bool {
-        self.opts.admin_all || (self.sessions.get(&sid).map(|s| s.host).unwrap_or(false) && self.opts.admin_host)
+        self.opts.admin_all
+            || (self.sessions.get(&sid).map(|s| s.host).unwrap_or(false) && self.opts.admin_host)
     }
 
     fn hello(&mut self, sid: u64, h: Hello) {
         if h.version != proto::VERSION {
-            let msg = format!("Несовместимая версия (сервер {}, клиент {}).", proto::VERSION, h.version);
-            self.send(sid, ServerMsg { kick: msg, ..Default::default() });
+            let msg = format!(
+                "Несовместимая версия (сервер {}, клиент {}).",
+                proto::VERSION,
+                h.version
+            );
+            self.send(
+                sid,
+                ServerMsg {
+                    kick: msg,
+                    ..Default::default()
+                },
+            );
             self.drop_session(sid);
             return;
         }
         let name: String = h.name.trim().chars().take(16).collect();
         if name.is_empty() {
-            self.send(sid, ServerMsg { kick: "Пустое имя.".into(), ..Default::default() });
+            self.send(
+                sid,
+                ServerMsg {
+                    kick: "Пустое имя.".into(),
+                    ..Default::default()
+                },
+            );
             self.drop_session(sid);
             return;
         }
@@ -396,7 +472,13 @@ impl Loop {
         let (e, need_class) = match self.game.join(&name, class) {
             Ok(r) => r,
             Err(err) => {
-                self.send(sid, ServerMsg { kick: err, ..Default::default() });
+                self.send(
+                    sid,
+                    ServerMsg {
+                        kick: err,
+                        ..Default::default()
+                    },
+                );
                 self.drop_session(sid);
                 return;
             }
@@ -404,10 +486,19 @@ impl Loop {
         let host = self.sessions[&sid].host;
         let mut w = Welcome {
             // the host's own client shares the content in memory
-            content: if host { Vec::new() } else { crate::content::db().json.clone() },
+            content: if host {
+                Vec::new()
+            } else {
+                crate::content::db().json.clone()
+            },
             world_name: self.game.world_name.clone(),
             seed: self.game.seed,
-            ai: self.game.brain.as_ref().map(|b| b.enabled()).unwrap_or(false),
+            ai: self
+                .game
+                .brain
+                .as_ref()
+                .map(|b| b.enabled())
+                .unwrap_or(false),
             host,
             admin: self.is_admin(sid),
             ..Default::default()
@@ -415,7 +506,13 @@ impl Loop {
         if need_class {
             self.sessions.get_mut(&sid).unwrap().pending = true;
             w.need_class = true;
-            self.send(sid, ServerMsg { welcome: Some(w), ..Default::default() });
+            self.send(
+                sid,
+                ServerMsg {
+                    welcome: Some(w),
+                    ..Default::default()
+                },
+            );
             return;
         }
         let e = e.unwrap();
@@ -427,18 +524,28 @@ impl Loop {
         ent.pm().lang = lang;
         s.level = ent.level.clone();
         w.you_id = e;
-        self.log(&format!("{name} joined"));
+        self.log(&format!("{name} входит в мир"));
         let level = self.game.level_data(e);
         let sheet = self.game.sheet(e);
         self.game.em(e).unwrap().pm().dirty = false;
-        self.send(sid, ServerMsg { welcome: Some(w), level: Some(level), sheet: Some(Box::new(sheet)), ..Default::default() });
+        self.send(
+            sid,
+            ServerMsg {
+                welcome: Some(w),
+                level: Some(level),
+                sheet: Some(Box::new(sheet)),
+                ..Default::default()
+            },
+        );
     }
 
     fn tick(&mut self) {
         self.game.tick();
         let sids: Vec<u64> = self.sessions.keys().copied().collect();
         for sid in sids {
-            let Some(s) = self.sessions.get(&sid) else { continue };
+            let Some(s) = self.sessions.get(&sid) else {
+                continue;
+            };
             let Some(e) = s.entity else { continue };
             let Some(ent) = self.game.e(e) else { continue };
             let mut m = ServerMsg::default();
@@ -508,9 +615,20 @@ mod tests {
 
     #[test]
     fn local_and_network_play() {
-        let srv = Server::start(Game::new(5, None), Options { admin_host: true, ..Default::default() });
+        let srv = Server::start(
+            Game::new(5, None),
+            Options {
+                admin_host: true,
+                ..Default::default()
+            },
+        );
         let host = srv.connect_local();
-        host.send(ClientMsg::Hello(Hello { name: "Хозяин".into(), class: String::new(), version: proto::VERSION, lang: "ru".into() }));
+        host.send(ClientMsg::Hello(Hello {
+            name: "Хозяин".into(),
+            class: String::new(),
+            version: proto::VERSION,
+            lang: "ru".into(),
+        }));
         let w = wait(&host, |m| m.welcome.is_some());
         assert!(w.welcome.unwrap().need_class);
         host.cmd(Command::new("choose_class", "warrior", 0));
@@ -518,24 +636,41 @@ mod tests {
         assert!(w.welcome.as_ref().unwrap().admin);
         let addr = srv.listen("127.0.0.1:0").unwrap();
         let guest = connect_tcp(&addr).unwrap();
-        guest.send(ClientMsg::Hello(Hello { name: "Гость".into(), class: "mage".into(), version: proto::VERSION, lang: "en".into() }));
+        guest.send(ClientMsg::Hello(Hello {
+            name: "Гость".into(),
+            class: "mage".into(),
+            version: proto::VERSION,
+            lang: "en".into(),
+        }));
         let w = wait(&guest, |m| m.welcome.is_some());
         let wl = w.welcome.unwrap();
         assert!(!wl.content.is_empty() && !wl.admin);
         assert!(crate::content::from_json(&wl.content).is_ok());
         let first = wait(&guest, |m| m.snap.is_some()).snap.unwrap().you;
         for _ in 0..20 {
-            guest.send(ClientMsg::Input(Input { mv: [1, 0], ..Default::default() }));
+            guest.send(ClientMsg::Input(Input {
+                mv: [1, 0],
+                ..Default::default()
+            }));
             std::thread::sleep(Duration::from_millis(25));
         }
-        let later = wait(&guest, |m| m.snap.as_ref().map(|s| (s.you.x - first.x).abs() > 0.5 || (s.you.y - first.y).abs() > 0.5).unwrap_or(false));
+        let later = wait(&guest, |m| {
+            m.snap
+                .as_ref()
+                .map(|s| (s.you.x - first.x).abs() > 0.5 || (s.you.y - first.y).abs() > 0.5)
+                .unwrap_or(false)
+        });
         assert!(later.snap.unwrap().online.len() == 2);
         // admin rights: the guest cannot, the host can
         guest.cmd(Command::text("chat", "/gold 100"));
-        wait(&guest, |m| m.logs.iter().any(|l| l.text.contains("администратора")));
+        wait(&guest, |m| {
+            m.logs.iter().any(|l| l.text.contains("администратора"))
+        });
         host.cmd(Command::text("chat", "/gold 100"));
         wait(&host, |m| m.logs.iter().any(|l| l.text.contains("+100")));
-        let gold = srv.call(|g| g.player("Хозяин").map(|p| p.p().gold)).flatten();
+        let gold = srv
+            .call(|g| g.player("Хозяин").map(|p| p.p().gold))
+            .flatten();
         assert!(gold.unwrap() >= 100);
         srv.stop();
     }

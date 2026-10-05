@@ -32,7 +32,12 @@ pub fn region_danger(kind: &str) -> i32 {
     }
 }
 
-pub(super) const REGIONAL_DUNGEONS: &[(&str, &str)] = &[("temple", "desert"), ("ice", "tundra"), ("volcano", "ash"), ("fortress", "cursed")];
+pub(super) const REGIONAL_DUNGEONS: &[(&str, &str)] = &[
+    ("temple", "desert"),
+    ("ice", "tundra"),
+    ("volcano", "ash"),
+    ("fortress", "cursed"),
+];
 
 pub fn near_village(vs: &[Village], x: i32, y: i32, margin: i32) -> bool {
     vs.iter().any(|v| {
@@ -49,14 +54,25 @@ pub(super) fn scar_land(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village
     let ry = rx;
     let mut centers: Vec<Pos> = Vec::new();
     for kind in ["ash", "cursed"] {
-        let Some(c) = scar_center(r, l, main, vs, start, &centers, rx, ry) else { continue };
+        let Some(c) = scar_center(r, l, main, vs, start, &centers, rx, ry) else {
+            continue;
+        };
         centers.push(c);
         stamp_scar(r, l, c, rx, ry, vs, kind);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn scar_center(r: &mut Rng, l: &Level, main: &[bool], vs: &[Village], start: Pos, others: &[Pos], rx: i32, ry: i32) -> Option<Pos> {
+fn scar_center(
+    r: &mut Rng,
+    l: &Level,
+    main: &[bool],
+    vs: &[Village],
+    start: Pos,
+    others: &[Pos],
+    rx: i32,
+    ry: i32,
+) -> Option<Pos> {
     let min_start = (l.w + l.h) / 4;
     for _ in 0..3000 {
         let x = rx + r.int_n((l.w - 2 * rx).max(1));
@@ -97,7 +113,18 @@ fn scar_center(r: &mut Rng, l: &Level, main: &[bool], vs: &[Village], start: Pos
 }
 
 fn settlement_tile(key: &str) -> bool {
-    matches!(key, "house_wall" | "house_floor" | "door" | "door_open" | "well" | "fence" | "road" | "bridge" | "dungeon")
+    matches!(
+        key,
+        "house_wall"
+            | "house_floor"
+            | "door"
+            | "door_open"
+            | "well"
+            | "fence"
+            | "road"
+            | "bridge"
+            | "dungeon"
+    )
 }
 
 fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, vs: &[Village], kind: &str) {
@@ -136,7 +163,12 @@ fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, vs: &[Villag
                     Some("lava")
                 } else if k < 0.2 {
                     Some("basalt") // the volcano cone
-                } else if !def.walkable && !matches!(def.biome.as_str(), "plains" | "forest" | "tundra" | "desert") {
+                } else if !def.walkable
+                    && !matches!(
+                        def.biome.as_str(),
+                        "plains" | "forest" | "tundra" | "desert"
+                    )
+                {
                     Some("basalt")
                 } else if det > 0.4 {
                     Some("lava")
@@ -153,8 +185,11 @@ fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, vs: &[Villag
                 }
             } else {
                 match key {
-                    "tree" | "pine" | "snow_pine" | "palm" | "bush" => Some(if v < 0.3 { "dead_tree" } else { "twisted_tree" }),
-                    "swamp" | "reeds" | "water" | "ice" | "mountain" | "snow" | "ice_rock" | "sandstone" | "cactus" | "dead_tree" => None,
+                    "tree" | "pine" | "snow_pine" | "palm" | "bush" => {
+                        Some(if v < 0.3 { "dead_tree" } else { "twisted_tree" })
+                    }
+                    "swamp" | "reeds" | "water" | "ice" | "mountain" | "snow" | "ice_rock"
+                    | "sandstone" | "cactus" | "dead_tree" => None,
                     _ => Some(if v < 0.025 {
                         "mushrooms"
                     } else if v < 0.04 {
@@ -179,14 +214,70 @@ fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, vs: &[Villag
 
 fn region_names(kind: &str) -> &'static [&'static str] {
     match kind {
-        "plains" => &["Солнечные Луга", "Вольные Поля", "Ковыльная Степь", "Медовые Луга", "Долина Ветров", "Зелёный Дол", "Пастушьи Холмы", "Широкое Поле"],
-        "forest" => &["Шепчущий Лес", "Чернолесье", "Дубрава Старых Богов", "Зелёная Пуща", "Совиный Бор", "Еловый Край", "Туманный Лес", "Волчья Чаща", "Медвежий Бор", "Ясеневая Роща"],
-        "swamp" => &["Гнилые Топи", "Туманные Болота", "Ведьмина Трясина", "Камышовые Плавни", "Чёрная Гать", "Лягушачьи Мхи"],
-        "hills" => &["Каменные Холмы", "Гремящий Кряж", "Седые Предгорья", "Орлиные Утёсы", "Хребет Великана", "Ветреные Склоны"],
-        "desert" => &["Пески Забвения", "Пустыня Аш-Шарр", "Золотые Барханы", "Море Песка", "Выжженная Равнина"],
-        "tundra" => &["Ледяной Предел", "Белая Пустошь", "Земли Вечной Зимы", "Северная Тундра", "Стылые Равнины"],
-        "ash" => &["Пепельные Пустоши", "Огненный Разлом", "Земли Пламени", "Пепелище"],
-        _ => &["Проклятые Земли", "Сумрачный Край", "Долина Мёртвых", "Край Скорби"],
+        "plains" => &[
+            "Солнечные Луга",
+            "Вольные Поля",
+            "Ковыльная Степь",
+            "Медовые Луга",
+            "Долина Ветров",
+            "Зелёный Дол",
+            "Пастушьи Холмы",
+            "Широкое Поле",
+        ],
+        "forest" => &[
+            "Шепчущий Лес",
+            "Чернолесье",
+            "Дубрава Старых Богов",
+            "Зелёная Пуща",
+            "Совиный Бор",
+            "Еловый Край",
+            "Туманный Лес",
+            "Волчья Чаща",
+            "Медвежий Бор",
+            "Ясеневая Роща",
+        ],
+        "swamp" => &[
+            "Гнилые Топи",
+            "Туманные Болота",
+            "Ведьмина Трясина",
+            "Камышовые Плавни",
+            "Чёрная Гать",
+            "Лягушачьи Мхи",
+        ],
+        "hills" => &[
+            "Каменные Холмы",
+            "Гремящий Кряж",
+            "Седые Предгорья",
+            "Орлиные Утёсы",
+            "Хребет Великана",
+            "Ветреные Склоны",
+        ],
+        "desert" => &[
+            "Пески Забвения",
+            "Пустыня Аш-Шарр",
+            "Золотые Барханы",
+            "Море Песка",
+            "Выжженная Равнина",
+        ],
+        "tundra" => &[
+            "Ледяной Предел",
+            "Белая Пустошь",
+            "Земли Вечной Зимы",
+            "Северная Тундра",
+            "Стылые Равнины",
+        ],
+        "ash" => &[
+            "Пепельные Пустоши",
+            "Огненный Разлом",
+            "Земли Пламени",
+            "Пепелище",
+        ],
+        _ => &[
+            "Проклятые Земли",
+            "Сумрачный Край",
+            "Долина Мёртвых",
+            "Край Скорби",
+        ],
     }
 }
 
@@ -248,9 +339,16 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
             sx += (c as i32 % l.w) as i64;
             sy += (c as i32 / l.w) as i64;
         }
-        let center = Pos::new((sx / cells.len() as i64) as i32, (sy / cells.len() as i64) as i32);
+        let center = Pos::new(
+            (sx / cells.len() as i64) as i32,
+            (sy / cells.len() as i64) as i32,
+        );
         let name = region_name(r, kind, center, l, &mut used);
-        regions.push(Region { name, kind: kind.into(), danger: region_danger(kind) });
+        regions.push(Region {
+            name,
+            kind: kind.into(),
+            danger: region_danger(kind),
+        });
     }
     // spread labels to everything else (breadth first from labelled cells)
     let mut queue: Vec<usize> = (0..n).filter(|&i| labels[i] > 0).collect();
@@ -271,12 +369,22 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
             }
         }
     }
-    (regions, labels.iter().map(|&lb| if lb > 0 { lb as u8 } else { 0 }).collect())
+    (
+        regions,
+        labels
+            .iter()
+            .map(|&lb| if lb > 0 { lb as u8 } else { 0 })
+            .collect(),
+    )
 }
 
 fn region_name(r: &mut Rng, kind: &str, c: Pos, l: &Level, used: &mut HashSet<String>) -> String {
     let list = region_names(kind);
-    let free: Vec<&str> = list.iter().copied().filter(|s| !used.contains(*s)).collect();
+    let free: Vec<&str> = list
+        .iter()
+        .copied()
+        .filter(|s| !used.contains(*s))
+        .collect();
     if !free.is_empty() {
         let s = *r.pick(&free);
         used.insert(s.to_string());
@@ -301,10 +409,34 @@ fn region_name(r: &mut Rng, kind: &str, c: Pos, l: &Level, used: &mut HashSet<St
 
 fn landmark_names(kind: &str) -> &'static [&'static str] {
     match kind {
-        "shrine" => &["Святилище Перуна", "Святилище Велеса", "Святилище Лады", "Святилище Даждьбога", "Святилище Мокоши", "Святилище Стрибога", "Капище Сварога"],
-        "circle" => &["Круг Камней", "Кольцо Древних", "Менгиры Предков", "Каменный Хоровод"],
-        "ruins" => &["Руины Старой Башни", "Руины Заставы", "Развалины Храма", "Руины Сторожевого Поста", "Обломки Древнего Форта"],
-        "graveyard" => &["Старое Кладбище", "Забытый Погост", "Кладбище у Ручья", "Погост Безымянных"],
+        "shrine" => &[
+            "Святилище Перуна",
+            "Святилище Велеса",
+            "Святилище Лады",
+            "Святилище Даждьбога",
+            "Святилище Мокоши",
+            "Святилище Стрибога",
+            "Капище Сварога",
+        ],
+        "circle" => &[
+            "Круг Камней",
+            "Кольцо Древних",
+            "Менгиры Предков",
+            "Каменный Хоровод",
+        ],
+        "ruins" => &[
+            "Руины Старой Башни",
+            "Руины Заставы",
+            "Развалины Храма",
+            "Руины Сторожевого Поста",
+            "Обломки Древнего Форта",
+        ],
+        "graveyard" => &[
+            "Старое Кладбище",
+            "Забытый Погост",
+            "Кладбище у Ручья",
+            "Погост Безымянных",
+        ],
         "camp" => &["Лагерь Разбойников", "Логово Шайки", "Стоянка Головорезов"],
         _ => &["Оазис Миражей", "Пальмовый Оазис", "Зелёный Оазис"],
     }
@@ -319,12 +451,52 @@ struct LandmarkSpec {
 }
 
 const LANDMARK_SPECS: &[LandmarkSpec] = &[
-    LandmarkSpec { kind: "camp", count: 2, w: 9, h: 9, biomes: &["plains", "hills", "forest", "sand"] },
-    LandmarkSpec { kind: "ruins", count: 3, w: 9, h: 9, biomes: &["plains", "forest", "hills", "desert", "tundra", "cursed", "sand"] },
-    LandmarkSpec { kind: "graveyard", count: 2, w: 11, h: 9, biomes: &["plains", "forest", "cursed"] },
-    LandmarkSpec { kind: "circle", count: 2, w: 9, h: 9, biomes: &["plains", "hills", "tundra", "forest"] },
-    LandmarkSpec { kind: "oasis", count: 2, w: 11, h: 9, biomes: &["desert"] },
-    LandmarkSpec { kind: "shrine", count: 5, w: 3, h: 3, biomes: &["plains", "forest", "hills", "desert", "tundra", "cursed", "swamp", "sand"] },
+    LandmarkSpec {
+        kind: "camp",
+        count: 2,
+        w: 9,
+        h: 9,
+        biomes: &["plains", "hills", "forest", "sand"],
+    },
+    LandmarkSpec {
+        kind: "ruins",
+        count: 3,
+        w: 9,
+        h: 9,
+        biomes: &[
+            "plains", "forest", "hills", "desert", "tundra", "cursed", "sand",
+        ],
+    },
+    LandmarkSpec {
+        kind: "graveyard",
+        count: 2,
+        w: 11,
+        h: 9,
+        biomes: &["plains", "forest", "cursed"],
+    },
+    LandmarkSpec {
+        kind: "circle",
+        count: 2,
+        w: 9,
+        h: 9,
+        biomes: &["plains", "hills", "tundra", "forest"],
+    },
+    LandmarkSpec {
+        kind: "oasis",
+        count: 2,
+        w: 11,
+        h: 9,
+        biomes: &["desert"],
+    },
+    LandmarkSpec {
+        kind: "shrine",
+        count: 5,
+        w: 3,
+        h: 3,
+        biomes: &[
+            "plains", "forest", "hills", "desert", "tundra", "cursed", "swamp", "sand",
+        ],
+    },
 ];
 
 fn ground_for(biome: &str) -> &'static str {
@@ -340,7 +512,13 @@ fn ground_for(biome: &str) -> &'static str {
     }
 }
 
-pub(super) fn place_landmarks(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village], start: Pos) -> Vec<Landmark> {
+pub(super) fn place_landmarks(
+    r: &mut Rng,
+    l: &mut Level,
+    main: &[bool],
+    vs: &[Village],
+    start: Pos,
+) -> Vec<Landmark> {
     let mut out: Vec<Landmark> = Vec::new();
     let mut used = HashSet::new();
     for sp in LANDMARK_SPECS {
@@ -355,17 +533,35 @@ pub(super) fn place_landmarks(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[V
                 continue;
             }
             let biome = l.def(x, y).biome.clone();
-            if !sp.biomes.contains(&biome.as_str()) || near_village(vs, x, y, sp.w) || (x - start.x).abs() + (y - start.y).abs() < 20 {
+            if !sp.biomes.contains(&biome.as_str())
+                || near_village(vs, x, y, sp.w)
+                || (x - start.x).abs() + (y - start.y).abs() < 20
+            {
                 continue;
             }
-            if out.iter().any(|o| (o.pos.x - x).abs() < 18 && (o.pos.y - y).abs() < 14) {
+            if out
+                .iter()
+                .any(|o| (o.pos.x - x).abs() < 18 && (o.pos.y - y).abs() < 14)
+            {
                 continue;
             }
             if !free_area(l, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h) {
                 continue;
             }
-            stamp_landmark(r, l, sp.kind, Pos::new(x, y), sp.w, sp.h, ground_for(&biome));
-            out.push(Landmark { name: pick_unique(r, landmark_names(sp.kind), &mut used), kind: sp.kind.into(), pos: Pos::new(x, y) });
+            stamp_landmark(
+                r,
+                l,
+                sp.kind,
+                Pos::new(x, y),
+                sp.w,
+                sp.h,
+                ground_for(&biome),
+            );
+            out.push(Landmark {
+                name: pick_unique(r, landmark_names(sp.kind), &mut used),
+                kind: sp.kind.into(),
+                pos: Pos::new(x, y),
+            });
             placed += 1;
         }
     }
@@ -380,10 +576,25 @@ fn free_area(l: &Level, x0: i32, y0: i32, w: i32, h: i32) -> bool {
                 return false;
             }
             let def = l.def(x, y);
-            if settlement_tile(&def.key) || def.damage > 0.0 || def.biome == "water" || def.key == "ice" {
+            if settlement_tile(&def.key)
+                || def.damage > 0.0
+                || def.biome == "water"
+                || def.key == "ice"
+            {
                 return false;
             }
-            if !def.walkable && !matches!(def.key.as_str(), "tree" | "pine" | "snow_pine" | "bush" | "cactus" | "dead_tree" | "twisted_tree") {
+            if !def.walkable
+                && !matches!(
+                    def.key.as_str(),
+                    "tree"
+                        | "pine"
+                        | "snow_pine"
+                        | "bush"
+                        | "cactus"
+                        | "dead_tree"
+                        | "twisted_tree"
+                )
+            {
                 return false;
             }
         }
@@ -405,7 +616,9 @@ fn stamp_landmark(r: &mut Rng, l: &mut Level, kind: &str, c: Pos, w: i32, h: i32
         "shrine" => {
             set(l, c.x, c.y, "shrine");
             for d in [(-1, 1), (1, 1)] {
-                if r.int_n(2) == 0 && !matches!(ground, "snow_ground" | "desert_sand" | "blight_grass") {
+                if r.int_n(2) == 0
+                    && !matches!(ground, "snow_ground" | "desert_sand" | "blight_grass")
+                {
                     set(l, c.x + d.0, c.y + d.1, "flowers");
                 }
             }
@@ -413,7 +626,12 @@ fn stamp_landmark(r: &mut Rng, l: &mut Level, kind: &str, c: Pos, w: i32, h: i32
         "circle" => {
             for i in 0..8 {
                 let a = i as f64 * std::f64::consts::PI / 4.0;
-                set(l, c.x + (a.cos() * 3.4).round() as i32, c.y + (a.sin() * 3.4).round() as i32, "menhir");
+                set(
+                    l,
+                    c.x + (a.cos() * 3.4).round() as i32,
+                    c.y + (a.sin() * 3.4).round() as i32,
+                    "menhir",
+                );
             }
             set(l, c.x, c.y, "shrine");
         }

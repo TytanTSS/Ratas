@@ -24,7 +24,10 @@ pub fn fnv64(s: &str) -> u64 {
 
 impl Rng {
     pub fn new(seed: u64, stream: u64) -> Rng {
-        let mut r = Rng { state: 0, inc: (stream << 1) | 1 };
+        let mut r = Rng {
+            state: 0,
+            inc: (stream << 1) | 1,
+        };
         r.next_u32();
         r.state = r.state.wrapping_add(seed);
         r.next_u32();

@@ -43,8 +43,14 @@ fn monster_abilities(d: &MonsterDef) -> Vec<&'static AbilityDef> {
 
 impl Game {
     pub(crate) fn def_of(&self, id: Id) -> &'static MonsterDef {
-        let key = self.ents[&id].monster.as_ref().map(|m| m.def.as_str()).unwrap_or("bandit");
-        db().monster(key).or_else(|| db().monster("bandit")).unwrap_or(&db().b.monsters[0])
+        let key = self.ents[&id]
+            .monster
+            .as_ref()
+            .map(|m| m.def.as_str())
+            .unwrap_or("bandit");
+        db().monster(key)
+            .or_else(|| db().monster("bandit"))
+            .unwrap_or(&db().b.monsters[0])
     }
 
     pub(crate) fn ms(&mut self, id: Id) -> &mut MonsterState {
@@ -117,7 +123,11 @@ impl Game {
 
         let e = &self.ents[&id];
         let ms = e.monster.as_ref().unwrap();
-        let tactic = if now < ms.tactic_until { ms.tactic.clone() } else { String::new() };
+        let tactic = if now < ms.tactic_until {
+            ms.tactic.clone()
+        } else {
+            String::new()
+        };
         let te = &self.ents[&target];
         let tpos = te.pos;
         let dist = e.dist(te);
@@ -125,7 +135,14 @@ impl Game {
         let mut role = role_of(def).to_string();
 
         // fleeing: badly hurt (once per fight), broken morale or ordered to retreat
-        if hp < 0.2 && !def.boss && ms.state != "fled" && role != "leader" && e.faction == Faction::Monster && tactic != "aggressive" && self.chance(40.0) {
+        if hp < 0.2
+            && !def.boss
+            && ms.state != "fled"
+            && role != "leader"
+            && e.faction == Faction::Monster
+            && tactic != "aggressive"
+            && self.chance(40.0)
+        {
             let ms = self.ms(id);
             ms.state = "fled".into();
             ms.flee_until = now + 3500.0;
@@ -134,7 +151,10 @@ impl Game {
             self.ms(id).flee_until = now + 2500.0;
         }
         if now < self.ms(id).flee_until {
-            if !self.step_away(id, tpos) && self.in_reach(id, target) && now >= self.ents[&id].next_attack {
+            if !self.step_away(id, tpos)
+                && self.in_reach(id, target)
+                && now >= self.ents[&id].next_attack
+            {
                 self.melee_attack(id, target);
             }
             return true;
@@ -143,7 +163,9 @@ impl Game {
         let abilities = monster_abilities(def);
         let ready = |g: &Game, a: &AbilityDef| {
             let e = &g.ents[&id];
-            !e.stats.silenced && now >= e.cooldowns.get(&a.key).copied().unwrap_or(0.0) && e.mp >= a.mana
+            !e.stats.silenced
+                && now >= e.cooldowns.get(&a.key).copied().unwrap_or(0.0)
+                && e.mp >= a.mana
         };
         // healers mend wounded allies first
         for a in &abilities {
@@ -166,16 +188,25 @@ impl Game {
         }
         // stomps and auras when enemies are close
         for a in &abilities {
-            if a.kind == "nova" && ready(self, a) && dist <= a.radius.max(1) as f32 + 0.5 && self.chance(45.0) {
+            if a.kind == "nova"
+                && ready(self, a)
+                && dist <= a.radius.max(1) as f32 + 0.5
+                && self.chance(45.0)
+            {
                 self.use_ability(id, &a.key, Some(target));
                 return true;
             }
         }
-        let attack = abilities.iter().copied().find(|a| matches!(a.kind.as_str(), "projectile" | "chain" | "strike") && ready(self, a));
+        let attack = abilities.iter().copied().find(|a| {
+            matches!(a.kind.as_str(), "projectile" | "chain" | "strike") && ready(self, a)
+        });
         let level_ref = &self.levels[&level];
         let in_range = match attack {
             Some(a) if a.kind == "strike" => self.in_reach(id, target),
-            Some(a) => dist <= ability_range(a) + 0.5 && los(level_ref, self.ents[&id].cell(), self.ents[&target].cell()),
+            Some(a) => {
+                dist <= ability_range(a) + 0.5
+                    && los(level_ref, self.ents[&id].cell(), self.ents[&target].cell())
+            }
             None => false,
         };
         if tactic == "use_ability" && attack.is_some() && in_range {
@@ -196,7 +227,11 @@ impl Game {
             _ => {
                 if self.in_reach(id, target) {
                     self.stop(id);
-                    if let (Some(a), true, true) = (attack, in_range, attack.map(|a| a.kind == "strike").unwrap_or(false)) {
+                    if let (Some(a), true, true) = (
+                        attack,
+                        in_range,
+                        attack.map(|a| a.kind == "strike").unwrap_or(false),
+                    ) {
                         if self.chance(50.0) {
                             self.use_ability(id, &a.key, Some(target));
                             return true;
@@ -216,7 +251,11 @@ impl Game {
                         return true;
                     }
                 }
-                let goal = if tactic == "flank" && dist > 2.5 { self.flank_goal(id, target) } else { tpos };
+                let goal = if tactic == "flank" && dist > 2.5 {
+                    self.flank_goal(id, target)
+                } else {
+                    tpos
+                };
                 self.step_toward(id, goal);
             }
         }
@@ -225,7 +264,13 @@ impl Game {
 
     /// Archers and casters stay a few steps away, step back from melee and
     /// shoot when they can.
-    pub(crate) fn keep_distance(&mut self, id: Id, t: Id, attack: Option<&AbilityDef>, in_range: bool) {
+    pub(crate) fn keep_distance(
+        &mut self,
+        id: Id,
+        t: Id,
+        attack: Option<&AbilityDef>,
+        in_range: bool,
+    ) {
         let now = self.now;
         let (e, te) = (&self.ents[&id], &self.ents[&t]);
         let dist = e.dist(te);
@@ -266,7 +311,10 @@ impl Game {
     pub(crate) fn skirmish(&mut self, id: Id, t: Id, attack: Option<&AbilityDef>, in_range: bool) {
         let now = self.now;
         let e = &self.ents[&id];
-        if e.hp / e.max_hp < 0.35 && now - e.monster.as_ref().unwrap().retreat_at > 9000.0 && e.faction == Faction::Monster {
+        if e.hp / e.max_hp < 0.35
+            && now - e.monster.as_ref().unwrap().retreat_at > 9000.0
+            && e.faction == Faction::Monster
+        {
             let ms = self.ms(id);
             ms.retreat_at = now;
             ms.flee_until = now + 1800.0;
@@ -332,7 +380,11 @@ impl Game {
             let d = e.dist(te).clamp(min_d, max_d);
             let p = te.pos + Vec2::from_angle(a) * d;
             let c = p.cell();
-            if l.walkable(c.x, c.y) && l.def_at(c).damage == 0.0 && los(l, c, te.cell()) && self.straight_walk(&e.level, e.pos, p, e.radius()) {
+            if l.walkable(c.x, c.y)
+                && l.def_at(c).damage == 0.0
+                && los(l, c, te.cell())
+                && self.straight_walk(&e.level, e.pos, p, e.radius())
+            {
                 self.walk_to(id, p);
                 self.ms(id).strafe_until = now + 900.0;
                 return;
@@ -345,7 +397,12 @@ impl Game {
         let e = &self.ents[&id];
         self.on_level(&e.level).into_iter().any(|o| {
             let oe = &self.ents[&o];
-            oe.alive() && oe.blocks() && oe.max_hp > 0.0 && oe.hp / oe.max_hp < 0.65 && e.dist(oe) <= r + 0.5 && self.friendly(id, o)
+            oe.alive()
+                && oe.blocks()
+                && oe.max_hp > 0.0
+                && oe.hp / oe.max_hp < 0.65
+                && e.dist(oe) <= r + 0.5
+                && self.friendly(id, o)
         })
     }
 
@@ -394,7 +451,12 @@ impl Game {
         if t == 0 {
             return None;
         }
-        let ok = self.ents.get(&t).map(|te| te.level == self.ents[&id].level).unwrap_or(false) && self.hostile(id, t);
+        let ok = self
+            .ents
+            .get(&t)
+            .map(|te| te.level == self.ents[&id].level)
+            .unwrap_or(false)
+            && self.hostile(id, t);
         if !ok {
             self.ms(id).target = 0;
             return None;
@@ -434,7 +496,9 @@ impl Game {
         let (e, oe) = (&self.ents[&id], &self.ents[&o]);
         let d = e.dist(oe);
         match role_of(def) {
-            "skirmisher" | "ranged" | "caster" => d * 0.4 + 10.0 * (oe.hp / oe.max_hp.max(1.0)) as f32,
+            "skirmisher" | "ranged" | "caster" => {
+                d * 0.4 + 10.0 * (oe.hp / oe.max_hp.max(1.0)) as f32
+            }
             _ => d,
         }
     }
@@ -452,7 +516,12 @@ impl Game {
                     }
                     for &a in &others {
                         let ae = &self.ents[&a];
-                        if ae.monster.is_some() && a != id && self.friendly(id, a) && ae.gap(&self.ents[&o]) < 0.6 && squishy(self.def_of(a)) {
+                        if ae.monster.is_some()
+                            && a != id
+                            && self.friendly(id, a)
+                            && ae.gap(&self.ents[&o]) < 0.6
+                            && squishy(self.def_of(a))
+                        {
                             return Some(o);
                         }
                     }
@@ -464,7 +533,11 @@ impl Game {
                 let mut bs = self.target_score(id, def, cur) - 2.0;
                 for &o in &others {
                     let oe = &self.ents[&o];
-                    if !self.hostile(id, o) || e.dist(oe) > def.sight as f32 || !self.can_see(id, o) || !los(l, e.cell(), oe.cell()) {
+                    if !self.hostile(id, o)
+                        || e.dist(oe) > def.sight as f32
+                        || !self.can_see(id, o)
+                        || !los(l, e.cell(), oe.cell())
+                    {
                         continue;
                     }
                     let s = self.target_score(id, def, o);
@@ -581,7 +654,12 @@ impl Game {
             let l = &self.levels[&e.level];
             let c = to.cell();
             let def = l.def_at(c);
-            if l.walkable(c.x, c.y) && to.dist(home) <= 6.0 && def.damage == 0.0 && def.interact.is_empty() && self.straight_walk(&e.level, e.pos, to, e.radius()) {
+            if l.walkable(c.x, c.y)
+                && to.dist(home) <= 6.0
+                && def.damage == 0.0
+                && def.interact.is_empty()
+                && self.straight_walk(&e.level, e.pos, to, e.radius())
+            {
                 self.walk_to(id, to);
             }
         }
@@ -641,7 +719,9 @@ impl Game {
             req,
             Box::new(move |r: Result<TacticReply, String>| {
                 let _ = tx.send(Box::new(move |g: &mut Game| {
-                    let Some(m) = g.ents.get_mut(&id).and_then(|e| e.monster.as_mut()) else { return };
+                    let Some(m) = g.ents.get_mut(&id).and_then(|e| e.monster.as_mut()) else {
+                        return;
+                    };
                     m.llm_pending = false;
                     if let Ok(r) = r {
                         g.apply_tactic(id, r);
@@ -679,8 +759,14 @@ impl Game {
         }
         if r.tactic == "call_allies" {
             for o in self.on_level(&level) {
-                let Some(oe) = self.ents.get(&o) else { continue };
-                if o == id || oe.monster.is_none() || oe.faction != faction || oe.pos.dist(pos) > 16.0 {
+                let Some(oe) = self.ents.get(&o) else {
+                    continue;
+                };
+                if o == id
+                    || oe.monster.is_none()
+                    || oe.faction != faction
+                    || oe.pos.dist(pos) > 16.0
+                {
                     continue;
                 }
                 let op = oe.pos;
@@ -698,7 +784,12 @@ impl Game {
 
     pub(crate) fn update_npc(&mut self, id: Id) {
         let now = self.now;
-        let talking_to: Option<Vec2> = self.online.values().filter_map(|p| self.ents.get(p)).find(|p| p.p().talking == id).map(|p| p.pos);
+        let talking_to: Option<Vec2> = self
+            .online
+            .values()
+            .filter_map(|p| self.ents.get(p))
+            .find(|p| p.p().talking == id)
+            .map(|p| p.pos);
         if let Some(pp) = talking_to {
             let e = self.ents.get_mut(&id).unwrap();
             e.face_to(pp);
@@ -728,12 +819,21 @@ impl Game {
         }
         let (level, pos) = (e.level.clone(), e.pos);
         if now >= self.ents[&id].npc.as_ref().unwrap().next_chat && !role.lines.is_empty() {
-            let near = self.players_on(&level).into_iter().any(|p| self.ents[&p].pos.dist(pos) <= 6.0);
+            let near = self
+                .players_on(&level)
+                .into_iter()
+                .any(|p| self.ents[&p].pos.dist(pos) <= 6.0);
             if near {
                 let line = self.rng.pick(&role.lines).clone();
                 self.say(id, &line, 4000.0);
                 let next = now + 30000.0 + self.rng.f64() * 30000.0;
-                self.ents.get_mut(&id).unwrap().npc.as_mut().unwrap().next_chat = next;
+                self.ents
+                    .get_mut(&id)
+                    .unwrap()
+                    .npc
+                    .as_mut()
+                    .unwrap()
+                    .next_chat = next;
             }
         }
         if role.world || role.wander <= 0 || self.ents[&id].goal.is_some() {
@@ -743,7 +843,13 @@ impl Game {
         let spot = self.schedule_spot(id);
         let pos = self.ents[&id].pos;
         if pos.dist(spot) > role.wander as f32 + 1.0 {
-            self.ents.get_mut(&id).unwrap().npc.as_mut().unwrap().next_think = now + 300.0;
+            self.ents
+                .get_mut(&id)
+                .unwrap()
+                .npc
+                .as_mut()
+                .unwrap()
+                .next_think = now + 300.0;
             if self.walk_toward(id, spot) {
                 return;
             }
@@ -758,7 +864,11 @@ impl Game {
         let l = &self.levels[&e.level];
         let c = to.cell();
         let def = l.def_at(c);
-        if l.walkable(c.x, c.y) && def.interact.is_empty() && to.dist(spot) <= role.wander as f32 + 0.5 && self.straight_walk(&e.level, pos, to, e.radius()) {
+        if l.walkable(c.x, c.y)
+            && def.interact.is_empty()
+            && to.dist(spot) <= role.wander as f32 + 0.5
+            && self.straight_walk(&e.level, pos, to, e.radius())
+        {
             let e = self.ents.get_mut(&id).unwrap();
             e.pace = 0.55;
             e.goal = Some(to);

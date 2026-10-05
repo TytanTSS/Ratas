@@ -38,7 +38,10 @@ impl Perlin {
 
     /// A value roughly in [-1, 1].
     pub fn noise(&self, x: f64, y: f64) -> f64 {
-        let (xi, yi) = ((x.floor() as i64 & 255) as usize, (y.floor() as i64 & 255) as usize);
+        let (xi, yi) = (
+            (x.floor() as i64 & 255) as usize,
+            (y.floor() as i64 & 255) as usize,
+        );
         let (xf, yf) = (x - x.floor(), y - y.floor());
         let (u, v) = (fade(xf), fade(yf));
         let p = &self.perm;

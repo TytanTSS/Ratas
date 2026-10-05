@@ -3,8 +3,8 @@
 
 pub mod config;
 pub mod content;
-pub mod gen;
 pub mod game;
+pub mod gen;
 pub mod i18n;
 pub mod llm;
 pub mod proto;
