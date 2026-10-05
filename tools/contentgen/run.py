@@ -11,8 +11,8 @@ import hidden_data
 
 # run from anywhere: python3 tools/contentgen/run.py
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DATA = f"{REPO}/internal/content/data"
-CAT = f"{REPO}/internal/i18n/en"
+DATA = f"{REPO}/data/content"
+CAT = f"{REPO}/data/i18n/en"
 
 MUST_DIFFER = {"Следопыт", "Сокол", "Святилище"}
 GENERATED = {"classes_new.toml", "secret_paths.toml", "hidden_skills.toml"}
@@ -59,7 +59,7 @@ for f in [f"{DATA}/classes.toml", f"{DATA}/secrets.toml", f"{DATA}/classes_new.t
         for c in tomllib.load(fh).get("classes", []):
             names[c["key"]] = (c["name"], existing.get(c["name"], c["name"]))
 bad.update(emit("hidden_skills.toml", "# Скрытые навыки: по десять на каждый класс. Навык открывается сам, когда герой этого класса\n"
-                "# совершит деяние (deed, deed_count — см. game/deeds.go). Десятый навык каждого класса даёт умение.\n"
+                "# совершит деяние (deed, deed_count — см. crates/core/src/game/deeds.rs). Десятый навык каждого класса даёт умение.\n"
                 "# Файл создан генератором вместе с английским каталогом i18n/en/hidden_skills.toml.", hidden_data.build, names))
 if bad:
     sys.exit(1)

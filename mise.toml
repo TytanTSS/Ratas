@@ -1,65 +1,44 @@
 # Сборка и запуск через mise: https://mise.jdx.dev
-#   mise install          — поставить Go нужной версии
-#   mise run build        — собрать ./ratas
+#   mise install          — поставить Rust нужной версии
+#   mise run play         — собрать и запустить игру
 #   mise tasks            — список всех задач
 
 [tools]
-go = "1.26"
+rust = "1.97"
 
 [tasks.build]
-description = "Собрать игру: терминал и графическое окно"
-run = "go build -o ratas ./cmd/ratas"
+description = "Собрать игру (окно и сервер в одном файле)"
+run = "cargo build --release -p ratas"
 
 [tasks.build-server]
-description = "Собрать выделенный сервер без графики (не нужны cgo и X11/OpenGL)"
-run = "go build -tags nogfx -o ratas-server ./cmd/ratas"
+description = "Собрать выделенный сервер без графики"
+run = "cargo build --release -p ratas --no-default-features"
 
 [tasks.play]
-description = "Играть в терминале; флаги после --, например: mise run play -- -new -seed 42"
-depends = ["build"]
-run = "./ratas"
-
-[tasks.gfx]
-description = "Играть в отдельном окне с графикой"
-depends = ["build"]
-run = "./ratas -gfx"
+description = "Играть; флаги после --, например: mise run play -- --new --seed 42"
+run = "cargo run --release -p ratas --"
 
 [tasks.server]
-description = "Запустить выделенный сервер; флаги после --, например: mise run server -- -seed 7"
-depends = ["build-server"]
-run = "./ratas-server -server"
+description = "Запустить выделенный сервер; флаги после --, например: mise run server -- --seed 7"
+run = "cargo run --release -p ratas --no-default-features -- --server"
 
 [tasks.test]
 description = "Все тесты"
-run = "go test ./..."
+run = "cargo test --workspace"
 
 [tasks.lint]
-description = "go vet с графикой и без неё"
-run = ["go vet ./...", "go vet -tags nogfx ./..."]
+description = "Форматирование и clippy"
+run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets -- -D warnings"]
 
 [tasks.check]
-description = "Проверки перед коммитом: форматирование, vet, тесты"
+description = "Проверки перед коммитом"
 depends = ["lint", "test"]
-run = 'test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; echo "нужен gofmt -w"; exit 1; }'
+run = "true"
 
-[tasks.dist]
-description = "Релизные сборки в dist/: macOS, Windows и сервер для Linux"
-run = [
-  "mkdir -p dist",
-  "CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o dist/ratas-macos-arm64 ./cmd/ratas",
-  "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/ratas-macos-amd64 ./cmd/ratas",
-  "CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/ratas-windows-amd64.exe ./cmd/ratas",
-  "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -tags nogfx -o dist/ratas-server-linux-amd64 ./cmd/ratas",
-]
-
-[tasks.shots]
-description = "Сценарий со скриншотами графического режима (нужен экран); папка — SHOTS_DIR"
-run = 'mkdir -p "${SHOTS_DIR:-/tmp/ratas-shots}" && RATAS_GFX_SHOTS="${SHOTS_DIR:-/tmp/ratas-shots}" go test ./internal/gfx'
-
-[tasks.sheets]
-description = "Листы со всеми моделями существ и тайлами (PNG); папка — SHEETS_DIR"
-run = 'mkdir -p "${SHEETS_DIR:-/tmp/ratas-sheets}" && RATAS_MODEL_SHEET="${SHEETS_DIR:-/tmp/ratas-sheets}" go test ./internal/gfx -run Sheet -count=1 && echo "готово: ${SHEETS_DIR:-/tmp/ratas-sheets}"'
+[tasks.shot]
+description = "Скриншот графики без экрана (нужен xvfb-run); файл — SHOT"
+run = 'RATAS_AUTOSHOT="${SHOT:-/tmp/ratas.png};8" xvfb-run -a -s "-screen 0 1280x800x24" cargo run --release -p ratas -- --new --seed 7 --class warrior'
 
 [tasks.clean]
 description = "Удалить собранные файлы"
-run = "rm -rf ratas ratas-server dist"
+run = "cargo clean && rm -rf dist"

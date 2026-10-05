@@ -39,7 +39,7 @@ jobs:
             os: windows-latest
             smoke: dist/ratas-*-windows-amd64/ratas.exe
           - target: windows-arm64
-            os: ubuntu-latest
+            os: windows-latest
           - target: macos-universal
             os: macos-latest
             smoke: dist/ratas-*-macos-universal/ratas
@@ -48,7 +48,7 @@ jobs:
             os: ubuntu-22.04
             smoke: dist/ratas-*-linux-amd64/ratas
           - target: linux-server-amd64
-            os: ubuntu-latest
+            os: ubuntu-22.04
             smoke: dist/ratas-*-linux-server-amd64/ratas-server
     runs-on: ${{ matrix.os }}
     defaults:
@@ -57,17 +57,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
 
-      - name: X11/OpenGL dev packages for Ebitengine
-        if: matrix.target == 'linux-amd64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libc6-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev \
-            libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Build and package
         run: scripts/package.sh "${{ matrix.target }}" "$TAG"
@@ -75,7 +70,7 @@ jobs:
       - name: Smoke test
         if: matrix.smoke
         run: |
-          out=$(${{ matrix.smoke }} -version)
+          out=$(${{ matrix.smoke }} --version)
           echo "$out"
           [ "$out" = "ratas $TAG" ]
 
