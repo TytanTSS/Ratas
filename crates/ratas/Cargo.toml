@@ -1,0 +1,10 @@
+[package]
+name = "ratas"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ratas-core = { path = "../core" }
+macroquad = { version = "0.4", default-features = false }
+serde = { version = "1", features = ["derive"] }

@@ -4,3 +4,4 @@
 /ratas-server
 /dist/
 __pycache__/
+target/
