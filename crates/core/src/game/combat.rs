@@ -872,7 +872,7 @@ impl Game {
 
     pub(crate) fn update_buffs(&mut self, id: Id) {
         let now = self.now;
-        let tick_dot = self.tick_n % HALF_SEC == 0;
+        let tick_dot = self.tick_n.is_multiple_of(HALF_SEC);
         let Some(e) = self.ents.get(&id) else { return };
         if e.buffs.is_empty() {
             return;

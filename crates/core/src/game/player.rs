@@ -324,7 +324,7 @@ impl Game {
         let level = e.level.clone();
         let cell = e.cell();
         let def = self.levels[&level].def_at(cell);
-        if def.damage > 0.0 && tick % HALF_SEC == 0 {
+        if def.damage > 0.0 && tick.is_multiple_of(HALF_SEC) {
             let mut hz = Damage::single(hazard_type(def), def.damage / 2.0);
             hz.dot = true;
             self.damage(None, id, hz);
@@ -332,7 +332,7 @@ impl Game {
                 return;
             }
         }
-        if tick % HALF_SEC == 0 {
+        if tick.is_multiple_of(HALF_SEC) {
             self.update_explored(id);
             self.check_surroundings(id);
             if self.ents[&id].p().deed_check {

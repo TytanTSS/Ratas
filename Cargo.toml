@@ -7,6 +7,16 @@ version = "0.2.0"
 edition = "2021"
 license = "MIT"
 
+[workspace.lints.clippy]
+# drawing and generation code passes many plain numbers around
+too_many_arguments = "allow"
+type_complexity = "allow"
+needless_range_loop = "allow"
+should_implement_trait = "allow"
+# texts are built from translated pieces on purpose
+format_in_format_args = "allow"
+if_same_then_else = "allow"
+
 [profile.dev]
 opt-level = 1
 
@@ -17,3 +27,4 @@ opt-level = 3
 opt-level = 3
 lto = "thin"
 codegen-units = 4
+strip = "symbols"

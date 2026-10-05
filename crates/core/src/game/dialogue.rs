@@ -930,7 +930,7 @@ impl Game {
         let mut trade = false;
         match r.action.as_str() {
             "give_gold" => {
-                let amt = r.gold.min(n.gold).min(200).max(0);
+                let amt = r.gold.min(n.gold).clamp(0, 200);
                 if amt > 0 {
                     self.ents.get_mut(&npc).unwrap().npc.as_mut().unwrap().gold -= amt;
                     let pm = self.ents.get_mut(&p).unwrap().pm();

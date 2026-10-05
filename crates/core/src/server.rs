@@ -559,7 +559,7 @@ impl Loop {
                 m.tiles = self.game.frame_tiles(&level);
             }
             m.snap = Some(self.game.snapshot(e));
-            if self.game.e(e).unwrap().p().dirty || self.game.tick_n % 60 == 0 {
+            if self.game.e(e).unwrap().p().dirty || self.game.tick_n.is_multiple_of(60) {
                 m.sheet = Some(Box::new(self.game.sheet(e)));
             }
             if let Some(ob) = self.game.take_outbox(e) {

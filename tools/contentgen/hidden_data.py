@@ -1,5 +1,5 @@
 # Ten hidden skills for every class. A hidden skill opens by itself when its
-# deed is done (see game/deeds.go); the tenth of each class grants an ability.
+# deed is done (see crates/core/src/game/deeds.rs); the tenth of each class grants an ability.
 from core import *
 
 # class: (prefix, color, (ru, en) class name, [10 skills], capstone ability)

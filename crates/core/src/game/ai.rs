@@ -209,9 +209,9 @@ impl Game {
             }
             None => false,
         };
-        if tactic == "use_ability" && attack.is_some() && in_range {
+        if let Some(a) = attack.filter(|_| tactic == "use_ability" && in_range) {
             self.stop(id);
-            self.use_ability(id, &attack.unwrap().key, Some(target));
+            self.use_ability(id, &a.key, Some(target));
             return true;
         }
         if tactic == "defensive" && role != "support" {

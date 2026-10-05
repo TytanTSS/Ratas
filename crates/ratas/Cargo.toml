@@ -4,8 +4,16 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 ratas-core = { path = "../core" }
-macroquad = { version = "0.4", default-features = false }
+macroquad = { version = "0.4", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"] }
 ctrlc = { version = "3", features = ["termination"] }
+
+[features]
+default = ["gfx"]
+# the game window; without it the binary is a dedicated server only
+gfx = ["dep:macroquad"]

@@ -753,8 +753,8 @@ impl WorldRenderer {
         let ts = v.ts;
         let frame = (self.t * 3.0) as usize % 4;
         let memory = Color::new(0.86, 0.9, 1.0, 1.0);
-        let seen = |i: usize| explored.map_or(true, |e| e.get(i));
-        let lit = |i: usize| vis.map_or(true, |vv| vv[i]);
+        let seen = |i: usize| explored.is_none_or(|e| e.get(i));
+        let lit = |i: usize| vis.is_none_or(|vv| vv[i]);
         for y in v.ty0..=v.ty1 {
             for x in v.tx0..=v.tx1 {
                 let i = (y * l.w + x) as usize;

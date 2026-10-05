@@ -77,7 +77,7 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
         }
     };
     let seen =
-        |x: i32, y: i32| l.inside(x, y) && explored.map_or(true, |e| e.get((y * l.w + x) as usize));
+        |x: i32, y: i32| l.inside(x, y) && explored.is_none_or(|e| e.get((y * l.w + x) as usize));
     for y in 0..h {
         for x in 0..w {
             let n = (tile_hash(x * 7, y * 13) % 100) as f64 / 100.0 - 0.5;
@@ -122,7 +122,7 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
             let (ox, oy) = (tx * MAP_PX, ty * MAP_PX);
             let hh = tile_hash(tx, ty) & 0xffff;
             match def.key.as_str() {
-                "water" | "deep_water" if hh % 7 == 0 && !coast => {
+                "water" | "deep_water" if hh.is_multiple_of(7) && !coast => {
                     let wc = mix(base, art::models::C_WHITE, 0.35);
                     set(&mut img, ox, oy + 2, wc);
                     set(&mut img, ox + 1, oy + 1, wc);
@@ -130,7 +130,7 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
                 }
                 "tree" | "pine" | "snow_pine" | "bush" | "dead_tree" | "twisted_tree"
                 | "charred_tree" | "palm" | "cactus"
-                    if hh % 2 == 0 =>
+                    if hh.is_multiple_of(2) =>
                 {
                     let c = mul(base, 0.7);
                     set(&mut img, ox + 1, oy + 1, c);
@@ -139,7 +139,7 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
                     set(&mut img, ox + 2, oy + 2, mul(c, 0.7));
                     set(&mut img, ox + 1, oy + 3, INK_SOFT);
                 }
-                "mountain" | "ice_rock" if hh % 3 == 0 => {
+                "mountain" | "ice_rock" if hh.is_multiple_of(3) => {
                     for i in 0..4 {
                         set(&mut img, ox - i + 1, oy + 1 + i, mul(INK, 1.2));
                         set(&mut img, ox + i + 2, oy + 1 + i, mul(base, 0.75));
@@ -147,14 +147,14 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
                     set(&mut img, ox + 1, oy, art::models::C_WHITE);
                     set(&mut img, ox + 2, oy, mix(art::models::C_WHITE, base, 0.4));
                 }
-                "hill" if hh % 4 == 0 => {
+                "hill" if hh.is_multiple_of(4) => {
                     let c = mul(base, 0.72);
                     set(&mut img, ox, oy + 2, c);
                     set(&mut img, ox + 1, oy + 1, c);
                     set(&mut img, ox + 2, oy + 1, c);
                     set(&mut img, ox + 3, oy + 2, c);
                 }
-                "swamp" | "reeds" if hh % 3 == 0 => {
+                "swamp" | "reeds" if hh.is_multiple_of(3) => {
                     set(&mut img, ox + 1, oy + 1, hex("#56603a"));
                     set(&mut img, ox + 1, oy + 2, hex("#56603a"));
                     set(&mut img, ox + 3, oy + 3, hex("#6a8aa0"));

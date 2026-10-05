@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test:
     name: test (${{ matrix.os }})
@@ -23,30 +26,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
+      # rust-toolchain.toml pins the version; rustup installs it on first use
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
 
-      - name: X11/OpenGL dev packages for Ebitengine
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        if: runner.os == 'Linux'
+        run: cargo fmt --all --check
+
+      - name: clippy
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libc6-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev \
-            libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo clippy -p ratas --no-default-features --all-targets --locked -- -D warnings
 
-      - name: gofmt
-        if: runner.os == 'Linux'
-        run: |
-          unformatted=$(gofmt -l cmd internal)
-          if [ -n "$unformatted" ]; then
-            echo "Run gofmt -w on:"; echo "$unformatted"; exit 1
-          fi
+      - name: test
+        run: cargo test --workspace --locked
 
-      - name: go vet
-        run: |
-          go vet ./...
-          go vet -tags nogfx ./...
-
-      - name: go test
-        run: go test ./...
+      - name: server-only build
+        run: cargo build -p ratas --no-default-features --locked

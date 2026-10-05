@@ -199,6 +199,6 @@ pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
         }
         out.push(info);
     }
-    out.sort_by(|a, b| b.saved_at.cmp(&a.saved_at));
+    out.sort_by_key(|a| std::cmp::Reverse(a.saved_at));
     out
 }

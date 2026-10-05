@@ -2,11 +2,16 @@
 //! `--server` runs a dedicated server without any interface.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+#[cfg(feature = "gfx")]
 mod app;
+#[cfg(feature = "gfx")]
 mod art;
 mod console;
+#[cfg(feature = "gfx")]
 mod gfx;
+#[cfg(feature = "gfx")]
 mod play;
+#[cfg(feature = "gfx")]
 mod ui;
 
 use std::path::PathBuf;
@@ -141,7 +146,11 @@ fn parse_args(raw: &[String]) -> Result<Args, String> {
 }
 
 fn usage() -> String {
-    let mut s = format!("{}\n\n{}\n", t("Ратас — ролевая игра в реальном времени."), t("Использование:"));
+    let mut s = format!(
+        "{}\n\n{}\n",
+        t("Ратас — ролевая игра в реальном времени."),
+        t("Использование:")
+    );
     for (cmd, what) in [
         ("ratas", "главное меню"),
         ("ratas --new --host", "новый мир, открытый для друзей"),
@@ -213,7 +222,17 @@ fn main() {
         run_dedicated(&cfg, &args, &mods);
         return;
     }
+    #[cfg(feature = "gfx")]
     app::run(cfg, mods, args.start);
+    #[cfg(not(feature = "gfx"))]
+    {
+        let _ = (cfg, mods);
+        eprintln!(
+            "{}",
+            t("Эта сборка — только выделенный сервер: запустите с флагом --server.")
+        );
+        std::process::exit(2);
+    }
 }
 
 /// Prints a log line of the dedicated server with the time of day (UTC).

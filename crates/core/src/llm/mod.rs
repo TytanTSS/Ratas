@@ -214,10 +214,9 @@ impl Brain {
             Auth::Key(api_key.to_string())
         } else if let Some(k) = env("ANTHROPIC_API_KEY") {
             Auth::Key(k)
-        } else if let Some(t) = env("ANTHROPIC_AUTH_TOKEN") {
-            Auth::Bearer(t)
         } else {
-            return None;
+            let t = env("ANTHROPIC_AUTH_TOKEN")?;
+            Auth::Bearer(t)
         };
         let model = if model.is_empty() {
             DEFAULT_MODEL

@@ -87,3 +87,4 @@
 "клиент %s не успевает за сервером и отключён" = "client %s cannot keep up with the server and was dropped"
 "%s покидает мир" = "%s leaves the world"
 "%s входит в мир" = "%s enters the world"
+"Эта сборка — только выделенный сервер: запустите с флагом --server." = "This build is a dedicated server only: start it with the --server flag."
