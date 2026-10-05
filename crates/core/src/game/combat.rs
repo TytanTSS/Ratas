@@ -169,7 +169,7 @@ impl Game {
         }
         if is_boss {
             heroes.sort();
-            self.log_all("#ff4aff", format!("*** {} повержен! Герои: [{}] ***", m.name, heroes.join(" ")));
+            self.log_all("#ff4aff", format!("*** {} повержен! Герои: {} ***", m.name, format!("[{}]", heroes.join(" "))));
             self.chronicle(format!("{} сразил(и) {}", heroes.join(", "), m.name));
         }
         if !ms.champion.is_empty() && !heroes.is_empty() {

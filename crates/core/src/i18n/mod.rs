@@ -87,6 +87,11 @@ pub fn has(l: &str, s: &str) -> bool {
     catalog_for(l).map(|c| c.has(s)).unwrap_or(false)
 }
 
+/// Like has, for texts that may be Rust format strings ("Убито: {n}").
+pub fn has_format(l: &str, s: &str) -> bool {
+    catalog_for(l).map(|c| c.has_format(s)).unwrap_or(false)
+}
+
 /// Texts that had no translation and were transliterated or left as is.
 pub fn misses(l: &str) -> Vec<String> {
     catalog_for(l).map(|c| c.misses()).unwrap_or_default()

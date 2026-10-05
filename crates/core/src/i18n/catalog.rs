@@ -36,6 +36,7 @@ struct Inner {
     tmpls: Vec<Tmpl>,
     cache: HashMap<String, String>,
     misses: HashSet<String>,
+    norm: std::sync::Mutex<HashSet<String>>,
 }
 
 pub struct Catalog {
@@ -54,6 +55,7 @@ impl Catalog {
                 c.add(k, v);
             }
             c.cache.clear();
+            c.norm.lock().unwrap().clear();
         }
         self.rebuild();
     }
@@ -87,6 +89,26 @@ impl Catalog {
         }
         let (_, core, _) = split_core(s);
         c.exact.contains_key(core)
+    }
+
+    /// Whether a text, possibly a Rust format string with {} placeholders,
+    /// has a translation: exact, or a template whose placeholders line up.
+    pub fn has_format(&self, s: &str) -> bool {
+        if self.has(s) {
+            return true;
+        }
+        let want = normalize_placeholders(s.trim());
+        let c = self.inner.read().unwrap();
+        if c.exact.contains_key(&want) {
+            return true;
+        }
+        let mut norm = c.norm.lock().unwrap();
+        if norm.is_empty() {
+            for k in c.tmpl_src.keys() {
+                norm.insert(normalize_placeholders(k));
+            }
+        }
+        norm.contains(&want)
     }
 
     pub fn misses(&self) -> Vec<String> {
@@ -422,6 +444,14 @@ fn compile(src: &str, dst: &str) -> Option<(Tmpl, Option<String>)> {
     }
     let re = Regex::new(&re).ok()?;
     Some((Tmpl { re, src: verbs, out, weight }, word))
+}
+
+/// Replaces printf verbs and Rust {} placeholders with one marker.
+pub(crate) fn normalize_placeholders(s: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[svdqfgecxXt]|\{[A-Za-z_0-9.]*(:[^{}]*)?\}").unwrap());
+    let s = s.replace("{{", "{").replace("}}", "}").replace("%%", "%");
+    re.replace_all(&s, "\u{1}").into_owned()
 }
 
 pub(crate) fn first_word(s: &str) -> String {

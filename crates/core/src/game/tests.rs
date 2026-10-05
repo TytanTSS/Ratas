@@ -683,3 +683,69 @@ fn soak() {
     g.save(&path).unwrap();
     std::fs::remove_file(path).ok();
 }
+
+/// A fake Messages API that answers every request with one JSON reply.
+fn fake_api(reply: serde_json::Value) -> String {
+    use std::io::{BufRead, BufReader, Read, Write};
+    let ln = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = format!("http://{}", ln.local_addr().unwrap());
+    std::thread::spawn(move || {
+        for s in ln.incoming() {
+            let Ok(mut s) = s else { continue };
+            let mut r = BufReader::new(s.try_clone().unwrap());
+            let mut len = 0;
+            loop {
+                let mut line = String::new();
+                if r.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                    break;
+                }
+                if let Some(v) = line.to_lowercase().strip_prefix("content-length:") {
+                    len = v.trim().parse().unwrap_or(0);
+                }
+            }
+            let mut body = vec![0; len];
+            r.read_exact(&mut body).ok();
+            let req: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
+            assert_eq!(req["output_config"]["format"]["type"], "json_schema");
+            let resp = serde_json::json!({
+                "id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5-5",
+                "content": [{"type": "text", "text": reply.to_string()}], "stop_reason": "end_turn",
+                "usage": {"input_tokens": 1, "output_tokens": 1}
+            })
+            .to_string();
+            let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", resp.len(), resp);
+        }
+    });
+    addr
+}
+
+#[test]
+fn npc_dialogue_with_claude() {
+    let mut g = setup();
+    let base = fake_api(serde_json::json!({"say": "Волки совсем обнаглели. Помоги нам!", "action": "offer_quest", "item": "", "gold": 0, "quest_monster": "wolf", "quest_count": 3}));
+    g.brain = crate::llm::Brain::with_base("sk-test", "", &base);
+    let p = g.join_for_test("Герой", "warrior");
+    let elder = g.ents.values().find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false)).map(|e| e.id).expect("an elder");
+    g.move_next_to(p, elder);
+    g.open_dialogue(p, elder);
+    let d = g.take_outbox(p).and_then(|o| o.dialogue).expect("dialogue");
+    assert!(d.ai);
+    g.command(p, &Command::text("talk", "Есть работа?"));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let mut last = None;
+    while g.ents[&p].p().quests.is_empty() && std::time::Instant::now() < deadline {
+        g.tick();
+        if let Some(d) = g.take_outbox(p).and_then(|o| o.dialogue) {
+            last = Some(d);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let q = &g.ents[&p].p().quests;
+    assert_eq!(q.len(), 1, "quest from Claude not created");
+    assert_eq!((q[0].monster.as_str(), q[0].need), ("wolf", 3));
+    if let Some(d) = g.take_outbox(p).and_then(|o| o.dialogue) {
+        last = Some(d);
+    }
+    assert!(last.map(|d| d.text.contains("Помоги нам")).unwrap_or(false), "reply not delivered");
+    assert_eq!(g.ents[&elder].npc.as_ref().unwrap().memory["Герой"].len(), 2);
+}

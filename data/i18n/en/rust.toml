@@ -1,0 +1,9 @@
+# Texts that appeared with the Rust version of the game.
+"открывается деянием: %s" = "opened by a deed: %s"
+"требуется: %s" = "requires: %s"
+"сразить: %s" = "slay: %s"
+"WASD/стрелки — ходить (можно по диагонали), мышь — целиться, ЛКМ/пробел — атака, 1-6 — умения, E — взаимодействие, F1 — помощь." = "WASD/arrows — walk (diagonals too), mouse — aim, LMB/space — attack, 1-6 — abilities, E — interact, F1 — help."
+"сохранение из старой версии игры (до перехода на Rust) не поддерживается" = "saves of the old version of the game (before the move to Rust) are not supported"
+"неверный JSON от ИИ: %s" = "invalid JSON from the AI: %s"
+"сеть: %s" = "network: %s"
+"Команды доступны только в режиме администратора (запуск с флагом --admin)." = "Commands are available only in admin mode (start with the --admin flag)."

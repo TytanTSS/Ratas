@@ -135,11 +135,39 @@ fn env(k: &str) -> Option<String> {
     std::env::var(k).ok().filter(|v| !v.trim().is_empty())
 }
 
+/// The proxy from HTTPS_PROXY / HTTP_PROXY unless NO_PROXY lists the host.
+fn proxy_for(base: &str) -> Option<String> {
+    let https = base.starts_with("https:");
+    let host = base.split("://").nth(1).unwrap_or(base).split(['/', ':']).next().unwrap_or("").to_lowercase();
+    let no = env("NO_PROXY").or_else(|| env("no_proxy")).unwrap_or_default();
+    for n in no.split(',').map(|n| n.trim().trim_start_matches('*').to_lowercase()) {
+        if n.is_empty() {
+            continue;
+        }
+        if n == "*" || host == n || (n.starts_with('.') && host.ends_with(&n)) || host.ends_with(&format!(".{n}")) {
+            return None;
+        }
+    }
+    if host == "localhost" || host.starts_with("127.") {
+        return None;
+    }
+    if https {
+        env("HTTPS_PROXY").or_else(|| env("https_proxy")).or_else(|| env("ALL_PROXY"))
+    } else {
+        env("HTTP_PROXY").or_else(|| env("http_proxy")).or_else(|| env("ALL_PROXY"))
+    }
+}
+
 pub type Done<T> = Box<dyn FnOnce(Result<T, String>) + Send>;
 
 impl Brain {
     /// Creates a Brain; None when no credentials are available.
     pub fn new(api_key: &str, model: &str) -> Option<Brain> {
+        Brain::with_base(api_key, model, &env("ANTHROPIC_BASE_URL").unwrap_or_else(|| "https://api.anthropic.com".into()))
+    }
+
+    /// A Brain talking to another API address (tests, proxies).
+    pub fn with_base(api_key: &str, model: &str, base: &str) -> Option<Brain> {
         let auth = if !api_key.is_empty() {
             Auth::Key(api_key.to_string())
         } else if let Some(k) = env("ANTHROPIC_API_KEY") {
@@ -150,8 +178,13 @@ impl Brain {
             return None;
         };
         let model = if model.is_empty() { DEFAULT_MODEL } else { model };
-        let base = env("ANTHROPIC_BASE_URL").unwrap_or_else(|| "https://api.anthropic.com".into());
-        let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(60)).try_proxy_from_env(true).build();
+        let mut ab = ureq::AgentBuilder::new().timeout(Duration::from_secs(60));
+        if let Some(p) = proxy_for(base) {
+            if let Ok(p) = ureq::Proxy::new(p) {
+                ab = ab.proxy(p);
+            }
+        }
+        let agent = ab.build();
         Some(Brain(Arc::new(Inner {
             auth,
             base: base.trim_end_matches('/').to_string(),
