@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver};
+use std::sync::Arc;
 
 use macroquad::prelude::*;
 
@@ -10,7 +11,7 @@ use ratas_core::config::{self, Config};
 use ratas_core::content;
 use ratas_core::game::{list_saves, Game, SaveInfo};
 use ratas_core::i18n::{self, LANGS};
-use ratas_core::llm::{self, Brain};
+use ratas_core::llm::{self, local, Brain, Provider};
 use ratas_core::rng::Rng;
 use ratas_core::server::{self, Conn, Options, Server};
 use ratas_core::world::Level;
@@ -304,6 +305,14 @@ struct MenuItem {
     desc: String,
 }
 
+/// What the model writing a world's story is doing, and the player's wish
+/// to go on without the story.
+#[derive(Default)]
+struct LoreWait {
+    stage: std::sync::Mutex<String>,
+    skip: std::sync::atomic::AtomicBool,
+}
+
 /// What a loading screen waits for.
 enum Job {
     Local {
@@ -311,6 +320,7 @@ enum Job {
         host: bool,
         name: String,
         class: String,
+        lore: Arc<LoreWait>,
     },
     Join {
         rx: Receiver<Result<Conn, String>>,
@@ -469,6 +479,8 @@ impl App {
                 if let Screen::Play(sess) = &mut self.screen {
                     sess.close();
                 }
+                // the local model server started for our worlds stops too
+                local::shutdown();
                 break;
             }
             next_frame().await;
@@ -610,12 +622,26 @@ impl App {
     }
 
     fn ai_status(&self) -> String {
-        if !self.cfg.ai_enabled {
-            tr("ИИ: выключен (простой ИИ)")
-        } else if !llm::has_credentials(&self.cfg.api_key) {
-            tr("ИИ: нет API ключа — простой ИИ (Настройки)")
-        } else {
-            format!("{} {}", tr("ИИ:"), self.cfg.model)
+        match self.cfg.provider() {
+            Provider::Off => tr("ИИ: выключен (простой ИИ)"),
+            Provider::Anthropic if !llm::has_credentials(&self.cfg.api_key) => {
+                tr("ИИ: нет API ключа — простой ИИ (Настройки)")
+            }
+            Provider::Anthropic => format!("{} Claude {}", tr("ИИ:"), self.cfg.model),
+            Provider::Local => {
+                let s = self.cfg.local_settings();
+                let state = match local::current() {
+                    Some(rt) if rt.settings == s => rt.state().describe(),
+                    _ => "запустится вместе с миром".into(),
+                };
+                format!(
+                    "{} {} ({}) — {}",
+                    tr("ИИ:"),
+                    s.title(),
+                    tr("локально"),
+                    tr(&state)
+                )
+            }
         }
     }
 
@@ -950,8 +976,14 @@ impl App {
                 let w = screen_width();
                 let top = self.logo();
                 let dots = ".".repeat((self.t * 3.0) as usize % 4);
+                // the model writing the world's story says what it does
+                let stage = match &job {
+                    Job::Local { lore, .. } => lore.stage.lock().unwrap().clone(),
+                    _ => String::new(),
+                };
+                let line = if stage.is_empty() { &text } else { &stage };
                 self.g.text_center(
-                    &format!("{}{}", tr(&text), dots),
+                    &format!("{}{}", tr(line), dots),
                     w / 2.0,
                     top + 40.0 * s,
                     20.0 * s,
@@ -959,6 +991,20 @@ impl App {
                     true,
                     true,
                 );
+                if let (Job::Local { lore, .. }, false) = (&job, stage.is_empty()) {
+                    self.g.text_center(
+                        &tr("Она сочиняет летопись этого мира, его героев и артефакты. Esc — продолжить без летописи."),
+                        w / 2.0,
+                        top + 72.0 * s,
+                        15.0 * s,
+                        c_dim(),
+                        false,
+                        true,
+                    );
+                    if self.inp.take(KeyCode::Escape) {
+                        lore.skip.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
                 self.poll_job(text, job)
             }
             Screen::Play(_) => unreachable!(),
@@ -972,6 +1018,7 @@ impl App {
                 host,
                 name,
                 class,
+                lore,
             } => match rx.try_recv() {
                 Ok(Ok((game, slot))) => self.run_local(game, &slot, host, &name, &class),
                 Ok(Err(e)) => Screen::Message {
@@ -985,6 +1032,7 @@ impl App {
                         host,
                         name,
                         class,
+                        lore,
                     },
                 },
                 Err(_) => Screen::Message {
@@ -1007,22 +1055,31 @@ impl App {
         }
     }
 
+    /// The model for a world being started: a local one starts now,
+    /// together with the world.
     fn brain(&self) -> Option<Brain> {
-        if self.cfg.ai_enabled {
-            Brain::new(&self.cfg.api_key, &self.cfg.model)
-        } else {
-            None
-        }
+        Brain::from_config(&self.cfg)
     }
 
     fn new_game(&mut self, seed: i64, name: &str, class: &str, host: bool, pvp: bool) {
         let brain = self.brain();
+        let director = self.cfg.ai_director;
+        let lore = Arc::new(LoreWait::default());
+        let wait = lore.clone();
         let (tx, rx) = channel();
         std::thread::Builder::new()
             .stack_size(64 << 20)
             .spawn(move || {
                 let mut g = Game::new(seed, brain);
                 g.pvp = pvp;
+                g.set_director(director);
+                // with a model at hand the world gets its own story
+                if g.brain.is_some() {
+                    let stage = |s: &str| *wait.stage.lock().unwrap() = s.to_string();
+                    if let Err(e) = g.write_lore(&wait.skip, &stage) {
+                        g.note_lore(&e);
+                    }
+                }
                 let slot = format!("{}-{}", slugify(&g.world_name), seed);
                 let _ = tx.send(Ok((g, slot)));
             })
@@ -1034,18 +1091,23 @@ impl App {
                 host,
                 name: name.into(),
                 class: class.into(),
+                lore,
             },
         };
     }
 
     fn load_slot(&mut self, path: PathBuf, slot: &str, host: bool, name: &str) {
         let brain = self.brain();
+        let director = self.cfg.ai_director;
         let (tx, rx) = channel();
         let slot_s = slot.to_string();
         std::thread::Builder::new()
             .stack_size(64 << 20)
             .spawn(move || {
-                let _ = tx.send(Game::load(&path, brain).map(|g| (g, slot_s)));
+                let _ = tx.send(Game::load(&path, brain).map(|mut g| {
+                    g.set_director(director);
+                    (g, slot_s)
+                }));
             })
             .expect("thread");
         self.screen = Screen::Loading {
@@ -1055,6 +1117,7 @@ impl App {
                 host,
                 name: name.into(),
                 class: String::new(),
+                lore: Default::default(),
             },
         };
     }
@@ -1184,6 +1247,13 @@ impl App {
             config::home().join("config.json").display(),
             tr("(права 600). Пусто — берётся из переменной ANTHROPIC_API_KEY.")
         );
+        let local_hint = format!(
+            "{} {} {} {}.",
+            tr("Пусто — Mistral-7B-Instruct-v0.3:"),
+            local::DEFAULT_OLLAMA_MODEL,
+            tr("для Ollama,"),
+            local::DEFAULT_GGUF
+        );
         Form::new(
             "Настройки",
             vec![
@@ -1191,13 +1261,22 @@ impl App {
                 Field::text("Имя по умолчанию", &self.cfg.name, 16, ""),
                 Field::text("Порт сервера", &self.cfg.port.to_string(), 5, "TCP-порт для режима «Открыть для сети»."),
                 Field::choice(
-                    "ИИ-персонажи",
-                    vec![tr("Включены"), tr("Выключены")],
+                    "Нейросеть",
                     vec![
-                        tr("NPC отвечают и действуют через Claude, элитные враги выбирают тактику. Нужен ключ API."),
+                        tr("Claude (API Anthropic)"),
+                        tr("Локальная Mistral-7B"),
+                        tr("Выключена"),
+                    ],
+                    vec![
+                        tr("NPC отвечают и действуют через Claude, элитные враги выбирают тактику, ИИ-мастер управляет миром. Нужен ключ API."),
+                        tr("Модель Mistral-7B-Instruct-v0.3 запускается на этом компьютере вместе с миром (Ollama или llama.cpp). Первый запуск скачивает около 4,4 ГБ. Ключ не нужен, интернет — только для скачивания."),
                         tr("Только встроенный простой ИИ."),
                     ],
-                    if self.cfg.ai_enabled { 0 } else { 1 },
+                    match self.cfg.provider() {
+                        Provider::Anthropic => 0,
+                        Provider::Local => 1,
+                        Provider::Off => 2,
+                    },
                     "",
                 ),
                 Field::masked("API ключ Anthropic", &self.cfg.api_key, 200, &key_hint),
@@ -1206,6 +1285,35 @@ impl App {
                     &self.cfg.model,
                     40,
                     "По умолчанию claude-opus-5-5. Для более быстрых и дешёвых ответов можно указать claude-haiku-4-5 или claude-sonnet-5-5.",
+                ),
+                Field::choice(
+                    "Локальный сервер",
+                    vec!["Ollama".into(), "llama.cpp".into()],
+                    vec![
+                        tr("Ollama (https://ollama.com): игра сама запускает «ollama serve» и скачивает модель."),
+                        tr("llama.cpp (brew install llama.cpp): игра запускает llama-server, модель скачивается с Hugging Face."),
+                    ],
+                    match local::Engine::parse(&self.cfg.local_engine) {
+                        local::Engine::Ollama => 0,
+                        local::Engine::LlamaCpp => 1,
+                    },
+                    "",
+                ),
+                Field::text(
+                    "Локальная модель",
+                    &self.cfg.local_model,
+                    120,
+                    &local_hint,
+                ),
+                Field::choice(
+                    "ИИ-мастер мира",
+                    vec![tr("Включён"), tr("Выключен")],
+                    vec![
+                        tr("Нейросеть сама устраивает события: засады, награды, благословения, слухи, знамения. Администратор может просить её о чём угодно командой /gm."),
+                        tr("ИИ-мастер действует только по команде администратора /gm."),
+                    ],
+                    if self.cfg.ai_director { 0 } else { 1 },
+                    "",
                 ),
                 Field::choice("Масштаб интерфейса", scales.iter().map(|s| s.to_string()).collect(), vec![], si, "Размер текста и панелей."),
                 Field::choice(
@@ -1229,14 +1337,18 @@ impl App {
                 self.cfg.port = p;
             }
         }
-        self.cfg.ai_enabled = f.fields[3].idx() == 0;
+        self.cfg
+            .set_provider([Provider::Anthropic, Provider::Local, Provider::Off][f.fields[3].idx()]);
         self.cfg.api_key = f.fields[4].value();
         self.cfg.model = f.fields[5].value();
         if self.cfg.model.is_empty() {
             self.cfg.model = llm::DEFAULT_MODEL.into();
         }
-        self.cfg.ui_scale = [0.75, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0][f.fields[6].idx()];
-        let fs = f.fields[7].idx() == 1;
+        self.cfg.local_engine = ["ollama", "llama.cpp"][f.fields[6].idx()].into();
+        self.cfg.local_model = f.fields[7].value();
+        self.cfg.ai_director = f.fields[8].idx() == 0;
+        self.cfg.ui_scale = [0.75, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0][f.fields[9].idx()];
+        let fs = f.fields[10].idx() == 1;
         if fs != self.cfg.fullscreen {
             self.cfg.fullscreen = fs;
             set_fullscreen(fs);
@@ -1328,5 +1440,8 @@ mod tests {
         assert_eq!(fmt_time(0), "01.01 00:00");
         assert_eq!(fmt_time(1_700_000_000), "14.11 22:13");
         assert_eq!(leak_index(3), "3");
+        // arrows on macOS come as private use characters, not text
+        assert!(!typed('\u{F701}') && !typed('\n'));
+        assert!(typed('ё') && typed('a') && typed(' '));
     }
 }

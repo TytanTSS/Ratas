@@ -40,6 +40,8 @@ pub enum Mode {
     Class,
     Party,
     Admin,
+    /// the world's own story
+    Lore,
 }
 
 pub struct LogLine {
@@ -147,6 +149,11 @@ impl Session {
         self.welcome.as_ref().is_some_and(|w| w.admin)
     }
 
+    /// Whether this world has its own story.
+    fn has_lore(&self) -> bool {
+        self.welcome.as_ref().is_some_and(|w| !w.lore.is_empty())
+    }
+
     pub fn log(&mut self, text: &str, color: &str) {
         self.logs.push_back(LogLine {
             text: text.to_string(),
@@ -238,6 +245,7 @@ impl Session {
                 "pause" => Mode::Pause,
                 "party" => Mode::Party,
                 "admin" => Mode::Admin,
+                "lore" => Mode::Lore,
                 "chat" => Mode::Chat,
                 _ => Mode::Game,
             };
@@ -293,6 +301,10 @@ impl Session {
             if w.need_class {
                 self.mode = Mode::Class;
                 self.sel = 0;
+            } else if w.lore_new && !w.lore.is_empty() {
+                // a hero new to a world with a story reads it first
+                self.mode = Mode::Lore;
+                self.scroll = 0;
             } else if self.mode == Mode::Class {
                 self.mode = Mode::Game;
             }
@@ -595,6 +607,10 @@ impl Session {
                 self.toggle(m);
             }
         }
+        // L in the backpack moves an item to the left hand
+        if matches!(self.mode, Mode::Game | Mode::Lore) && self.has_lore() && inp.take(KeyCode::L) {
+            self.toggle(Mode::Lore);
+        }
         if self.mode == Mode::Game && (inp.take(KeyCode::T) || inp.take(KeyCode::Enter)) {
             self.mode = Mode::Chat;
             self.chat.set("");
@@ -705,6 +721,7 @@ impl Session {
             Mode::Pause => windows::pause(self, g, inp, cfg),
             Mode::Party => windows::party(self, g, inp),
             Mode::Admin => windows::admin(self, g, inp),
+            Mode::Lore => windows::lore(self, g, inp),
             Mode::Class => windows::class_window(self, g, inp),
             Mode::Dialogue => talk::dialogue(self, g, inp),
             Mode::Trade => talk::trade(self, g, inp),

@@ -723,6 +723,7 @@ impl Game {
                 ));
             }
         }
+        facts.extend(self.lore_facts());
         for c in &self.chronicle {
             facts.push(format!("Recent news people talk about: {c}."));
         }

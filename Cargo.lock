@@ -583,7 +583,7 @@ dependencies = [
 
 [[package]]
 name = "ratas"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "ctrlc",
  "macroquad",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "ratas-core"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "bincode",
  "flate2",

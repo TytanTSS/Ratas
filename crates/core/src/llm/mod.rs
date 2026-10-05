@@ -1,10 +1,15 @@
-//! Connects NPCs and elite enemies to Claude via the Anthropic Messages API.
+//! Connects NPCs, elite enemies and the game master to a language model:
+//! Claude through the Anthropic Messages API (by API key), or a local model
+//! (Mistral-7B-Instruct-v0.3 by default) that starts together with the world
+//! (see local.rs).
 //!
-//! The game never blocks on the network: every request runs on its own
-//! thread and reports back through a callback, while the built-in AI keeps
-//! playing. Replies use structured outputs (a JSON schema), so the model can
-//! only choose from actions the game knows how to validate and execute.
+//! The game never blocks on the model: every request runs on its own thread
+//! and reports back through a callback, while the built-in AI keeps playing.
+//! Replies follow a JSON schema (structured outputs for Claude, constrained
+//! decoding for the local model), so the model can only choose from actions
+//! the game knows how to validate and execute.
 
+pub mod local;
 mod prompts;
 
 use prompts::*;
@@ -15,6 +20,37 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub const DEFAULT_MODEL: &str = "claude-opus-5-5";
+/// How long the story of a world may take to write.
+pub const LORE_SECS: u64 = 300;
+
+/// Who thinks for the world.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Provider {
+    /// only the built-in AI
+    Off,
+    /// Claude through the Anthropic API
+    Anthropic,
+    /// a model running on this machine
+    Local,
+}
+
+impl Provider {
+    pub fn parse(s: &str) -> Provider {
+        match s.trim().to_lowercase().as_str() {
+            "off" | "none" | "no" | "" => Provider::Off,
+            "local" | "mistral" | "ollama" | "llama.cpp" => Provider::Local,
+            _ => Provider::Anthropic,
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Provider::Off => "off",
+            Provider::Anthropic => "anthropic",
+            Provider::Local => "local",
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Turn {
@@ -120,25 +156,177 @@ pub const NPC_ACTIONS: &[&str] = &[
     "end",
 ];
 
+/// What the game master sees of the world.
+#[derive(Clone, Debug, Default)]
+pub struct GmRequest {
+    pub world: String,
+    pub time_of_day: String,
+    /// the language of announcements and messages
+    pub lang: String,
+    /// one line per online hero
+    pub players: Vec<String>,
+    /// recent deeds the world talks about
+    pub news: Vec<String>,
+    /// the world's own story and its characters
+    pub history: Vec<String>,
+    /// what the master did lately
+    pub recent: Vec<String>,
+    pub monsters: Vec<Option_>,
+    pub items: Vec<Option_>,
+    /// legendary characters it may summon (only on an admin's wish)
+    pub uniques: Vec<Option_>,
+    /// an admin's request; empty when the master acts on its own
+    pub wish: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct GmCommand {
+    pub action: String,
+    pub player: String,
+    pub key: String,
+    pub amount: i32,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct GmReply {
+    pub announce: String,
+    pub commands: Vec<GmCommand>,
+}
+
+/// The commands of the game master (see GM_SYSTEM).
+pub const GM_ACTIONS: &[&str] = &[
+    "spawn_monsters",
+    "give_item",
+    "give_gold",
+    "heal",
+    "bless",
+    "rumor",
+    "message",
+    "set_time",
+    "summon_unique",
+];
+
+/// What the chronicler knows of a newly made world.
+#[derive(Clone, Debug, Default)]
+pub struct LoreRequest {
+    pub world: String,
+    /// the village where heroes begin
+    pub start: String,
+    /// real places of this world, one line each
+    pub places: Vec<String>,
+    /// lands a character can live in
+    pub lands: Vec<String>,
+    /// how a character may look (model key: description)
+    pub looks: Vec<Option_>,
+    /// monster types a villain of the story can be
+    pub villains: Vec<Option_>,
+    /// dungeon lords of this world
+    pub bosses: Vec<Option_>,
+    /// the Russian names of the places and their English names
+    pub names: Vec<(String, String)>,
+}
+
+/// A text in Russian (the language of the world's content) and English.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct Text2 {
+    pub ru: String,
+    pub en: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct LoreArtifact {
+    pub name: Text2,
+    pub desc: Text2,
+    pub form: String,
+    pub power: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct LoreCharacter {
+    pub name: Text2,
+    pub title: Text2,
+    /// who they are and how they speak, for the model voicing them later
+    pub persona: String,
+    pub greeting: Text2,
+    pub about: Text2,
+    pub land: String,
+    pub look: String,
+    /// slay, boss or relics
+    pub quest: String,
+    /// slay: the villain's monster type; boss: the dungeon lord
+    pub target: String,
+    /// slay: the villain's name; relics: what is collected
+    pub foe: Text2,
+    pub offer: Text2,
+    pub done: Text2,
+    pub artifact: LoreArtifact,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct LoreReply {
+    pub title: Text2,
+    pub history: Vec<Text2>,
+    pub characters: Vec<LoreCharacter>,
+}
+
+/// What an artifact of the story can be (the game builds it on a real item).
+pub const LORE_FORMS: &[&str] = &[
+    "sword", "axe", "mace", "hammer", "dagger", "spear", "staff", "wand", "bow", "crossbow",
+    "scythe", "shield", "helm", "armor", "cloak", "belt", "greaves", "ring", "orb", "tome",
+    "symbol",
+];
+
+/// The power an artifact carries.
+pub const LORE_POWERS: &[&str] = &[
+    "fire",
+    "cold",
+    "lightning",
+    "poison",
+    "holy",
+    "shadow",
+    "might",
+    "agility",
+    "wisdom",
+    "vigor",
+];
+
+pub const LORE_QUESTS: &[&str] = &["slay", "boss", "relics"];
+
 enum Auth {
     Key(String),
     Bearer(String),
 }
 
+enum Backend {
+    Anthropic { auth: Auth, base: String },
+    Local(Arc<local::Runtime>),
+}
+
 struct Inner {
-    auth: Auth,
-    base: String,
+    backend: Backend,
     model: String,
     agent: ureq::Agent,
+    /// for the long one-time requests (a world's story)
+    long: ureq::Agent,
     talking: AtomicUsize,
     tactics: AtomicUsize,
+    mastering: AtomicBool,
     disabled: AtomicBool,
     calls: Mutex<Vec<Instant>>,
     last_err: Mutex<String>,
     max_per_min: usize,
+    max_talks: usize,
+    max_tactics: usize,
 }
 
-/// The connection to Claude. Clones share one connection and its limits.
+/// The connection to the model. Clones share one connection and its limits.
 #[derive(Clone)]
 pub struct Brain(Arc<Inner>);
 
@@ -199,6 +387,42 @@ fn proxy_for(base: &str) -> Option<String> {
 pub type Done<T> = Box<dyn FnOnce(Result<T, String>) + Send>;
 
 impl Brain {
+    /// The Brain the settings ask for; a local model starts in the
+    /// background (or keeps running from an earlier world).
+    pub fn from_config(cfg: &crate::config::Config) -> Option<Brain> {
+        match cfg.provider() {
+            Provider::Off => None,
+            Provider::Anthropic => Brain::new(&cfg.api_key, &cfg.model),
+            Provider::Local => Some(Brain::local(local::start(cfg.local_settings()))),
+        }
+    }
+
+    /// A Brain backed by a local model server.
+    pub fn local(rt: Arc<local::Runtime>) -> Brain {
+        let agent = ureq::AgentBuilder::new()
+            .timeout(Duration::from_secs(120))
+            .build();
+        let long = ureq::AgentBuilder::new()
+            .timeout(Duration::from_secs(LORE_SECS))
+            .build();
+        Brain(Arc::new(Inner {
+            model: rt.settings.model.clone(),
+            backend: Backend::Local(rt),
+            agent,
+            long,
+            talking: AtomicUsize::new(0),
+            tactics: AtomicUsize::new(0),
+            mastering: AtomicBool::new(false),
+            disabled: AtomicBool::new(false),
+            calls: Mutex::new(Vec::new()),
+            last_err: Mutex::new(String::new()),
+            // one model on one machine: few requests at a time, no bill
+            max_per_min: 60,
+            max_talks: 2,
+            max_tactics: 1,
+        }))
+    }
+
     /// Creates a Brain; None when no credentials are available.
     pub fn new(api_key: &str, model: &str) -> Option<Brain> {
         Brain::with_base(
@@ -223,33 +447,80 @@ impl Brain {
         } else {
             model
         };
-        let mut ab = ureq::AgentBuilder::new().timeout(Duration::from_secs(60));
-        if let Some(p) = proxy_for(base) {
-            if let Ok(p) = ureq::Proxy::new(p) {
-                ab = ab.proxy(p);
+        let build = |secs: u64| {
+            let mut ab = ureq::AgentBuilder::new().timeout(Duration::from_secs(secs));
+            if let Some(p) = proxy_for(base) {
+                if let Ok(p) = ureq::Proxy::new(p) {
+                    ab = ab.proxy(p);
+                }
             }
-        }
-        let agent = ab.build();
+            ab.build()
+        };
         Some(Brain(Arc::new(Inner {
-            auth,
-            base: base.trim_end_matches('/').to_string(),
+            backend: Backend::Anthropic {
+                auth,
+                base: base.trim_end_matches('/').to_string(),
+            },
             model: model.to_string(),
-            agent,
+            agent: build(60),
+            long: build(LORE_SECS),
             talking: AtomicUsize::new(0),
             tactics: AtomicUsize::new(0),
+            mastering: AtomicBool::new(false),
             disabled: AtomicBool::new(false),
             calls: Mutex::new(Vec::new()),
             last_err: Mutex::new(String::new()),
             max_per_min: 40,
+            max_talks: 3,
+            max_tactics: 2,
         })))
     }
 
+    /// Whether the model can answer right now (a local one may still be
+    /// downloading or loading).
     pub fn enabled(&self) -> bool {
+        self.usable()
+            && match &self.0.backend {
+                Backend::Local(rt) => rt.ready(),
+                Backend::Anthropic { .. } => true,
+            }
+    }
+
+    /// Whether the model is in use at all (not switched off by a bad key).
+    pub fn usable(&self) -> bool {
         !self.0.disabled.load(Ordering::Relaxed)
+            && match &self.0.backend {
+                Backend::Local(rt) => !matches!(rt.state(), local::State::Failed(_)),
+                Backend::Anthropic { .. } => true,
+            }
     }
 
     pub fn model(&self) -> &str {
         &self.0.model
+    }
+
+    pub fn provider(&self) -> Provider {
+        match self.0.backend {
+            Backend::Anthropic { .. } => Provider::Anthropic,
+            Backend::Local(_) => Provider::Local,
+        }
+    }
+
+    /// The model's name for players: "Claude claude-opus-5-5" or
+    /// "Mistral-7B-Instruct-v0.3 (локально)".
+    pub fn title(&self) -> String {
+        match &self.0.backend {
+            Backend::Anthropic { .. } => format!("Claude {}", self.0.model),
+            Backend::Local(rt) => format!("{} (локально)", rt.settings.title()),
+        }
+    }
+
+    /// The state of a local model; None for Claude.
+    pub fn local_state(&self) -> Option<local::State> {
+        match &self.0.backend {
+            Backend::Local(rt) => Some(rt.state()),
+            Backend::Anthropic { .. } => None,
+        }
     }
 
     /// The most recent API error (for the status line).
@@ -278,8 +549,8 @@ impl Brain {
                 done(Err("лимит запросов к ИИ, попробуйте позже".into()));
                 return;
             }
-            // at most three conversations at once
-            while b.0.talking.fetch_add(1, Ordering::SeqCst) >= 3 {
+            // only a few conversations at once
+            while b.0.talking.fetch_add(1, Ordering::SeqCst) >= b.0.max_talks {
                 b.0.talking.fetch_sub(1, Ordering::SeqCst);
                 std::thread::sleep(Duration::from_millis(100));
             }
@@ -294,7 +565,7 @@ impl Brain {
     /// Asks Claude to pick a combat tactic. Returns false if the request was
     /// dropped (busy or rate-limited); then done is never called.
     pub fn tactic(&self, req: TacticRequest, done: Done<TacticReply>) -> bool {
-        if self.0.tactics.fetch_add(1, Ordering::SeqCst) >= 2 {
+        if self.0.tactics.fetch_add(1, Ordering::SeqCst) >= self.0.max_tactics {
             self.0.tactics.fetch_sub(1, Ordering::SeqCst);
             return false;
         }
@@ -313,6 +584,52 @@ impl Brain {
         true
     }
 
+    /// Asks the game master for world commands. Returns false if the
+    /// request was dropped (one is already in flight or rate-limited); then
+    /// done is never called.
+    pub fn director(&self, req: GmRequest, done: Done<GmReply>) -> bool {
+        if self.0.mastering.swap(true, Ordering::SeqCst) {
+            return false;
+        }
+        if !self.allow() {
+            self.0.mastering.store(false, Ordering::SeqCst);
+            return false;
+        }
+        let b = self.clone();
+        std::thread::spawn(move || {
+            let local = b.provider() == Provider::Local;
+            let r = b.call(GM_SYSTEM, &gm_prompt(&req), gm_schema(local), 4096);
+            b.0.mastering.store(false, Ordering::SeqCst);
+            done(r.and_then(|v| {
+                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
+            }));
+        });
+        true
+    }
+
+    /// Asks the model to write the story of a new world (a long request).
+    pub fn lore(&self, req: LoreRequest, done: Done<LoreReply>) {
+        let b = self.clone();
+        std::thread::spawn(move || {
+            if !b.allow() {
+                done(Err("лимит запросов к ИИ, попробуйте позже".into()));
+                return;
+            }
+            let local = b.provider() == Provider::Local;
+            let r = b.call_with(
+                &b.0.long,
+                LORE_SYSTEM,
+                &lore_prompt(&req),
+                lore_schema(&req, local),
+                16000,
+                local::MAX_STORY,
+            );
+            done(r.and_then(|v| {
+                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
+            }));
+        });
+    }
+
     /// The effort parameter errors on Haiku 4.5 and older models.
     fn supports_effort(&self) -> bool {
         let m = &self.0.model;
@@ -321,12 +638,12 @@ impl Brain {
 
     /// Server-side refusal fallbacks for the models that run safety
     /// classifiers (Claude API only).
-    fn supports_fallback(&self) -> bool {
+    fn supports_fallback(&self, base: &str) -> bool {
         matches!(
             self.0.model.as_str(),
             "claude-opus-5-5" | "claude-opus-5" | "claude-fable-5-1" | "claude-sonnet-5-5"
-        ) && !self.0.base.contains("bedrock")
-            && !self.0.base.contains("vertex")
+        ) && !base.contains("bedrock")
+            && !base.contains("vertex")
     }
 
     fn fail(&self, err: &str, status: u16) {
@@ -344,6 +661,51 @@ impl Brain {
         schema: Value,
         max_tokens: u32,
     ) -> Result<Value, String> {
+        self.call_with(
+            &self.0.agent,
+            system,
+            user,
+            schema,
+            max_tokens,
+            local::MAX_PREDICT,
+        )
+    }
+
+    /// One request; a local model generates at most local_tokens.
+    fn call_with(
+        &self,
+        agent: &ureq::Agent,
+        system: &str,
+        user: &str,
+        schema: Value,
+        max_tokens: u32,
+        local_tokens: u32,
+    ) -> Result<Value, String> {
+        match &self.0.backend {
+            Backend::Anthropic { auth, base } => {
+                self.call_claude(agent, auth, base, system, user, schema, max_tokens)
+            }
+            Backend::Local(rt) => {
+                let r = rt.chat(agent, system, user, &schema, max_tokens.min(local_tokens));
+                if let Err(e) = &r {
+                    self.fail(e, 0);
+                    rt.lost();
+                }
+                r
+            }
+        }
+    }
+
+    fn call_claude(
+        &self,
+        agent: &ureq::Agent,
+        auth: &Auth,
+        base: &str,
+        system: &str,
+        user: &str,
+        schema: Value,
+        max_tokens: u32,
+    ) -> Result<Value, String> {
         let mut body = json!({
             "model": self.0.model,
             "max_tokens": max_tokens,
@@ -355,17 +717,15 @@ impl Brain {
         if self.supports_effort() {
             body["output_config"]["effort"] = json!("low");
         }
-        let mut req = self
-            .0
-            .agent
-            .post(&format!("{}/v1/messages", self.0.base))
+        let mut req = agent
+            .post(&format!("{base}/v1/messages"))
             .set("anthropic-version", "2023-06-01")
             .set("content-type", "application/json");
-        if self.supports_fallback() {
+        if self.supports_fallback(base) {
             body["fallbacks"] = json!("default");
             req = req.set("anthropic-beta", "server-side-fallback-2026-07-01");
         }
-        req = match &self.0.auth {
+        req = match auth {
             Auth::Key(k) => req.set("x-api-key", k),
             Auth::Bearer(t) => req.set("authorization", &format!("Bearer {t}")),
         };
@@ -447,6 +807,39 @@ mod tests {
                 .len(),
             NPC_ACTIONS.len()
         );
+    }
+
+    #[test]
+    fn game_master_prompt() {
+        let req = GmRequest {
+            world: "Ратас".into(),
+            players: vec!["Ратибор: level 3 warrior".into()],
+            monsters: vec![Option_ {
+                key: "wolf".into(),
+                name: "Волк".into(),
+            }],
+            wish: "устрой засаду".into(),
+            ..Default::default()
+        };
+        let p = gm_prompt(&req);
+        assert!(p.contains("Ратибор") && p.contains("wolf: Волк") && p.contains("устрой засаду"));
+        assert!(gm_prompt(&GmRequest::default()).contains("on your own"));
+        let schema = gm_schema(false);
+        let enums = &schema["properties"]["commands"]["items"]["properties"]["action"]["enum"];
+        assert_eq!(enums.as_array().unwrap().len(), GM_ACTIONS.len());
+        // Claude's structured outputs take no array limits; the local grammar does
+        assert!(schema["properties"]["commands"].get("maxItems").is_none());
+        assert!(gm_schema(true)["properties"]["commands"]["maxItems"].is_number());
+    }
+
+    #[test]
+    fn providers() {
+        assert_eq!(Provider::parse("local"), Provider::Local);
+        assert_eq!(Provider::parse("Anthropic"), Provider::Anthropic);
+        assert_eq!(Provider::parse("off"), Provider::Off);
+        let b = Brain::new("k", "").unwrap();
+        assert_eq!(b.provider(), Provider::Anthropic);
+        assert!(b.enabled() && b.local_state().is_none());
     }
 
     #[test]

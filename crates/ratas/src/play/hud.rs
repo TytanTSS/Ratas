@@ -5,6 +5,7 @@
 use macroquad::prelude::*;
 
 use ratas_core::content;
+use ratas_core::llm::{local, Provider};
 use ratas_core::proto::*;
 
 use super::{Mode, Session};
@@ -21,7 +22,13 @@ pub fn draw(
     let s = g.s;
     let (w, h) = (screen_width(), screen_height());
     let mut over = false;
-    top_bar(p, g, w, s);
+    // the host's own local model may still be downloading or loading
+    let local_ai = (p.srv.is_some() && cfg.provider() == Provider::Local)
+        .then(local::current)
+        .flatten()
+        .map(|rt| rt.state())
+        .filter(|st| *st != local::State::Ready);
+    top_bar(p, g, w, s, local_ai);
     over |= hero_frame(p, g, inp, s);
     let mm = 92.0 * s;
     let (mx, my) = (w - mm - 14.0 * s, 34.0 * s + mm);
@@ -72,7 +79,7 @@ fn me_facing(p: &Session) -> f32 {
         .unwrap_or(0.0)
 }
 
-fn top_bar(p: &Session, g: &Gfx, w: f32, s: f32) {
+fn top_bar(p: &Session, g: &Gfx, w: f32, s: f32, local_ai: Option<local::State>) {
     let snap = p.snap.as_ref().unwrap();
     let level = p.level.as_ref().unwrap();
     let bh = 24.0 * s;
@@ -108,7 +115,10 @@ fn top_bar(p: &Session, g: &Gfx, w: f32, s: f32) {
         };
     }
     if p.welcome.as_ref().is_some_and(|w| w.ai) {
-        right += &format!(" • {}", tr("ИИ вкл"));
+        match &local_ai {
+            Some(st) => right += &format!(" • {} {}", tr("ИИ:"), tr(&st.describe())),
+            None => right += &format!(" • {}", tr("ИИ вкл")),
+        }
     }
     if p.admin() {
         right = format!("{} • {right}", tr("АДМИН (F9)"));

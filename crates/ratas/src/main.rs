@@ -20,7 +20,7 @@ use std::sync::Arc;
 use ratas_core::config::{self, Config};
 use ratas_core::game::Game;
 use ratas_core::i18n::{self, t};
-use ratas_core::llm::Brain;
+use ratas_core::llm::{self, Brain, Provider};
 use ratas_core::server::{self, Options, Server};
 use ratas_core::{content, rng::Rng};
 
@@ -49,6 +49,8 @@ struct Args {
     port: u16,
     mods: String,
     lang: String,
+    ai: String,
+    no_gm: bool,
     version: bool,
     admin: bool,
     help: bool,
@@ -76,6 +78,12 @@ const FLAGS: &[(&str, &str, &str)] = &[
         "язык: ru или en (по умолчанию из настроек)",
     ),
     (
+        "ai",
+        "anthropic|local|off",
+        "нейросеть: Claude по ключу API, локальная модель Mistral-7B (запускается вместе с миром) или выключена",
+    ),
+    ("nogm", "", "ИИ-мастер не устраивает событий сам (только /gm)"),
+    (
         "admin",
         "",
         "режим администратора для тестирования: команды /god, /give, /tp... (окно команд — F9)",
@@ -91,6 +99,8 @@ fn parse_args(raw: &[String]) -> Result<Args, String> {
         port: 0,
         mods: String::new(),
         lang: String::new(),
+        ai: String::new(),
+        no_gm: false,
         version: false,
         admin: false,
         help: false,
@@ -135,6 +145,13 @@ fn parse_args(raw: &[String]) -> Result<Args, String> {
             "port" => a.port = num(value()?)?.clamp(0, 65535) as u16,
             "mods" => a.mods = value()?,
             "lang" => a.lang = value()?,
+            "ai" => {
+                a.ai = value()?;
+                if !matches!(a.ai.as_str(), "anthropic" | "claude" | "local" | "off") {
+                    return Err(format!("{}: {}", t("неизвестная нейросеть"), a.ai));
+                }
+            }
+            "nogm" => a.no_gm = true,
             "admin" => a.admin = true,
             "version" => a.version = true,
             _ => a.help = true,
@@ -156,6 +173,10 @@ fn usage() -> String {
         ("ratas --new --host", "новый мир, открытый для друзей"),
         ("ratas --join IP:7777", "присоединиться к другу"),
         ("ratas --server --seed 1", "выделенный сервер без окна"),
+        (
+            "ratas --server --ai local",
+            "сервер с локальной нейросетью Mistral-7B",
+        ),
     ] {
         s.push_str(&format!("  {cmd:<26}{}\n", t(what)));
     }
@@ -173,6 +194,7 @@ fn usage() -> String {
 
 fn main() {
     let raw: Vec<String> = std::env::args().skip(1).collect();
+    config::load_dotenv();
     let mut cfg = Config::load();
     i18n::set_lang(&cfg.language);
     let args = match parse_args(&raw) {
@@ -201,6 +223,12 @@ fn main() {
         console::ensure();
     }
     cfg.admin = args.admin;
+    if !args.ai.is_empty() {
+        cfg.set_provider(Provider::parse(&args.ai));
+    }
+    if args.no_gm {
+        cfg.ai_director = false;
+    }
     if args.port != 0 {
         cfg.port = args.port;
     }
@@ -249,14 +277,25 @@ fn run_dedicated(cfg: &Config, args: &Args, mods: &[String]) {
     if !mods.is_empty() {
         log_line(&format!("моды: {}", mods.join(", ")));
     }
-    let brain = if cfg.ai_enabled {
-        Brain::new(&cfg.api_key, &cfg.model)
-    } else {
-        None
-    };
+    let brain = Brain::from_config(cfg);
     match &brain {
-        Some(b) => log_line(&format!("ИИ-персонажи: {}", b.model())),
+        Some(b) if b.provider() == Provider::Local => {
+            log_line(&format!(
+                "нейросеть: {} запускается вместе с миром (журнал сервера модели: {})",
+                b.title(),
+                config::logs_dir().join("llm.log").display()
+            ));
+            watch_local_model();
+        }
+        Some(b) => log_line(&format!("ИИ-персонажи: {}", b.title())),
         None => log_line("ИИ-персонажи выключены (нет ключа или отключено в настройках)"),
+    }
+    if brain.is_some() {
+        log_line(if cfg.ai_director {
+            "ИИ-мастер сам устраивает события (выключить: --nogm или /gm off)"
+        } else {
+            "ИИ-мастер действует только по просьбе администратора (/gm)"
+        });
     }
     let mut slot = args.start.load.clone();
     let game = if !slot.is_empty() {
@@ -275,8 +314,26 @@ fn run_dedicated(cfg: &Config, args: &Args, mods: &[String]) {
         let mut g = Game::new(seed, brain);
         g.pvp = !args.start.no_pvp;
         slot = format!("server-{seed}");
+        // with a model at hand the world gets its own story
+        if g.brain.is_some() {
+            let skip = std::sync::atomic::AtomicBool::new(false);
+            match g.write_lore(&skip, &|s| log_line(s)) {
+                Ok(title) => {
+                    let n = g.lore.as_ref().map(|l| l.characters().len()).unwrap_or(0);
+                    log_line(&format!(
+                        "летопись мира: «{title}», персонажей истории: {n}"
+                    ));
+                }
+                Err(e) => {
+                    log_line(&format!("летопись мира не написана: {e}"));
+                    g.note_lore(&e);
+                }
+            }
+        }
         g
     };
+    let mut game = game;
+    game.set_director(cfg.ai_director);
     let (name, seed) = (game.world_name.clone(), game.seed);
     let save_path = config::saves_dir().join(format!("{slot}.sav"));
     if args.admin {
@@ -318,6 +375,38 @@ fn run_dedicated(cfg: &Config, args: &Args, mods: &[String]) {
         None => {}
     }
     srv.stop();
+    llm::local::shutdown();
+}
+
+/// Prints how the local model gets ready: the download and the loading
+/// (the game itself announces when it is ready or failed).
+fn watch_local_model() {
+    let _ = std::thread::Builder::new()
+        .name("ratas-llm-watch".into())
+        .spawn(|| {
+            let mut last = String::new();
+            loop {
+                let Some(rt) = llm::local::current() else {
+                    return;
+                };
+                let st = rt.state();
+                if matches!(st, llm::local::State::Ready | llm::local::State::Failed(_)) {
+                    return;
+                }
+                let key = match &st {
+                    // every 5%, not every megabyte
+                    llm::local::State::Downloading { done, total } => {
+                        format!("{}", (done * 20).checked_div(*total).unwrap_or(0))
+                    }
+                    other => other.describe(),
+                };
+                if key != last {
+                    last = key;
+                    log_line(&format!("нейросеть: {}", st.describe()));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        });
 }
 
 #[cfg(test)]
@@ -346,6 +435,8 @@ mod tests {
         assert_eq!(a.port, 9000);
         assert!(args(&["--server", "--admin"]).unwrap().server);
         assert!(args(&["--bogus"]).is_err());
+        assert_eq!(args(&["--ai", "local", "--nogm"]).unwrap().ai, "local");
+        assert!(args(&["--ai", "gpt"]).is_err());
         assert!(args(&["--seed"]).is_err());
         assert!(args(&["-h"]).unwrap().help);
     }

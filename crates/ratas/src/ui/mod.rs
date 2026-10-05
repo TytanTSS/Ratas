@@ -128,7 +128,7 @@ impl UiInput {
         }
         self.chars.clear();
         while let Some(c) = get_char_pressed() {
-            if !c.is_control() && !self.ctrl {
+            if typed(c) && !self.ctrl {
                 self.chars.push(c);
             }
         }
@@ -361,6 +361,13 @@ pub fn footer(g: &Gfx, r: Rect, text: &str) {
     );
 }
 
+/// Whether a character typed on the keyboard is text. macOS reports arrows,
+/// Home, F1 and other function keys as characters of the Unicode private
+/// use area (U+F700 and on); they must not end up in text fields.
+pub fn typed(c: char) -> bool {
+    !c.is_control() && !('\u{E000}'..='\u{F8FF}').contains(&c)
+}
+
 /// An editable line of text.
 #[derive(Clone, Default)]
 pub struct TextInput {
@@ -391,7 +398,7 @@ impl TextInput {
 
     fn insert(&mut self, s: &str) {
         for c in s.chars() {
-            if c == '\n' || c == '\r' || c == '\t' {
+            if !typed(c) {
                 continue;
             }
             if self.text.chars().count() >= self.max {

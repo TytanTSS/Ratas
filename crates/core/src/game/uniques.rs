@@ -80,7 +80,9 @@ impl Game {
     /// and subclasses come first, the rest are picked at random.
     pub(crate) fn place_uniques(&mut self, r: &mut Rng) {
         let all = &db().b.uniques;
-        let (mut first, mut rest): (Vec<usize>, Vec<usize>) = (0..all.len()).partition(|&i| {
+        // the characters of a world's own story are settled by the story
+        let mine = (0..all.len()).filter(|&i| !all[i].key.starts_with(LORE_PREFIX));
+        let (mut first, mut rest): (Vec<usize>, Vec<usize>) = mine.partition(|&i| {
             all[i].reward.starts_with("class:") || all[i].reward.starts_with("subclass:")
         });
         r.shuffle(&mut rest);
