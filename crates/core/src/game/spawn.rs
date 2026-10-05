@@ -282,7 +282,7 @@ impl Game {
         let want = if night { 10 } else { 6 };
         let mut rng = std::mem::replace(&mut self.rng, Rng::new(0, 0));
         for &pp in &players {
-            let near = self.on_level("overworld").into_iter().filter(|id| {
+            let near = self.near("overworld", pp, 32.0).into_iter().filter(|id| {
                 let e = &self.ents[id];
                 e.monster.is_some() && e.faction == Faction::Monster && e.pos.dist(pp) <= 32.0
             });

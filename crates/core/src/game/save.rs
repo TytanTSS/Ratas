@@ -7,7 +7,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const SAVE_VERSION: i32 = 100;
+/// 101: maps, regions and explored cells packed (see world::packed).
+pub const SAVE_VERSION: i32 = 101;
+/// The oldest save this version reads: the first one of the Rust game.
+const OLDEST_SAVE: i32 = 100;
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -22,6 +25,7 @@ pub struct SaveData {
     pub villages: Vec<VillageInfo>,
     pub entrances: Vec<Entrance>,
     pub regions: Vec<Region>,
+    #[serde(with = "crate::world::packed")]
     pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
     pub no_pvp: bool,
@@ -39,8 +43,7 @@ pub struct SaveData {
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_secs())
 }
 
 /// Orders the snapshots of worlds: a write never replaces a newer one.
@@ -191,23 +194,30 @@ impl Game {
 }
 
 pub fn read_save(path: &Path) -> Result<SaveData, String> {
+    let sd: SaveData = read_json(path)?;
+    check_version(sd.version)?;
+    Ok(sd)
+}
+
+/// Decompresses and parses a save file (into anything that takes its JSON).
+fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     let f = std::fs::File::open(path).map_err(|e| e.to_string())?;
     let mut zr = flate2::read::GzDecoder::new(std::io::BufReader::new(f));
     let mut data = Vec::new();
     zr.read_to_end(&mut data).map_err(|e| e.to_string())?;
-    let sd: SaveData = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
-    if sd.version > SAVE_VERSION {
-        return Err(format!(
-            "сохранение из более новой версии игры ({})",
-            sd.version
-        ));
+    serde_json::from_slice(&data).map_err(|e| e.to_string())
+}
+
+fn check_version(version: i32) -> Result<(), String> {
+    if version > SAVE_VERSION {
+        return Err(format!("сохранение из более новой версии игры ({version})"));
     }
-    if sd.version < SAVE_VERSION {
+    if version < OLDEST_SAVE {
         return Err(
             "сохранение из старой версии игры (до перехода на Rust) не поддерживается".into(),
         );
     }
-    Ok(sd)
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
@@ -223,6 +233,32 @@ pub struct SaveInfo {
     pub names: Vec<String>,
 }
 
+/// The part of a save the list of saves shows: the map, the creatures and
+/// the rest of the JSON are skipped without being built.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct SaveHeader {
+    version: i32,
+    seed: i64,
+    world_name: String,
+    saved_at: u64,
+    characters: Vec<CharacterHeader>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct CharacterHeader {
+    name: String,
+    player: Option<PlayerHeader>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct PlayerHeader {
+    account: String,
+    level: i32,
+}
+
 /// Save files in dir, newest first.
 pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
     let mut out = Vec::new();
@@ -234,21 +270,26 @@ pub fn list_saves(dir: &Path) -> Vec<SaveInfo> {
         if p.extension().and_then(|x| x.to_str()) != Some("sav") {
             continue;
         }
-        let Ok(sd) = read_save(&p) else { continue };
+        let Ok(sh) = read_json::<SaveHeader>(&p) else {
+            continue;
+        };
+        if check_version(sh.version).is_err() {
+            continue;
+        }
         let mut info = SaveInfo {
             slot: p.file_stem().unwrap().to_string_lossy().into(),
             path: p.clone(),
-            world_name: sd.world_name,
-            seed: sd.seed,
-            saved_at: sd.saved_at,
+            world_name: sh.world_name,
+            seed: sh.seed,
+            saved_at: sh.saved_at,
             characters: Vec::new(),
             names: Vec::new(),
         };
-        for c in &sd.characters {
-            if let Some(pl) = &c.player {
+        for c in sh.characters {
+            if let Some(pl) = c.player {
                 info.characters
                     .push(format!("{} (ур.{})", c.name, pl.level));
-                info.names.push(pl.account.clone());
+                info.names.push(pl.account);
             }
         }
         out.push(info);

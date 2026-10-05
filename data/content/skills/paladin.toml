@@ -1,0 +1,831 @@
+# Паладин: подклассы Защитник веры, Каратель и Светоносец; секретные подклассы Рыцарь Грааля и Клятвопреступник;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# >>> contentgen: class
+# ---- Паладин ----
+
+[[subclasses]]
+key = "protector"
+name = "Защитник веры"
+class = "paladin"
+color = "#a0c0ff"
+desc = "Щит, вызов и святилище: стоит насмерть за союзников."
+
+[[subclasses]]
+key = "avenger"
+name = "Каратель"
+class = "paladin"
+color = "#ffb040"
+desc = "Кара света: молот правосудия и судный день."
+
+[[subclasses]]
+key = "lightbringer"
+name = "Светоносец"
+class = "paladin"
+color = "#fff4a0"
+desc = "Исцеляющий свет и маяк для союзников."
+
+[[branches]]
+key = "paladin"
+name = "Паладин"
+color = "#f0d060"
+desc = "Вера, латы и ауры."
+class = "paladin"
+
+[[branches]]
+key = "protector"
+name = "Защитник веры"
+color = "#a0c0ff"
+desc = "Щит и святилище."
+class = "paladin"
+subclass = "protector"
+
+[[branches]]
+key = "avenger"
+name = "Каратель"
+color = "#ffb040"
+desc = "Святая кара."
+class = "paladin"
+subclass = "avenger"
+
+[[branches]]
+key = "lightbringer"
+name = "Светоносец"
+color = "#fff4a0"
+desc = "Исцеляющий свет."
+class = "paladin"
+subclass = "lightbringer"
+
+[[skills]]
+key = "pal_devotion"
+name = "Преданность"
+branch = "paladin"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Урон светом и броня."
+stats = { holy_pct = 5, armor = 1 }
+
+[[skills]]
+key = "pal_faith_armor"
+name = "Броня веры"
+branch = "paladin"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Здоровье и защита от тьмы."
+stats = { max_hp = 6, res_shadow = 3 }
+
+[[skills]]
+key = "pal_lay_hands"
+name = "Возложение рук"
+branch = "paladin"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["pal_faith_armor"]
+grants = "pal_lay_hands"
+desc = "Сильное исцеление себя."
+
+[[skills]]
+key = "pal_aura_courage"
+name = "Аура отваги"
+branch = "paladin"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["pal_devotion"]
+grants = "pal_aura_courage"
+desc = "Вы и союзники рядом бьёте сильнее и стойче держитесь."
+
+[[skills]]
+key = "pal_steadfast"
+name = "Непоколебимость"
+branch = "paladin"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["pal_aura_courage"]
+desc = "Блок и сопротивление всему."
+stats = { block = 3, res_all = 2 }
+
+[[skills]]
+key = "pal_bulwark"
+name = "Оплот"
+branch = "protector"
+tier = 1
+max_rank = 5
+level = 5
+equip = "shield"
+desc = "Со щитом: блок и броня."
+stats = { block = 3, armor = 2 }
+
+[[skills]]
+key = "pal_challenge"
+name = "Вызов"
+branch = "protector"
+tier = 1
+max_rank = 1
+level = 5
+grants = "pal_challenge"
+desc = "Враги вокруг бросаются на вас, а вы крепнете."
+
+[[skills]]
+key = "pal_divine_shield"
+name = "Божественный щит"
+branch = "protector"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["pal_bulwark"]
+grants = "pal_divine_shield"
+desc = "Почти полная неуязвимость на 6 с."
+
+[[skills]]
+key = "pal_sanctuary"
+name = "Освящённая земля"
+branch = "protector"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["pal_divine_shield"]
+grants = "pal_sanctuary"
+desc = "Освящённая земля защищает и лечит союзников."
+
+[[skills]]
+key = "pal_retribution"
+name = "Возмездие"
+branch = "avenger"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон светом и в ближнем бою."
+stats = { holy_pct = 6, melee_pct = 3 }
+
+[[skills]]
+key = "pal_hammer_of_justice"
+name = "Молот правосудия"
+branch = "avenger"
+tier = 1
+max_rank = 1
+level = 5
+grants = "pal_hammer_of_justice"
+desc = "Брошенный молот света оглушает врага."
+
+[[skills]]
+key = "pal_crusader_strike"
+name = "Удар крестоносца"
+branch = "avenger"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["pal_retribution"]
+equip = "weapon"
+grants = "pal_crusader_strike"
+desc = "Два удара светом и сталью."
+
+[[skills]]
+key = "pal_judgement_day"
+name = "Судный день"
+branch = "avenger"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["pal_crusader_strike"]
+grants = "pal_judgement_day"
+desc = "Свет обрушивается на всех врагов вокруг."
+
+[[skills]]
+key = "pal_radiance"
+name = "Сияние веры"
+branch = "lightbringer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Лечение сильнее, здоровье восстанавливается быстрее."
+stats = { heal_pct = 6, hp_regen = 0.3 }
+
+[[skills]]
+key = "pal_holy_light"
+name = "Свет небес"
+branch = "lightbringer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "pal_holy_light"
+desc = "Исцеляет вас и союзников вокруг."
+
+[[skills]]
+key = "pal_beacon"
+name = "Маяк света"
+branch = "lightbringer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["pal_radiance"]
+grants = "pal_beacon"
+desc = "Союзники рядом восстанавливают здоровье 10 секунд."
+
+[[skills]]
+key = "pal_dawn"
+name = "Рассвет"
+branch = "lightbringer"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["pal_beacon"]
+grants = "pal_dawn"
+desc = "Волна света жжёт врагов и лишает их защиты от света."
+
+[[abilities]]
+key = "pal_holy_strike"
+name = "Святой удар"
+kind = "strike"
+mana = 4
+cooldown_ms = 1500
+damage = [5, 9]
+dmg_type = "holy"
+scale = "str"
+scale_k = 0.8
+equip = "weapon"
+glyph = "!"
+color = "#ffe080"
+desc = "Удар оружием, напоённым светом."
+
+[[abilities]]
+key = "pal_lay_hands"
+name = "Возложение рук"
+kind = "heal"
+mana = 16
+cooldown_ms = 30000
+damage = [35, 50]
+scale = "int"
+scale_k = 2
+glyph = "+"
+color = "#fff0a0"
+fx = "holy"
+desc = "Большое исцеление себя."
+
+[[abilities]]
+key = "pal_aura_courage"
+name = "Аура отваги"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+radius = 5
+color = "#ffd060"
+fx = "holy"
+desc = "Вам и союзникам в радиусе 5: +10% урона в ближнем бою и +5% сопротивления всему на 15 с."
+[abilities.buff]
+key = "aura_courage"
+name = "Аура отваги"
+duration_ms = 15000
+stats = { melee_pct = 10, res_all = 5 }
+color = "#ffd060"
+
+[[abilities]]
+key = "pal_challenge"
+name = "Вызов"
+kind = "taunt"
+mana = 8
+cooldown_ms = 12000
+radius = 4
+color = "#a0c0ff"
+fx = "sound"
+desc = "Враги в радиусе 4 атакуют только вас; +8 брони на 8 с."
+[abilities.buff]
+key = "challenge_guard"
+name = "Стойкость"
+duration_ms = 8000
+stats = { armor = 8 }
+color = "#a0c0ff"
+[abilities.on_hit]
+key = "challenged"
+name = "Вызов"
+duration_ms = 5000
+color = "#a0c0ff"
+
+[[abilities]]
+key = "pal_divine_shield"
+name = "Божественный щит"
+kind = "buff"
+mana = 18
+cooldown_ms = 45000
+color = "#f0f0ff"
+fx = "shield holy"
+desc = "6 с: +40% сопротивления всему и +15 брони."
+[abilities.buff]
+key = "divine_shield"
+name = "Божественный щит"
+duration_ms = 6000
+stats = { res_all = 40, armor = 15 }
+color = "#f0f0ff"
+
+[[abilities]]
+key = "pal_sanctuary"
+name = "Освящённая земля"
+kind = "buff"
+mana = 26
+cooldown_ms = 40000
+radius = 5
+color = "#fff8c0"
+fx = "holy"
+desc = "Вам и союзникам в радиусе 5: +20% сопротивления всему и +5 к восстановлению здоровья на 10 с."
+[abilities.buff]
+key = "sanctuary"
+name = "Освящённая земля"
+duration_ms = 10000
+stats = { res_all = 20, hp_regen = 5 }
+color = "#fff8c0"
+
+[[abilities]]
+key = "pal_hammer_of_justice"
+name = "Молот правосудия"
+kind = "projectile"
+mana = 10
+cooldown_ms = 8000
+damage = [8, 14]
+dmg_type = "holy"
+scale = "str"
+scale_k = 1
+range = 7
+speed_ms = 40
+glyph = "T"
+color = "#ffd040"
+fx = "hammer"
+desc = "Урон светом и оглушение на 1,5 с."
+[abilities.on_hit]
+key = "justice_stun"
+name = "Оглушение"
+duration_ms = 1500
+stun = true
+color = "#ffd040"
+
+[[abilities]]
+key = "pal_crusader_strike"
+name = "Удар крестоносца"
+kind = "strike"
+mana = 12
+cooldown_ms = 6000
+damage = [8, 13]
+split = ["holy", "blunt"]
+scale = "str"
+scale_k = 0.9
+count = 2
+equip = "weapon"
+glyph = "!"
+color = "#ffb040"
+fx = "holy"
+desc = "Два удара: урон светом и дробящий пополам."
+
+[[abilities]]
+key = "pal_judgement_day"
+name = "Судный день"
+kind = "nova"
+mana = 32
+cooldown_ms = 16000
+damage = [22, 34]
+dmg_type = "holy"
+scale = "str"
+scale_k = 1.5
+radius = 4
+glyph = "+"
+color = "#fff0a0"
+fx = "pillars"
+desc = "Свет в радиусе 4: огромный урон."
+
+[[abilities]]
+key = "pal_holy_light"
+name = "Свет небес"
+kind = "heal"
+mana = 14
+cooldown_ms = 8000
+damage = [18, 26]
+scale = "int"
+scale_k = 1.4
+radius = 5
+glyph = "+"
+color = "#fff8c0"
+fx = "holy"
+desc = "Лечит вас и союзников в радиусе 5."
+
+[[abilities]]
+key = "pal_beacon"
+name = "Маяк света"
+kind = "buff"
+mana = 16
+cooldown_ms = 20000
+radius = 5
+color = "#fff4a0"
+fx = "holy"
+desc = "Вам и союзникам в радиусе 5: восстановление 6 здоровья в секунду на 10 с."
+[abilities.buff]
+key = "beacon"
+name = "Маяк света"
+duration_ms = 10000
+dot_per_sec = -6
+color = "#fff4a0"
+
+[[abilities]]
+key = "pal_dawn"
+name = "Рассвет"
+kind = "nova"
+mana = 30
+cooldown_ms = 16000
+damage = [16, 24]
+dmg_type = "holy"
+scale = "int"
+scale_k = 1.4
+radius = 5
+glyph = "+"
+color = "#ffe8a0"
+fx = "sun"
+desc = "Свет в радиусе 5: урон и −25% сопротивления свету на 8 с."
+[abilities.on_hit]
+key = "dawn_mark"
+name = "Печать рассвета"
+duration_ms = 8000
+stats = { res_holy = -25 }
+color = "#ffe8a0"
+# <<< contentgen: class
+
+# >>> contentgen: secret_path
+# ---- Рыцарь Грааля (паладин) ----
+
+[[subclasses]]
+key = "grail_knight"
+name = "Рыцарь Грааля"
+class = "paladin"
+color = "#ffe8a0"
+desc = "Хранитель святой чаши: исцеление, святое копьё и аватар света."
+secret = true
+
+[[branches]]
+key = "grail_knight"
+name = "Рыцарь Грааля"
+color = "#ffe8a0"
+desc = "Сила чаши."
+class = "paladin"
+subclass = "grail_knight"
+
+[[skills]]
+key = "gk_grail"
+name = "Глоток из чаши"
+branch = "grail_knight"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила лечения и урон светом."
+stats = { heal_pct = 6, holy_pct = 4 }
+
+[[skills]]
+key = "gk_grail_light"
+name = "Свет Грааля"
+branch = "grail_knight"
+tier = 1
+max_rank = 1
+level = 5
+grants = "gk_grail_light"
+desc = "Чаша изливает исцеление на всех вокруг."
+
+[[abilities]]
+key = "gk_grail_light"
+name = "Свет Грааля"
+kind = "heal"
+mana = 20
+cooldown_ms = 12000
+damage = [26, 38]
+scale = "int"
+scale_k = 1.8
+radius = 6
+glyph = "+"
+color = "#ffe8a0"
+fx = "holy"
+desc = "Большое исцеление вас и союзников в радиусе 6."
+
+[[skills]]
+key = "gk_holy_lance"
+name = "Святое копьё"
+branch = "grail_knight"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["gk_grail_light"]
+grants = "gk_holy_lance"
+desc = "Копьё света пронзает и оглушает."
+
+[[abilities]]
+key = "gk_holy_lance"
+name = "Святое копьё"
+kind = "projectile"
+mana = 12
+cooldown_ms = 6000
+damage = [14, 20]
+dmg_type = "holy"
+scale = "str"
+scale_k = 1.2
+range = 9
+speed_ms = 15
+glyph = "/"
+color = "#fff4c0"
+fx = "lance"
+desc = "Свет и оглушение на 1 с."
+[abilities.on_hit]
+key = "lance_stun"
+name = "Оглушение"
+duration_ms = 1000
+stun = true
+color = "#fff4c0"
+
+[[skills]]
+key = "gk_avatar"
+name = "Аватар света"
+branch = "grail_knight"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["gk_holy_lance"]
+grants = "gk_avatar"
+desc = "Вы становитесь живым светом."
+
+[[abilities]]
+key = "gk_avatar"
+name = "Аватар света"
+kind = "buff"
+mana = 30
+cooldown_ms = 60000
+color = "#ffffd0"
+fx = "form holy"
+desc = "15 с: +25% сопротивления всему, +40% урона светом, +20% в ближнем бою."
+[abilities.buff]
+key = "light_avatar"
+name = "Аватар света"
+duration_ms = 15000
+stats = { res_all = 25, holy_pct = 40, melee_pct = 20 }
+color = "#ffffd0"
+
+
+# ---- Клятвопреступник (паладин) ----
+
+[[subclasses]]
+key = "oathbreaker"
+name = "Клятвопреступник"
+class = "paladin"
+color = "#7a3a8a"
+desc = "Паладин, нарушивший клятву: свет и тьма в одном ударе, аура ужаса."
+secret = true
+
+[[branches]]
+key = "oathbreaker"
+name = "Клятвопреступник"
+color = "#7a3a8a"
+desc = "Нарушенная клятва."
+class = "paladin"
+subclass = "oathbreaker"
+
+[[skills]]
+key = "ob_broken_oath"
+name = "Нарушенная клятва"
+branch = "oathbreaker"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон тьмой и вампиризм."
+stats = { shadow_pct = 6, life_leech = 0.6 }
+
+[[skills]]
+key = "ob_dark_smite"
+name = "Тёмная кара"
+branch = "oathbreaker"
+tier = 1
+max_rank = 1
+level = 5
+equip = "weapon"
+grants = "ob_dark_smite"
+desc = "Удар светом и тьмой разом."
+
+[[abilities]]
+key = "ob_dark_smite"
+name = "Тёмная кара"
+kind = "strike"
+mana = 10
+cooldown_ms = 4000
+damage = [12, 18]
+split = ["shadow", "holy"]
+scale = "str"
+scale_k = 1.1
+equip = "weapon"
+glyph = "!"
+color = "#9a4aaa"
+fx = "shadow"
+desc = "Урон тьмой и светом пополам."
+
+[[skills]]
+key = "ob_aura_dread"
+name = "Аура ужаса"
+branch = "oathbreaker"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["ob_dark_smite"]
+grants = "ob_aura_dread"
+desc = "Враги вокруг слабеют от страха."
+
+[[abilities]]
+key = "ob_aura_dread"
+name = "Аура ужаса"
+kind = "nova"
+mana = 14
+cooldown_ms = 14000
+damage = [0, 0]
+radius = 4
+glyph = "%"
+color = "#6a2a7a"
+fx = "shadow"
+desc = "Враги в радиусе 4 на 8 с теряют 15% сопротивления всему и 15% скорости атаки."
+[abilities.on_hit]
+key = "dread"
+name = "Ужас"
+duration_ms = 8000
+stats = { res_all = -15, attack_speed = -15 }
+color = "#6a2a7a"
+
+[[skills]]
+key = "ob_unholy_avatar"
+name = "Нечестивый аватар"
+branch = "oathbreaker"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["ob_aura_dread"]
+grants = "ob_unholy_avatar"
+desc = "Тьма заполняет вас целиком."
+
+[[abilities]]
+key = "ob_unholy_avatar"
+name = "Нечестивый аватар"
+kind = "buff"
+mana = 28
+cooldown_ms = 60000
+color = "#4a1a5a"
+fx = "form shadow"
+desc = "15 с: +40% урона тьмой, +8% вампиризма, +10 брони."
+[abilities.buff]
+key = "unholy_avatar"
+name = "Нечестивый аватар"
+duration_ms = 15000
+stats = { shadow_pct = 40, life_leech = 8, armor = 10 }
+color = "#4a1a5a"
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Паладин ----
+
+[[branches]]
+key = "paladin_hidden"
+name = "Скрытые навыки: Паладин"
+color = "#f0d060"
+desc = "Навыки, которые открываются сами за деяния."
+class = "paladin"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hpa_holy_shield"
+name = "Святой щит"
+branch = "paladin_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "block"
+deed_count = 200
+desc = "Щит освящён тысячей ударов."
+stats = { block = 6, armor = 3 }
+
+[[skills]]
+key = "hpa_radiant"
+name = "Сияющий"
+branch = "paladin_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:holy"
+deed_count = 15000
+desc = "Свет бьёт вашими руками."
+stats = { holy_pct = 12 }
+
+[[skills]]
+key = "hpa_crusader"
+name = "Крестоносец"
+branch = "paladin_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:fortress"
+deed_count = 120
+desc = "Цитадель тьмы знает ваши шаги."
+stats = { res_fire = 10, res_shadow = 10 }
+
+[[skills]]
+key = "hpa_abyss_punisher"
+name = "Каратель бездны"
+branch = "paladin_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:demon"
+deed_count = 15
+desc = "Демоны падают от святого оружия."
+stats = { holy_pct = 8 }
+
+[[skills]]
+key = "hpa_healer"
+name = "Целитель в латах"
+branch = "paladin_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "heal"
+deed_count = 10000
+desc = "Лечите вы не хуже жреца."
+stats = { heal_pct = 10 }
+
+[[skills]]
+key = "hpa_vanquisher"
+name = "Победитель тьмы"
+branch = "paladin_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "bosses"
+deed_count = 4
+desc = "Четыре владыки пали перед вами."
+stats = { max_hp = 25, res_all = 4 }
+
+[[skills]]
+key = "hpa_defender"
+name = "Защитник слабых"
+branch = "paladin_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "quests"
+deed_count = 12
+desc = "Люди верят в вас."
+stats = { gold_find = 15, res_all = 3 }
+
+[[skills]]
+key = "hpa_last_prayer"
+name = "Последняя молитва"
+branch = "paladin_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "lowhp"
+deed_count = 10
+desc = "На краю гибели свет не оставляет вас."
+stats = { hp_regen = 2 }
+
+[[skills]]
+key = "hpa_reborn"
+name = "Возрождённый"
+branch = "paladin_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 3
+desc = "Свет возвращал вас трижды."
+stats = { res_all = 5 }
+
+[[skills]]
+key = "hpa_verdict"
+name = "Приговор небес"
+branch = "paladin_hidden"
+tier = 3
+max_rank = 1
+level = 1
+equip = "weapon"
+grants = "hpa_verdict"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути паладина: удар самих небес."
+
+[[abilities]]
+key = "hpa_verdict"
+name = "Приговор небес"
+kind = "strike"
+mana = 20
+cooldown_ms = 20000
+damage = [30, 44]
+dmg_type = "holy"
+scale = "str"
+scale_k = 2
+execute = 2
+equip = "weapon"
+glyph = "!"
+color = "#fff0a0"
+fx = "pillars"
+desc = "Огромный удар светом: +2% урона за каждый процент недостающего здоровья цели."
+# <<< contentgen: hidden

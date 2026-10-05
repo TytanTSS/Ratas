@@ -1,8 +1,14 @@
-# Content generator: Python data with Russian and English text -> TOML content
-# files and the English catalog. Every text is given as a (ru, en) pair.
+# Content generator: Python data with Russian and English text -> regions of the
+# TOML content files and of the English catalogs. Every text is given as a
+# (ru, en) pair. A region lies between "# >>> contentgen: <name>" and
+# "# <<< contentgen: <name>"; the rest of a file is written by hand and kept.
+import contextlib
 import json
+import os
+import re
 
-EN = {}  # ru -> en
+EN = {}  # ru -> en of the current build: one text, one translation
+ALL = {}  # ru -> en of every pair ever registered (also while the data modules load)
 
 
 def T(pair):
@@ -13,7 +19,21 @@ def T(pair):
     if ru in EN and EN[ru] != en:
         raise SystemExit(f"two translations for {ru!r}: {EN[ru]!r} / {en!r}")
     EN[ru] = en
+    ALL.setdefault(ru, en)
     return ru
+
+
+def _texts(v, out):
+    """The translatable (Cyrillic) texts of a value."""
+    if isinstance(v, str):
+        if re.search("[Ѐ-ӿ]", v):
+            out.append(v)
+    elif isinstance(v, (list, tuple)):
+        for x in v:
+            _texts(x, out)
+    elif isinstance(v, dict):
+        for x in v.values():
+            _texts(x, out)
 
 
 def q(s):
@@ -36,39 +56,134 @@ def val(v):
     raise TypeError(v)
 
 
+def _mark(name):
+    return f"# >>> contentgen: {name}"
+
+
+def _end(name):
+    return f"# <<< contentgen: {name}"
+
+
+_REGION = re.compile(r"^# >>> contentgen: (\S+)\n.*?^# <<< contentgen: \1$\n?", re.S | re.M)
+
+
+def strip_regions(text):
+    """A file without its generated regions (what was written by hand)."""
+    return _REGION.sub("", text)
+
+
+def splice(path, regions, header):
+    """Puts the regions [(name, body)] into a file: replaces them in place, appends
+    the missing ones; a new file starts with the header."""
+    text = header.rstrip() + "\n"
+    if os.path.exists(path):
+        with open(path) as f:
+            text = f.read()
+    for name, body in regions:
+        block = _mark(name) + "\n" + (body + "\n" if body else "") + _end(name)
+        pat = re.compile(rf"^{re.escape(_mark(name))}\n.*?^{re.escape(_end(name))}$", re.S | re.M)
+        if pat.search(text):
+            text = pat.sub(lambda m: block, text, count=1)
+        else:
+            text = text.rstrip("\n") + "\n\n" + block + "\n"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(text)
+
+
+class Part:
+    def __init__(self):
+        self.lines = []
+        self.en = {}  # ru -> en of the texts its tables use
+
+
 class Out:
-    def __init__(self, header):
-        self.lines = [header.rstrip(), ""]
+    """Generated tables by region (file, name), in the order they were made."""
+
+    def __init__(self):
+        self.parts = {}
+        self.cur = None
+        self.pending = None
+
+    def at(self, file, region):
+        """What follows goes into a region of a content file."""
+        self.cur = self.parts.setdefault((file, region), Part())
+        self._flush()
+
+    @contextlib.contextmanager
+    def into(self, file, region):
+        """Writes a few tables into another region and comes back."""
+        prev, pending = self.cur, self.pending
+        self.cur, self.pending = self.parts.setdefault((file, region), Part()), None
+        try:
+            yield
+        finally:
+            self.cur, self.pending = prev, pending
 
     def comment(self, text):
-        self.lines += ["", f"# ---- {text} ----", ""]
+        """A section title for the tables that follow."""
+        self.pending = text
+
+    def _flush(self):
+        if self.pending is not None and self.cur is not None:
+            self.cur.lines += ["", f"# ---- {self.pending} ----", ""]
+            self.pending = None
 
     def table(self, kind, fields, subtables=None):
-        self.lines.append(f"[[{kind}]]")
+        self._flush()
+        found = []
+        _texts([fields, subtables], found)
+        for ru in found:
+            en = EN.get(ru, ALL.get(ru))
+            if en is not None:
+                self.cur.en.setdefault(ru, en)
+        lines = self.cur.lines
+        lines.append(f"[[{kind}]]")
         for k, v in fields.items():
             if v is None or v == [] or v == {}:
                 continue
-            self.lines.append(f"{k} = {val(v)}")
+            lines.append(f"{k} = {val(v)}")
         for name, sub in (subtables or {}).items():
             if sub is None:
                 continue
-            self.lines.append(f"[{kind}.{name}]")
+            lines.append(f"[{kind}.{name}]")
             for k, v in sub.items():
                 if v is None or v == [] or v == {}:
                     continue
-                self.lines.append(f"{k} = {val(v)}")
-        self.lines.append("")
+                lines.append(f"{k} = {val(v)}")
+        lines.append("")
 
-    def write(self, path):
-        with open(path, "w") as f:
-            f.write("\n".join(self.lines).rstrip() + "\n")
+    def text(self, file, region):
+        part = self.parts.get((file, region))
+        return "\n".join(part.lines) if part else ""
 
-
-def write_catalog(path, header):
-    with open(path, "w") as f:
-        f.write(f"# {header}\n")
-        for ru, en in EN.items():
-            f.write(f"{q(ru)} = {q(en)}\n")
+    def write(self, data, cat, existing, must_differ):
+        """Writes the regions into data/<file> and their new translations into the
+        same regions of cat/<file>. A translation that already exists outside the
+        generated regions wins; returns the texts of must_differ that would get
+        another meaning there."""
+        content, catalogs = {}, {}
+        conflicts, written, reused = {}, {}, set()
+        for (file, region), part in self.parts.items():
+            content.setdefault(file, []).append((region, "\n".join(part.lines).strip("\n")))
+            lines = []
+            for ru, en in part.en.items():
+                have = existing.get(ru, written.get(ru))
+                if have is not None:
+                    if have != en and ru not in conflicts and ru not in reused:
+                        reused.add(ru)
+                        print(f"reuse {file}: {ru!r}: {have!r} (not {en!r})")
+                        if ru in must_differ:
+                            conflicts[ru] = en
+                    continue
+                written[ru] = en
+                lines.append(f"{q(ru)} = {q(en)}")
+            catalogs.setdefault(file, []).append((region, "\n".join(lines)))
+        for file, regions in content.items():
+            splice(f"{data}/{file}", regions, "# Создано tools/contentgen/run.py.")
+        for file, regions in catalogs.items():
+            splice(f"{cat}/{file}", regions, f"# content/{file}")
+        return conflicts
 
 
 # ---- builders ----
@@ -81,13 +196,13 @@ def buff(key, name, ms, stats=None, dot=None, dmg=None, stun=False, silence=Fals
 
 def ability(out, key, name, kind, desc, color, mana=0, cd=1000, damage=None, dmg=None, scale=None, k=None,
             range_=None, radius=None, count=None, speed=None, glyph=None, equip=None, split=None, leech=None,
-            execute=None, backstab=None, summon=None, duration=None, buff_=None, on_hit=None):
+            execute=None, backstab=None, summon=None, duration=None, buff_=None, on_hit=None, fx=None):
     out.table("abilities", {
         "key": key, "name": T(name), "kind": kind, "mana": mana, "cooldown_ms": cd,
         "damage": damage, "dmg_type": dmg, "split": split, "scale": scale, "scale_k": k, "leech": leech,
         "execute": execute, "backstab": backstab, "range": range_, "radius": radius, "count": count,
         "speed_ms": speed, "summon": summon, "duration_ms": duration, "equip": equip,
-        "glyph": glyph, "color": color, "desc": T(desc),
+        "glyph": glyph, "color": color, "fx": fx, "desc": T(desc),
     }, {"buff": buff_, "on_hit": on_hit})
 
 

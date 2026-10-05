@@ -408,8 +408,7 @@ impl TextInput {
                 .text
                 .char_indices()
                 .nth(self.cursor)
-                .map(|(i, _)| i)
-                .unwrap_or(self.text.len());
+                .map_or(self.text.len(), |(i, _)| i);
             self.text.insert(at, c);
             self.cursor += 1;
         }

@@ -40,13 +40,12 @@ pub fn slot_name(slot: &str) -> &'static str {
 
 /// Whether an item can be worn at all.
 pub fn equippable(d: Option<&ItemDef>) -> bool {
-    d.map(|d| {
+    d.is_some_and(|d| {
         matches!(
             d.kind.as_str(),
             "weapon" | "shield" | "offhand" | "head" | "chest" | "belt" | "legs" | "back" | "ring"
         )
     })
-    .unwrap_or(false)
 }
 
 /// The default slot of an item ("" = not equipment).
@@ -68,9 +67,7 @@ pub fn slot_for(d: Option<&ItemDef>) -> &'static str {
 }
 
 pub fn two_handed(st: &ItemStack) -> bool {
-    st.def()
-        .map(|d| d.kind == "weapon" && d.hands >= 2)
-        .unwrap_or(false)
+    st.def().is_some_and(|d| d.kind == "weapon" && d.hands >= 2)
 }
 
 impl Game {
@@ -114,7 +111,7 @@ impl Game {
             if let Some(off) = p.equip.remove(SLOT_OFF) {
                 freed.push(off);
             }
-        } else if slot == SLOT_OFF && p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false) {
+        } else if slot == SLOT_OFF && p.equip.get(SLOT_MAIN).is_some_and(two_handed) {
             freed.push(p.equip.remove(SLOT_MAIN).unwrap());
         }
         p.equip.insert(slot.into(), st.clone());

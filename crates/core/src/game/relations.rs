@@ -40,7 +40,7 @@ impl VillageGrid {
                 p.x.div_euclid(VILLAGE_SQUARE),
                 p.y.div_euclid(VILLAGE_SQUARE),
             ))
-            .map(|v| v.as_slice())
+            .map(Vec::as_slice)
             .unwrap_or(&[])
     }
 }

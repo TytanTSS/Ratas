@@ -386,6 +386,11 @@ fn proxy_for(base: &str) -> Option<String> {
 
 pub type Done<T> = Box<dyn FnOnce(Result<T, String>) + Send>;
 
+/// The reply of a model as the structure its schema asked for.
+fn parse<T: serde::de::DeserializeOwned>(r: Result<Value, String>) -> Result<T, String> {
+    r.and_then(|v| serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}")))
+}
+
 impl Brain {
     /// The Brain the settings ask for; a local model starts in the
     /// background (or keeps running from an earlier world).
@@ -556,9 +561,7 @@ impl Brain {
             }
             let r = b.call(NPC_SYSTEM, &npc_prompt(&req), npc_schema(), 4096);
             b.0.talking.fetch_sub(1, Ordering::SeqCst);
-            done(r.and_then(|v| {
-                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
-            }));
+            done(parse(r));
         });
     }
 
@@ -577,9 +580,7 @@ impl Brain {
         std::thread::spawn(move || {
             let r = b.call(TACTIC_SYSTEM, &tactic_prompt(&req), tactic_schema(), 2048);
             b.0.tactics.fetch_sub(1, Ordering::SeqCst);
-            done(r.and_then(|v| {
-                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
-            }));
+            done(parse(r));
         });
         true
     }
@@ -600,9 +601,7 @@ impl Brain {
             let local = b.provider() == Provider::Local;
             let r = b.call(GM_SYSTEM, &gm_prompt(&req), gm_schema(local), 4096);
             b.0.mastering.store(false, Ordering::SeqCst);
-            done(r.and_then(|v| {
-                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
-            }));
+            done(parse(r));
         });
         true
     }
@@ -624,9 +623,7 @@ impl Brain {
                 16000,
                 local::MAX_STORY,
             );
-            done(r.and_then(|v| {
-                serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}"))
-            }));
+            done(parse(r));
         });
     }
 

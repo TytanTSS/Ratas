@@ -1,0 +1,590 @@
+# Шаман: подклассы Повелитель бурь и Хранитель духов; секретный подкласс Огненный провидец;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "stormcaller"
+name = "Повелитель бурь"
+class = "shaman"
+color = "#fff06a"
+desc = "Цепные молнии и грозы."
+
+[[subclasses]]
+key = "spiritkeeper"
+name = "Хранитель духов"
+class = "shaman"
+color = "#80e0c0"
+desc = "Духи предков лечат и защищают, призрачные волки сражаются рядом."
+
+[[branches]]
+key = "shaman"
+name = "Шаман"
+color = "#7ad0ff"
+desc = "Буря и духи."
+class = "shaman"
+
+[[branches]]
+key = "stormcaller"
+name = "Повелитель бурь"
+color = "#fff06a"
+desc = "Молнии и грозы."
+class = "shaman"
+subclass = "stormcaller"
+
+[[branches]]
+key = "spiritkeeper"
+name = "Хранитель духов"
+color = "#80e0c0"
+desc = "Исцеление и призрачные волки."
+class = "shaman"
+subclass = "spiritkeeper"
+
+# ---- Шаман ----
+
+[[skills]]
+key = "storm_call"
+name = "Зов бури"
+branch = "shaman"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Молнии слушаются вас."
+stats = { lightning_pct = 8, max_mp = 4 }
+
+[[skills]]
+key = "spirit_bond"
+name = "Связь с духами"
+branch = "shaman"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Духи возвращают силы."
+stats = { hp_regen = 0.2, mp_regen = 0.2 }
+
+[[skills]]
+key = "lightning_mastery"
+name = "Повелитель молний"
+branch = "shaman"
+tier = 2
+max_rank = 3
+level = 3
+requires = ["storm_call"]
+desc = "Молнии и заклинания сильнее."
+stats = { lightning_pct = 5, spell_pct = 5 }
+
+[[skills]]
+key = "wolf_spirit"
+name = "Дух волка"
+branch = "shaman"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["spirit_bond"]
+grants = "wolf_spirit"
+desc = "Вы и союзники рядом бегаете и бьёте быстрее."
+
+[[skills]]
+key = "earth_ward"
+name = "Каменный тотем"
+branch = "shaman"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["wolf_spirit"]
+desc = "Защита духов земли."
+stats = { armor = 3, res_elemental = 5 }
+
+[[skills]]
+key = "storm_mastery"
+name = "Сердце бури"
+branch = "stormcaller"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон молнией."
+stats = { lightning_pct = 8 }
+
+[[skills]]
+key = "chain_lightning"
+name = "Цепная молния"
+branch = "stormcaller"
+tier = 1
+max_rank = 1
+level = 5
+grants = "chain_lightning"
+desc = "Молния перескакивает между врагами и снижает их сопротивление молнии."
+
+[[skills]]
+key = "static_field"
+name = "Статическое поле"
+branch = "stormcaller"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["chain_lightning"]
+grants = "static_field"
+desc = "Разряды бьют всех вокруг."
+
+[[skills]]
+key = "thunderstorm"
+name = "Гроза"
+branch = "stormcaller"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["static_field"]
+grants = "thunderstorm"
+desc = "Буря обрушивает молнии на всех врагов вокруг."
+
+[[skills]]
+key = "ancestral_mend"
+name = "Исцеление предков"
+branch = "spiritkeeper"
+tier = 1
+max_rank = 1
+level = 5
+grants = "spirit_mend"
+desc = "Духи лечат вас и союзников."
+
+[[skills]]
+key = "totem_ward"
+name = "Тотем-хранитель"
+branch = "spiritkeeper"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Лечение сильнее, урон слабее."
+stats = { heal_pct = 6, res_all = 2 }
+
+[[skills]]
+key = "spirit_wolves"
+name = "Призрачные волки"
+branch = "spiritkeeper"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["ancestral_mend"]
+grants = "summon_wolf"
+desc = "Два призрачных волка сражаются на вашей стороне."
+
+[[skills]]
+key = "ancestral_guard"
+name = "Стража предков"
+branch = "spiritkeeper"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["spirit_wolves"]
+grants = "ancestral_guard"
+desc = "Духи заслоняют вас и союзников."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "lightning_bolt"
+name = "Разряд молнии"
+kind = "projectile"
+mana = 4
+cooldown_ms = 900
+dmg_type = "lightning"
+damage = [4, 9]
+scale = "int"
+scale_k = 1.1
+range = 10
+speed_ms = 20
+glyph = "*"
+color = "#fff06a"
+desc = "Стремительная молния в ближайшего врага."
+
+[[abilities]]
+key = "wolf_spirit"
+name = "Дух волка"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+radius = 4
+color = "#a0c8ff"
+fx = "spirit"
+desc = "Вам и союзникам в радиусе 4: +20% скорости бега и +15% скорости атаки на 10 с."
+[abilities.buff]
+key = "wolf_spirit"
+name = "Дух волка"
+duration_ms = 10000
+stats = { move_speed = 20, attack_speed = 15 }
+color = "#a0c8ff"
+
+[[abilities]]
+key = "chain_lightning"
+name = "Цепная молния"
+kind = "chain"
+mana = 12
+cooldown_ms = 4000
+count = 4
+range = 8
+dmg_type = "lightning"
+damage = [8, 13]
+scale = "int"
+scale_k = 1.2
+glyph = "*"
+color = "#fff06a"
+desc = "Перескакивает на 4 врагов, снижая их сопротивление молнии на 25%."
+[abilities.on_hit]
+key = "shocked"
+name = "Шок"
+duration_ms = 6000
+stats = { res_lightning = -25, attack_speed = -10 }
+color = "#fff06a"
+
+[[abilities]]
+key = "static_field"
+name = "Статическое поле"
+kind = "nova"
+mana = 14
+cooldown_ms = 8000
+radius = 3
+dmg_type = "lightning"
+damage = [8, 12]
+scale = "int"
+scale_k = 1.0
+glyph = "*"
+color = "#fff8a0"
+desc = "Молнии в радиусе 3 и шок."
+[abilities.on_hit]
+key = "shocked"
+name = "Шок"
+duration_ms = 6000
+stats = { res_lightning = -25, attack_speed = -10 }
+color = "#fff06a"
+
+[[abilities]]
+key = "thunderstorm"
+name = "Гроза"
+kind = "nova"
+mana = 30
+cooldown_ms = 15000
+radius = 4
+dmg_type = "lightning"
+damage = [16, 26]
+scale = "int"
+scale_k = 1.5
+glyph = "*"
+color = "#fff8a0"
+fx = "thunder"
+desc = "Молнии бьют всех врагов в радиусе 4 и оглушают."
+[abilities.on_hit]
+key = "storm_shock"
+name = "Оглушающий разряд"
+duration_ms = 800
+stun = true
+color = "#fff06a"
+
+[[abilities]]
+key = "spirit_mend"
+name = "Исцеление предков"
+kind = "heal"
+mana = 12
+cooldown_ms = 7000
+radius = 5
+damage = [14, 20]
+scale = "int"
+scale_k = 1.3
+glyph = "+"
+color = "#80e0c0"
+fx = "spirit"
+desc = "Лечит вас и союзников в радиусе 5."
+
+[[abilities]]
+key = "summon_wolf"
+name = "Призрачные волки"
+kind = "summon"
+mana = 18
+cooldown_ms = 30000
+count = 2
+summon = "spirit_wolf"
+duration_ms = 25000
+color = "#80c8ff"
+fx = "spirit"
+desc = "Два призрачных волка на 25 с."
+
+[[abilities]]
+key = "ancestral_guard"
+name = "Стража предков"
+kind = "buff"
+mana = 16
+cooldown_ms = 25000
+radius = 5
+color = "#80e0c0"
+fx = "shield spirit"
+desc = "Вам и союзникам в радиусе 5: +15% сопротивления всему и +2 к восстановлению здоровья на 12 с."
+[abilities.buff]
+key = "ancestral_guard"
+name = "Стража предков"
+duration_ms = 12000
+stats = { res_all = 15, hp_regen = 2 }
+color = "#80e0c0"
+
+# >>> contentgen: secret_path
+# ---- Огненный провидец (шаман) ----
+
+[[subclasses]]
+key = "fireseer"
+name = "Огненный провидец"
+class = "shaman"
+color = "#ff6a2a"
+desc = "Духи огня и лава: извержения и пламенные духи."
+secret = true
+
+[[branches]]
+key = "fireseer"
+name = "Огненный провидец"
+color = "#ff6a2a"
+desc = "Пламя недр."
+class = "shaman"
+subclass = "fireseer"
+
+[[skills]]
+key = "fs_magma_blood"
+name = "Кровь магмы"
+branch = "fireseer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон огнём и защита от него."
+stats = { fire_pct = 7, res_fire = 4 }
+
+[[skills]]
+key = "fs_lava_burst"
+name = "Выброс лавы"
+branch = "fireseer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "fs_lava_burst"
+desc = "Сгусток лавы поджигает врагов."
+
+[[abilities]]
+key = "fs_lava_burst"
+name = "Выброс лавы"
+kind = "projectile"
+mana = 8
+cooldown_ms = 3000
+damage = [10, 15]
+dmg_type = "fire"
+scale = "int"
+scale_k = 1.1
+range = 8
+radius = 1
+speed_ms = 35
+glyph = "*"
+color = "#ff6a2a"
+desc = "Огонь в радиусе 1 и горение на 4 с."
+[abilities.on_hit]
+key = "lava_burn"
+name = "Горение"
+duration_ms = 4000
+dot_per_sec = 4
+dmg_type = "fire"
+color = "#ff6a2a"
+
+[[skills]]
+key = "fs_flame_spirits"
+name = "Духи пламени"
+branch = "fireseer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["fs_lava_burst"]
+grants = "fs_flame_spirits"
+desc = "Огненные духи бьются за вас."
+
+[[abilities]]
+key = "fs_flame_spirits"
+name = "Духи пламени"
+kind = "summon"
+mana = 18
+cooldown_ms = 30000
+count = 2
+summon = "imp_minion"
+duration_ms = 40000
+color = "#ff8a3a"
+fx = "fire"
+desc = "Два огненных беса на 40 с."
+
+[[skills]]
+key = "fs_eruption"
+name = "Извержение"
+branch = "fireseer"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["fs_flame_spirits"]
+grants = "fs_eruption"
+desc = "Земля вокруг взрывается огнём."
+
+[[abilities]]
+key = "fs_eruption"
+name = "Извержение"
+kind = "nova"
+mana = 32
+cooldown_ms = 16000
+damage = [22, 34]
+dmg_type = "fire"
+scale = "int"
+scale_k = 1.7
+radius = 4
+glyph = "^"
+color = "#ff4a1a"
+fx = "eruption"
+desc = "Огонь в радиусе 4: огромный урон."
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Шаман ----
+
+[[branches]]
+key = "shaman_hidden"
+name = "Скрытые навыки: Шаман"
+color = "#7ad0ff"
+desc = "Навыки, которые открываются сами за деяния."
+class = "shaman"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hsh_thunder_child"
+name = "Сын грома"
+branch = "shaman_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:lightning"
+deed_count = 15000
+desc = "Гром — ваш голос."
+stats = { lightning_pct = 12 }
+
+[[skills]]
+key = "hsh_spirit_friend"
+name = "Друг духов"
+branch = "shaman_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "summons"
+deed_count = 50
+desc = "Духи охотно приходят на зов."
+stats = { hp_regen = 1, spell_pct = 4 }
+
+[[skills]]
+key = "hsh_north_child"
+name = "Дитя севера"
+branch = "shaman_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:tundra"
+deed_count = 150
+desc = "Холод вам нипочём."
+stats = { res_cold = 15, max_hp = 10 }
+
+[[skills]]
+key = "hsh_giantslayer"
+name = "Убийца великанов"
+branch = "shaman_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:frost_giant"
+deed_count = 5
+desc = "Великаны падают, как деревья."
+stats = { str = 3, lightning_pct = 6 }
+
+[[skills]]
+key = "hsh_tribal_healer"
+name = "Целитель племени"
+branch = "shaman_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "heal"
+deed_count = 8000
+desc = "Духи предков лечат вашими руками."
+stats = { heal_pct = 10 }
+
+[[skills]]
+key = "hsh_night_ritual"
+name = "Ночное камлание"
+branch = "shaman_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "night"
+deed_count = 80
+desc = "Ночью духи ближе."
+stats = { mp_regen = 0.6, sight = 1 }
+
+[[skills]]
+key = "hsh_tireless"
+name = "Неутомимый"
+branch = "shaman_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "casts"
+deed_count = 400
+desc = "Камлать можно бесконечно."
+stats = { max_mp = 20 }
+
+[[skills]]
+key = "hsh_hill_wind"
+name = "Ветер холмов"
+branch = "shaman_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:hills"
+deed_count = 150
+desc = "Ветер несёт вас."
+stats = { move_speed = 6, dodge = 3 }
+
+[[skills]]
+key = "hsh_lightning_strike"
+name = "Удар молнии"
+branch = "shaman_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "crits"
+deed_count = 200
+desc = "Молния не бьёт дважды. Вы — бьёте."
+stats = { crit = 4 }
+
+[[skills]]
+key = "hsh_storm_avatar"
+name = "Аватар бури"
+branch = "shaman_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hsh_storm_avatar"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути шамана: стать самой бурей."
+
+[[abilities]]
+key = "hsh_storm_avatar"
+name = "Аватар бури"
+kind = "buff"
+mana = 20
+cooldown_ms = 60000
+color = "#fff06a"
+fx = "form storm"
+desc = "15 с: +50% урона молнией и +20% скорости бега."
+[abilities.buff]
+key = "storm_avatar"
+name = "Аватар бури"
+duration_ms = 15000
+stats = { lightning_pct = 50, move_speed = 20 }
+color = "#fff06a"
+# <<< contentgen: hidden

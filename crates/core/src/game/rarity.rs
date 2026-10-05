@@ -84,6 +84,36 @@ impl ItemStack {
     }
 }
 
+/// The random bonuses of magic items: stat, name suffix ("… силы"), base strength.
+const AFFIXES: &[(&str, &str, f64)] = &[
+    ("str", "силы", 1.5),
+    ("dex", "ловкости", 1.5),
+    ("int", "мудрости", 1.5),
+    ("vit", "здоровья", 1.5),
+    ("max_hp", "жизни", 8.0),
+    ("crit", "точности", 2.0),
+    ("armor", "защиты", 1.5),
+    ("move_speed", "ветра", 4.0),
+    ("spell_pct", "чародейства", 6.0),
+    ("melee_pct", "ярости", 6.0),
+    ("ranged_pct", "меткости", 6.0),
+    ("mp_regen", "покоя", 0.4),
+    ("res_fire", "огнеупорности", 8.0),
+    ("res_cold", "тепла", 8.0),
+    ("res_lightning", "заземления", 8.0),
+    ("res_poison", "противоядия", 9.0),
+    ("res_shadow", "рассвета", 8.0),
+    ("res_elemental", "стихий", 4.0),
+    ("life_leech", "вампира", 1.2),
+    ("thorns", "шипов", 2.0),
+    ("add_fire", "пламени", 1.5),
+    ("add_cold", "стужи", 1.5),
+    ("add_lightning", "грома", 1.5),
+    ("add_poison", "яда", 1.5),
+    ("holy_pct", "праведника", 6.0),
+    ("shadow_pct", "тьмы", 6.0),
+];
+
 /// Keeps bonuses sensible: weapon damage only on weapons and rings.
 fn affix_fits(stat: &str, d: &ItemDef) -> bool {
     if stat.starts_with("add_") || stat == "life_leech" {
@@ -130,12 +160,11 @@ impl Game {
         st.rarity = r.min(LEGENDARY);
         st.bonus.clear();
         st.suffix.clear();
-        let affixes = super::combat::affix_list();
-        for i in self.rng.perm(affixes.len()) {
+        for i in self.rng.perm(AFFIXES.len()) {
             if st.bonus.len() as i32 >= st.rarity {
                 break;
             }
-            let (stat, suffix, base) = affixes[i];
+            let (stat, suffix, base) = AFFIXES[i];
             if !affix_fits(stat, d) {
                 continue;
             }

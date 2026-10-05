@@ -206,6 +206,11 @@ impl Db {
             for t in &a.split {
                 dmg(&mut p, &format!("ability {}", a.key), t);
             }
+            for w in a.fx.split_whitespace() {
+                if !FX_ELEMENTS.contains(&w) && !FX_SHAPES.contains(&w) {
+                    p.push(format!("ability {:?}: unknown fx {:?}", a.key, w));
+                }
+            }
             if !a.summon.is_empty() && !self.monsters.contains_key(&a.summon) {
                 p.push(format!(
                     "ability {:?}: unknown summon {:?}",
@@ -258,8 +263,7 @@ impl Db {
             if !br.subclass.is_empty() {
                 let ok = self
                     .subclass(&br.subclass)
-                    .map(|s| s.class == br.class)
-                    .unwrap_or(false);
+                    .is_some_and(|s| s.class == br.class);
                 if !ok {
                     p.push(format!(
                         "branch {:?}: unknown subclass {:?} of class {:?}",

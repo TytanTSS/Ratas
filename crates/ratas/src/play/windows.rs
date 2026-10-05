@@ -24,8 +24,7 @@ pub fn rarity_col(it: &ItemView) -> Color {
 pub fn item_icon(g: &mut Gfx, it: &ItemView, r: Rect) {
     let color = content::db()
         .item(&it.key)
-        .map(|d| d.color.clone())
-        .unwrap_or_else(|| it.color.clone());
+        .map_or_else(|| it.color.clone(), |d| d.color.clone());
     if it.rarity > 0 {
         g.glow(
             r.x + r.w / 2.0,
@@ -378,7 +377,7 @@ pub fn inventory(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     if let Some(it) = it {
         item_details(g, &it, dx, dy, dw, None);
     }
-    let gold = p.snap.as_ref().map(|s| s.you.gold).unwrap_or(0);
+    let gold = p.snap.as_ref().map_or(0, |s| s.you.gold);
     g.text(
         &format!("Золото: {gold}"),
         inner.x,
@@ -786,13 +785,12 @@ pub fn world_map(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         .as_ref()
         .map(|sh| sh.places.as_slice())
         .unwrap_or(&[]);
-    let you = p.welcome.as_ref().map(|w| w.you_id).unwrap_or(0);
+    let you = p.welcome.as_ref().map_or(0, |w| w.you_id);
     let facing = snap
         .entities
         .iter()
         .find(|e| e.id == you)
-        .map(|e| e.facing)
-        .unwrap_or(0.0);
+        .map_or(0.0, |e| e.facing);
     atlas::draw_world_map(
         g,
         &mut p.wr.atlas,
@@ -1192,9 +1190,7 @@ pub fn lore(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                 "• {}, {} — {}",
                 tr(&u.name),
                 tr(&ratas_core::i18n::lower_first(&u.title)),
-                tr(land_word(
-                    u.biomes.first().map(|b| b.as_str()).unwrap_or("")
-                ))
+                tr(land_word(u.biomes.first().map_or("", String::as_str)))
             );
             for l in g.wrap(&line, inner.w, size, false) {
                 lines.push((l, col(&u.color), false));

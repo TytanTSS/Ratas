@@ -283,7 +283,7 @@ pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
     // villages first: the start is in the first one
     let mut villages = place_villages(&mut r, &mut l, &main, &cities, heart, land, &mut names);
     villages.extend(cities);
-    let start = villages.first().map(|v| v.center).unwrap_or(heart);
+    let start = villages.first().map_or(heart, |v| v.center);
     build_roads(&mut l, &villages);
     let (regions, region_map) = name_regions(&mut r, &l, &villages, sc);
     main = largest_region(&l);
@@ -358,8 +358,7 @@ fn noise_fields(w: i32, h: i32, sc: MapScale, n: &[Perlin; 5]) -> NoiseFields {
         ]
     };
     let threads = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(4)
+        .map_or(4, |n| n.get())
         .clamp(1, 16);
     let rows = (h as usize).div_ceil(threads).max(1);
     let span = rows * w as usize;
@@ -500,19 +499,10 @@ pub fn largest_region(l: &Level) -> Vec<bool> {
 }
 
 pub fn find_free(l: &Level, p: Pos) -> Pos {
-    for rad in 0..30i32 {
-        for dy in -rad..=rad {
-            for dx in -rad..=rad {
-                if dx.abs().max(dy.abs()) != rad {
-                    continue;
-                }
-                if l.walkable(p.x + dx, p.y + dy) {
-                    return Pos::new(p.x + dx, p.y + dy);
-                }
-            }
-        }
-    }
-    p
+    (0..30)
+        .flat_map(|rad| p.ring(rad))
+        .find(|q| l.walkable(q.x, q.y))
+        .unwrap_or(p)
 }
 
 pub fn is_ground(tile: u8) -> bool {

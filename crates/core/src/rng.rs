@@ -43,8 +43,7 @@ impl Rng {
     pub fn from_time() -> Rng {
         let t = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(42);
+            .map_or(42, |d| d.as_nanos() as u64);
         let addr = &t as *const u64 as u64;
         Rng::new(t, addr ^ 0x9e3779b97f4a7c15)
     }

@@ -147,7 +147,7 @@ pub fn xp_for_level(l: i32) -> i32 {
 pub const ERR_NAME_TAKEN: &str = "игрок с таким именем уже в игре";
 
 impl Game {
-    pub(crate) fn new_player(&mut self, name: &str, class_key: &str) -> Entity {
+    pub(crate) fn new_player(&self, name: &str, class_key: &str) -> Entity {
         let d = db();
         let c = match d.class(class_key) {
             Some(c) if !c.secret => c, // secret classes are earned, not chosen
@@ -182,22 +182,18 @@ impl Game {
             let def = st.def();
             let p = e.pm();
             let mut slot = slot_for(def).to_string();
-            let main_taken = p
-                .equip
-                .get(SLOT_MAIN)
-                .map(|s| !s.key.is_empty())
-                .unwrap_or(false);
+            let main_taken = p.equip.get(SLOT_MAIN).is_some_and(|s| !s.key.is_empty());
             if slot == SLOT_MAIN
                 && main_taken
                 && !two_handed(&st)
-                && !p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false)
+                && !p.equip.get(SLOT_MAIN).is_some_and(two_handed)
             {
                 slot = SLOT_OFF.into(); // a second one-handed weapon goes to the left hand
             }
-            if slot == SLOT_OFF && p.equip.get(SLOT_MAIN).map(two_handed).unwrap_or(false) {
+            if slot == SLOT_OFF && p.equip.get(SLOT_MAIN).is_some_and(two_handed) {
                 slot.clear();
             }
-            if !slot.is_empty() && p.equip.get(&slot).map(|s| s.key.is_empty()).unwrap_or(true) {
+            if !slot.is_empty() && p.equip.get(&slot).is_none_or(|s| s.key.is_empty()) {
                 p.equip.insert(slot, st);
             } else if p.inventory.len() < INVENTORY_SIZE {
                 p.inventory.push(st);
@@ -413,10 +409,8 @@ impl Game {
         // an enemy in the way
         if now >= e.next_attack {
             let mut target = None;
-            for oid in self.on_level(&level) {
-                let Some(o) = self.ents.get(&oid) else {
-                    continue;
-                };
+            for oid in self.near(&level, e.pos, e.radius() + BOSS_RADIUS + 0.12) {
+                let o = &self.ents[&oid];
                 if !self.hostile(id, oid) || !o.blocks() {
                     continue;
                 }
@@ -511,10 +505,8 @@ impl Game {
         // the nearest friendly NPC in reach, the one looked at first
         let fv = e.facing_vec();
         let mut best: Option<(Id, f32)> = None;
-        for oid in self.on_level(&level) {
-            let Some(o) = self.ents.get(&oid) else {
-                continue;
-            };
+        for oid in self.near(&level, e.pos, 1.9) {
+            let o = &self.ents[&oid];
             if o.npc.is_none() || self.hostile(id, oid) || !o.alive() {
                 continue;
             }
@@ -523,7 +515,7 @@ impl Game {
                 continue;
             }
             let score = d - (o.pos - e.pos).norm().dot(fv) * 0.6;
-            if best.map(|b| score < b.1).unwrap_or(true) {
+            if best.is_none_or(|b| score < b.1) {
                 best = Some((oid, score));
             }
         }
@@ -881,13 +873,12 @@ impl Game {
         let e = &self.ents[&id];
         let (level, pos) = (e.level.clone(), e.pos);
         let items: Vec<Id> = self
-            .on_level(&level)
+            .near(&level, pos, 0.7)
             .into_iter()
             .filter(|o| {
                 self.ents
                     .get(o)
-                    .map(|o| o.kind == Kind::Item && o.pos.dist(pos) < 0.7)
-                    .unwrap_or(false)
+                    .is_some_and(|o| o.kind == Kind::Item && o.pos.dist(pos) < 0.7)
             })
             .collect();
         let mut relics = false;
@@ -903,7 +894,7 @@ impl Game {
                 continue;
             }
             if self.add_item(id, st.clone()) {
-                if st.def().map(|d| d.kind == "quest").unwrap_or(false) {
+                if st.def().is_some_and(|d| d.kind == "quest") {
                     relics = true;
                 }
                 let r = st.item_rarity();
@@ -1006,11 +997,9 @@ impl Game {
     /// Drinks the first healing or mana potion.
     pub(crate) fn quick_potion(&mut self, id: Id, mana: bool) {
         let best = self.ents[&id].p().inventory.iter().position(|st| {
-            st.def()
-                .map(|d| {
-                    d.kind == "consumable" && ((mana && d.mana > 0.0) || (!mana && d.heal > 0.0))
-                })
-                .unwrap_or(false)
+            st.def().is_some_and(|d| {
+                d.kind == "consumable" && ((mana && d.mana > 0.0) || (!mana && d.heal > 0.0))
+            })
         });
         match best {
             Some(i) => self.use_item(id, i as i32),

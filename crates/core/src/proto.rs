@@ -213,7 +213,8 @@ pub struct TargetView {
 }
 
 /// A visual effect: a floating text, a burst (glyph), an area flash (radius)
-/// or a beam (from x,y to x2,y2).
+/// or a beam (from x,y to x2,y2). A moment of an ability names the ability
+/// and the moment (FX_*), so that clients draw it in the ability's own look.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Fx {
     pub x: f32,
@@ -225,7 +226,27 @@ pub struct Fx {
     pub color: String,
     pub ms: i32,
     pub radius: f32,
+    #[serde(default)]
+    pub ability: String,
+    /// FX_* (0 for plain effects)
+    #[serde(default)]
+    pub part: u8,
 }
+
+/// The caster uses an ability (x2,y2: where it aims; radius: its reach).
+pub const FX_CAST: u8 = 1;
+/// A blow lands on a target (x2,y2: where it came from).
+pub const FX_HIT: u8 = 2;
+/// An ability covers an area around x,y (radius).
+pub const FX_AREA: u8 = 3;
+/// An ability runs from x,y to x2,y2 (dashes, chains).
+pub const FX_BEAM: u8 = 4;
+/// A projectile ends at x,y, coming from x2,y2 (radius: its blast).
+pub const FX_IMPACT: u8 = 5;
+/// A heal or a blessing reaches an ally at x,y.
+pub const FX_ALLY: u8 = 6;
+/// A creature is called at x,y by the caster at x2,y2.
+pub const FX_SUMMON: u8 = 7;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct LogLine {

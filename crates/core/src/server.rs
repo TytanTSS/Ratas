@@ -318,7 +318,7 @@ impl Loop {
         }
     }
 
-    fn autosave(&mut self) {
+    fn autosave(&self) {
         let Some(path) = self.opts.save_path.clone() else {
             return;
         };
@@ -437,7 +437,7 @@ impl Loop {
 
     fn is_admin(&self, sid: u64) -> bool {
         self.opts.admin_all
-            || (self.sessions.get(&sid).map(|s| s.host).unwrap_or(false) && self.opts.admin_host)
+            || (self.sessions.get(&sid).is_some_and(|s| s.host) && self.opts.admin_host)
     }
 
     fn hello(&mut self, sid: u64, h: Hello) {
@@ -497,7 +497,7 @@ impl Loop {
             content: if host {
                 Vec::new()
             } else {
-                crate::content::db().json.clone()
+                crate::content::db().json().to_vec()
             },
             world_name: self.game.world_name.clone(),
             seed: self.game.seed,
@@ -588,9 +588,10 @@ impl Loop {
             }
             self.send(sid, m);
         }
-        for id in self.game.online.values().copied().collect::<Vec<_>>() {
-            if let Some(e) = self.game.em(id) {
-                e.pm().dirty = false;
+        let g = &mut self.game;
+        for id in g.online.values() {
+            if let Some(p) = g.ents.get_mut(id).and_then(|e| e.player.as_mut()) {
+                p.dirty = false;
             }
         }
         self.game.end_frame();
@@ -677,8 +678,7 @@ mod tests {
         let later = wait(&guest, |m| {
             m.snap
                 .as_ref()
-                .map(|s| (s.you.x - first.x).abs() > 0.5 || (s.you.y - first.y).abs() > 0.5)
-                .unwrap_or(false)
+                .is_some_and(|s| (s.you.x - first.x).abs() > 0.5 || (s.you.y - first.y).abs() > 0.5)
         });
         assert!(later.snap.unwrap().online.len() == 2);
         // admin rights: the guest cannot, the host can

@@ -1,0 +1,575 @@
+# Чернокнижник: подклассы Проклинатель и Демонолог; секретный подкласс Пожиратель душ;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "hexer"
+name = "Проклинатель"
+class = "warlock"
+color = "#c05aff"
+desc = "Проклятия, обрекающие врагов на медленную смерть."
+
+[[subclasses]]
+key = "demonologist"
+name = "Демонолог"
+class = "warlock"
+color = "#ff5a5a"
+desc = "Призывает бесов и стражей бездны."
+
+[[branches]]
+key = "warlock"
+name = "Чернокнижник"
+color = "#b05aff"
+desc = "Тьма и похищение жизни."
+class = "warlock"
+
+[[branches]]
+key = "hexer"
+name = "Проклинатель"
+color = "#c05aff"
+desc = "Проклятия и рок."
+class = "warlock"
+subclass = "hexer"
+
+[[branches]]
+key = "demonologist"
+name = "Демонолог"
+color = "#ff5a5a"
+desc = "Призыв демонов."
+class = "warlock"
+subclass = "demonologist"
+
+[[abilities]]
+key = "shadow_bolt"
+name = "Стрела тьмы"
+kind = "projectile"
+mana = 4
+cooldown_ms = 900
+dmg_type = "shadow"
+damage = [5, 9]
+scale = "int"
+scale_k = 1.1
+range = 9
+speed_ms = 40
+glyph = "*"
+color = "#a07aff"
+desc = "Сгусток тьмы в ближайшего врага."
+
+# ---- Чернокнижник ----
+
+[[skills]]
+key = "dark_arts"
+name = "Тёмные искусства"
+branch = "warlock"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Тьма крепнет."
+stats = { shadow_pct = 8, max_mp = 4 }
+
+[[skills]]
+key = "pain_feeder"
+name = "Пожиратель боли"
+branch = "warlock"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Часть нанесённого урона возвращается здоровьем."
+stats = { life_leech = 1.5 }
+
+[[skills]]
+key = "soul_drain"
+name = "Похищение жизни"
+branch = "warlock"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["dark_arts"]
+grants = "drain_life"
+desc = "Тьма, возвращающая вам большую часть урона здоровьем."
+
+[[skills]]
+key = "shadow_ward"
+name = "Тень-оберег"
+branch = "warlock"
+tier = 2
+max_rank = 3
+level = 4
+requires = ["pain_feeder"]
+desc = "Тьма и магия ранят слабее."
+stats = { res_shadow = 6, res_magic = 3 }
+
+[[skills]]
+key = "hex_mastery"
+name = "Мастер порчи"
+branch = "hexer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Тьма и заклинания сильнее."
+stats = { shadow_pct = 6, spell_pct = 3 }
+
+[[skills]]
+key = "hex_of_frailty"
+name = "Порча хрупкости"
+branch = "hexer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "frailty"
+desc = "Враги вокруг теряют броню и сопротивления."
+
+[[skills]]
+key = "doom"
+name = "Рок"
+branch = "hexer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["hex_of_frailty"]
+grants = "doom"
+desc = "Долгое проклятие, медленно убивающее цель."
+
+[[skills]]
+key = "void_rift"
+name = "Разлом бездны"
+branch = "hexer"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["doom"]
+grants = "void_rift"
+desc = "Взрыв тьмы, после которого враги беззащитны."
+
+[[skills]]
+key = "summon_imp"
+name = "Призыв беса"
+branch = "demonologist"
+tier = 1
+max_rank = 1
+level = 5
+grants = "summon_imp"
+desc = "Огненный бес сражается на вашей стороне."
+
+[[skills]]
+key = "fel_bond"
+name = "Узы бездны"
+branch = "demonologist"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Здоровье и сила тьмы."
+stats = { max_hp = 12, shadow_pct = 5 }
+
+[[skills]]
+key = "demon_pact"
+name = "Договор с демоном"
+branch = "demonologist"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["summon_imp"]
+grants = "demon_pact"
+desc = "Сила заклинаний в обмен на жизнь."
+
+[[skills]]
+key = "summon_felguard"
+name = "Страж бездны"
+branch = "demonologist"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["demon_pact"]
+grants = "summon_felguard"
+desc = "Призывает могучего демона-стража."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "drain_life"
+name = "Похищение жизни"
+kind = "projectile"
+mana = 8
+cooldown_ms = 3000
+dmg_type = "shadow"
+damage = [7, 11]
+scale = "int"
+scale_k = 1.1
+leech = 60
+range = 8
+speed_ms = 40
+glyph = "*"
+color = "#d04a7a"
+fx = "blood"
+desc = "60% нанесённого урона возвращается здоровьем."
+
+[[abilities]]
+key = "frailty"
+name = "Порча хрупкости"
+kind = "nova"
+mana = 12
+cooldown_ms = 12000
+radius = 3
+damage = [0, 0]
+glyph = "%"
+color = "#c05aff"
+fx = "shadow"
+desc = "Враги вокруг на 8 с теряют 25% сопротивления всему и 5 брони."
+[abilities.on_hit]
+key = "frailty"
+name = "Хрупкость"
+duration_ms = 8000
+stats = { res_all = -25, armor = -5 }
+color = "#c05aff"
+
+[[abilities]]
+key = "doom"
+name = "Рок"
+kind = "projectile"
+mana = 12
+cooldown_ms = 9000
+dmg_type = "shadow"
+damage = [3, 5]
+scale = "int"
+scale_k = 0.4
+range = 9
+speed_ms = 45
+glyph = "%"
+color = "#7a2aff"
+desc = "Тьма терзает цель 10 с и ослабляет её защиту от тьмы."
+[abilities.on_hit]
+key = "doom"
+name = "Рок"
+duration_ms = 10000
+dot_per_sec = 9
+dmg_type = "shadow"
+stats = { res_shadow = -15 }
+color = "#7a2aff"
+
+[[abilities]]
+key = "void_rift"
+name = "Разлом бездны"
+kind = "projectile"
+mana = 30
+cooldown_ms = 13000
+dmg_type = "shadow"
+damage = [24, 36]
+scale = "int"
+scale_k = 2.0
+range = 10
+radius = 2
+speed_ms = 70
+glyph = "@"
+color = "#7a3aff"
+fx = "void"
+desc = "Взрыв тьмы: враги теряют 30% сопротивления тьме и 10% всему урону."
+[abilities.on_hit]
+key = "void"
+name = "Печать бездны"
+duration_ms = 6000
+stats = { res_shadow = -30, res_all = -10 }
+color = "#7a3aff"
+
+[[abilities]]
+key = "summon_imp"
+name = "Призыв беса"
+kind = "summon"
+mana = 14
+cooldown_ms = 25000
+count = 1
+summon = "imp_minion"
+duration_ms = 40000
+color = "#ff6a2a"
+fx = "demon"
+desc = "Огненный бес помогает вам 40 с."
+
+[[abilities]]
+key = "demon_pact"
+name = "Договор с демоном"
+kind = "buff"
+mana = 0
+cooldown_ms = 30000
+color = "#ff5a5a"
+fx = "demon"
+desc = "10 с: +40% силы заклинаний и +20% урона тьмой, но жизнь утекает."
+[abilities.buff]
+key = "demon_pact"
+name = "Договор с демоном"
+duration_ms = 10000
+stats = { spell_pct = 40, shadow_pct = 20, hp_regen = -2 }
+color = "#ff5a5a"
+
+[[abilities]]
+key = "summon_felguard"
+name = "Страж бездны"
+kind = "summon"
+mana = 30
+cooldown_ms = 45000
+count = 1
+summon = "felguard"
+duration_ms = 45000
+color = "#ff3a5a"
+fx = "demon"
+desc = "Могучий демон-страж сражается за вас 45 с."
+
+# >>> contentgen: secret_path
+# ---- Пожиратель душ (чернокнижник) ----
+
+[[subclasses]]
+key = "soul_eater"
+name = "Пожиратель душ"
+class = "warlock"
+color = "#9a2aff"
+desc = "Вырывает души врагов и питается ими."
+secret = true
+
+[[branches]]
+key = "soul_eater"
+name = "Пожиратель душ"
+color = "#9a2aff"
+desc = "Голод души."
+class = "warlock"
+subclass = "soul_eater"
+
+[[skills]]
+key = "se_hunger"
+name = "Голод"
+branch = "soul_eater"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Вампиризм и урон тьмой."
+stats = { life_leech = 1, shadow_pct = 4 }
+
+[[skills]]
+key = "se_soul_rip"
+name = "Вырвать душу"
+branch = "soul_eater"
+tier = 1
+max_rank = 1
+level = 5
+grants = "se_soul_rip"
+desc = "Тьма вырывает кусок души врага."
+
+[[abilities]]
+key = "se_soul_rip"
+name = "Вырвать душу"
+kind = "projectile"
+mana = 10
+cooldown_ms = 4000
+damage = [12, 18]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 1.2
+leech = 50
+range = 8
+speed_ms = 30
+glyph = "*"
+color = "#9a2aff"
+desc = "Урон тьмой, половина возвращается здоровьем."
+
+[[skills]]
+key = "se_soul_armor"
+name = "Доспех из душ"
+branch = "soul_eater"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["se_soul_rip"]
+grants = "se_soul_armor"
+desc = "Пленённые души заслоняют вас."
+
+[[abilities]]
+key = "se_soul_armor"
+name = "Доспех из душ"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+color = "#b05aff"
+fx = "shield shadow"
+desc = "15 с: +30% сопротивления тьме, +6 брони, +4 к восстановлению здоровья."
+[abilities.buff]
+key = "soul_armor"
+name = "Доспех из душ"
+duration_ms = 15000
+stats = { res_shadow = 30, armor = 6, hp_regen = 4 }
+color = "#b05aff"
+
+[[skills]]
+key = "se_harvest"
+name = "Жатва душ"
+branch = "soul_eater"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["se_soul_armor"]
+grants = "se_harvest"
+desc = "Души всех врагов вокруг идут вам на пищу."
+
+[[abilities]]
+key = "se_harvest"
+name = "Жатва душ"
+kind = "nova"
+mana = 32
+cooldown_ms = 18000
+damage = [18, 28]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 1.5
+leech = 30
+radius = 4
+glyph = "%"
+color = "#7a1aff"
+desc = "Тьма в радиусе 4: урон, треть возвращается здоровьем."
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Чернокнижник ----
+
+[[branches]]
+key = "warlock_hidden"
+name = "Скрытые навыки: Чернокнижник"
+color = "#b05aff"
+desc = "Навыки, которые открываются сами за деяния."
+class = "warlock"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hwl_shadow_lord"
+name = "Владыка тени"
+branch = "warlock_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:shadow"
+deed_count = 15000
+desc = "Тьма слушается вас."
+stats = { shadow_pct = 12 }
+
+[[skills]]
+key = "hwl_demon_tamer"
+name = "Укротитель демонов"
+branch = "warlock_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:demon"
+deed_count = 20
+desc = "Демоны уважают силу."
+stats = { res_fire = 10, shadow_pct = 6 }
+
+[[skills]]
+key = "hwl_imp_master"
+name = "Хозяин бесов"
+branch = "warlock_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "summons"
+deed_count = 40
+desc = "Призванные слуги крепнут от вашей силы."
+stats = { max_hp = 15 }
+
+[[skills]]
+key = "hwl_life_thirst"
+name = "Жажда жизни"
+branch = "warlock_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "lowhp"
+deed_count = 10
+desc = "На краю гибели вы пьёте жизнь жаднее."
+stats = { life_leech = 2 }
+
+[[skills]]
+key = "hwl_cursed_child"
+name = "Сын проклятых земель"
+branch = "warlock_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:cursed"
+deed_count = 150
+desc = "Проклятия к вам не липнут."
+stats = { res_shadow = 10, res_poison = 10 }
+
+[[skills]]
+key = "hwl_soul_price"
+name = "Цена души"
+branch = "warlock_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "gold"
+deed_count = 4000
+desc = "Вы знаете цену всему."
+stats = { gold_find = 20 }
+
+[[skills]]
+key = "hwl_death_escapee"
+name = "Беглец от смерти"
+branch = "warlock_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 5
+desc = "Смерть устала за вами гоняться."
+stats = { hp_regen = 1.5, res_shadow = 5 }
+
+[[skills]]
+key = "hwl_curses"
+name = "Тысяча проклятий"
+branch = "warlock_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "casts"
+deed_count = 500
+desc = "Проклятия срываются с языка сами."
+stats = { spell_pct = 8 }
+
+[[skills]]
+key = "hwl_power_devourer"
+name = "Пожиратель силы"
+branch = "warlock_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "bosses"
+deed_count = 2
+desc = "Сила павших владык перешла к вам."
+stats = { shadow_pct = 8, int = 3 }
+
+[[skills]]
+key = "hwl_abyss_gate"
+name = "Врата бездны"
+branch = "warlock_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hwl_abyss_gate"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути чернокнижника: распахнуть бездну."
+
+[[abilities]]
+key = "hwl_abyss_gate"
+name = "Врата бездны"
+kind = "nova"
+mana = 30
+cooldown_ms = 40000
+damage = [34, 50]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 2.2
+radius = 5
+glyph = "@"
+color = "#7a2aff"
+fx = "void"
+desc = "Тьма в радиусе 5: огромный урон."
+# <<< contentgen: hidden

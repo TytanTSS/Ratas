@@ -209,20 +209,10 @@ pub fn in_cell(r: &mut Rng, c: &Rect, w: i32, h: i32, margin: i32) -> Pos {
 /// the heart of the world, where the journey starts.
 pub fn central_land(l: &Level, main: &[bool]) -> Pos {
     let c = Pos::new(l.w / 2, l.h / 2);
-    for rad in 0..l.w.max(l.h) {
-        for dy in -rad..=rad {
-            for dx in -rad..=rad {
-                if dx.abs().max(dy.abs()) != rad {
-                    continue;
-                }
-                let p = Pos::new(c.x + dx, c.y + dy);
-                if l.inside(p.x, p.y) && main[l.idx(p)] {
-                    return p;
-                }
-            }
-        }
-    }
-    c
+    (0..l.w.max(l.h))
+        .flat_map(|rad| c.ring(rad))
+        .find(|p| l.inside(p.x, p.y) && main[l.idx(*p)])
+        .unwrap_or(c)
 }
 
 #[cfg(test)]

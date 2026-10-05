@@ -1,0 +1,850 @@
+# Скальд: подклассы Боевой скальд, Сказитель и Громогласый; секретные подклассы Певец тризны и Рунный скальд;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# >>> contentgen: class
+# ---- Скальд ----
+
+[[subclasses]]
+key = "battle_skald"
+name = "Боевой скальд"
+class = "skald"
+color = "#ff7060"
+desc = "Секира и песнь ярости в самой гуще боя."
+
+[[subclasses]]
+key = "storyteller"
+name = "Сказитель"
+class = "skald"
+color = "#a0e0c0"
+desc = "Колыбельные для врагов, исцеляющие песни для друзей."
+
+[[subclasses]]
+key = "thundervoice"
+name = "Громогласый"
+class = "skald"
+color = "#fff06a"
+desc = "Голос, подобный грому: молнии и оглушение."
+
+[[branches]]
+key = "skald"
+name = "Скальд"
+color = "#ff9ad0"
+desc = "Песни и саги."
+class = "skald"
+
+[[branches]]
+key = "battle_skald"
+name = "Боевой скальд"
+color = "#ff7060"
+desc = "Песнь ярости."
+class = "skald"
+subclass = "battle_skald"
+
+[[branches]]
+key = "storyteller"
+name = "Сказитель"
+color = "#a0e0c0"
+desc = "Песни покоя и сна."
+class = "skald"
+subclass = "storyteller"
+
+[[branches]]
+key = "thundervoice"
+name = "Громогласый"
+color = "#fff06a"
+desc = "Громовой голос."
+class = "skald"
+subclass = "thundervoice"
+
+[[skills]]
+key = "skd_rhythm"
+name = "Ритм битвы"
+branch = "skald"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Скорость атаки и урон в ближнем бою."
+stats = { attack_speed = 2, melee_pct = 2 }
+
+[[skills]]
+key = "skd_lore"
+name = "Знание саг"
+branch = "skald"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Мана и сила лечения."
+stats = { max_mp = 4, heal_pct = 2 }
+
+[[skills]]
+key = "skd_battle_hymn"
+name = "Боевой гимн"
+branch = "skald"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["skd_lore"]
+grants = "skd_battle_hymn"
+desc = "Вы и союзники рядом наносите больше урона."
+
+[[skills]]
+key = "skd_shout"
+name = "Устрашающий клич"
+branch = "skald"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["skd_rhythm"]
+grants = "skd_shout"
+desc = "Клич ранит и замедляет атаки врагов вокруг."
+
+[[skills]]
+key = "skd_saga"
+name = "Сага о героях"
+branch = "skald"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["skd_battle_hymn"]
+desc = "Здоровье и сопротивление всему."
+stats = { max_hp = 7, res_all = 2 }
+
+[[skills]]
+key = "skd_axe_song"
+name = "Песня секиры"
+branch = "battle_skald"
+tier = 1
+max_rank = 5
+level = 5
+equip = "melee"
+desc = "С оружием ближнего боя: урон и крит. шанс."
+stats = { melee_pct = 5, crit = 1 }
+
+[[skills]]
+key = "skd_rending_verse"
+name = "Рвущий куплет"
+branch = "battle_skald"
+tier = 1
+max_rank = 1
+level = 5
+equip = "melee"
+grants = "skd_rending_verse"
+desc = "Два удара, оставляющие кровоточащие раны."
+
+[[skills]]
+key = "skd_fury_ballad"
+name = "Баллада ярости"
+branch = "battle_skald"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["skd_axe_song"]
+grants = "skd_fury_ballad"
+desc = "Скорость атаки и вампиризм на время."
+
+[[skills]]
+key = "skd_last_verse"
+name = "Последний куплет"
+branch = "battle_skald"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["skd_fury_ballad"]
+grants = "skd_last_verse"
+desc = "Сокрушительный удар по всем вокруг."
+
+[[skills]]
+key = "skd_soothing"
+name = "Убаюкивающий голос"
+branch = "storyteller"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила лечения и восстановление маны."
+stats = { heal_pct = 6, mp_regen = 0.15 }
+
+[[skills]]
+key = "skd_lullaby"
+name = "Колыбельная"
+branch = "storyteller"
+tier = 1
+max_rank = 1
+level = 5
+grants = "skd_lullaby"
+desc = "Враги вокруг засыпают на 3 секунды."
+
+[[skills]]
+key = "skd_song_of_rest"
+name = "Песнь отдыха"
+branch = "storyteller"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["skd_soothing"]
+grants = "skd_song_of_rest"
+desc = "Лечит вас и союзников вокруг."
+
+[[skills]]
+key = "skd_epic_tale"
+name = "Эпическое сказание"
+branch = "storyteller"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["skd_song_of_rest"]
+grants = "skd_epic_tale"
+desc = "Союзники рядом становятся героями сказания."
+
+[[skills]]
+key = "skd_resonance"
+name = "Резонанс"
+branch = "thundervoice"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон молнией и сила заклинаний."
+stats = { lightning_pct = 6, spell_pct = 2 }
+
+[[skills]]
+key = "skd_thunder_word"
+name = "Громовое слово"
+branch = "thundervoice"
+tier = 1
+max_rank = 1
+level = 5
+grants = "skd_thunder_word"
+desc = "Слово, бьющее молнией."
+
+[[skills]]
+key = "skd_echo_shout"
+name = "Раскатистый клич"
+branch = "thundervoice"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["skd_resonance"]
+grants = "skd_echo_shout"
+desc = "Клич перекатывается от врага к врагу."
+
+[[skills]]
+key = "skd_voice_of_storm"
+name = "Голос бури"
+branch = "thundervoice"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["skd_echo_shout"]
+grants = "skd_voice_of_storm"
+desc = "Гром вокруг вас оглушает врагов."
+
+[[abilities]]
+key = "skd_war_chant"
+name = "Боевой напев"
+kind = "buff"
+mana = 6
+cooldown_ms = 15000
+radius = 4
+color = "#ff9ad0"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 4: +8% урона в ближнем бою и скорости атаки на 10 с."
+[abilities.buff]
+key = "war_chant"
+name = "Боевой напев"
+duration_ms = 10000
+stats = { melee_pct = 8, attack_speed = 8 }
+color = "#ff9ad0"
+
+[[abilities]]
+key = "skd_battle_hymn"
+name = "Боевой гимн"
+kind = "buff"
+mana = 12
+cooldown_ms = 20000
+radius = 5
+color = "#ffb0e0"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 5: +10% урона любого рода на 12 с."
+[abilities.buff]
+key = "battle_hymn"
+name = "Боевой гимн"
+duration_ms = 12000
+stats = { melee_pct = 10, spell_pct = 10, ranged_pct = 10 }
+color = "#ffb0e0"
+
+[[abilities]]
+key = "skd_shout"
+name = "Устрашающий клич"
+kind = "nova"
+mana = 10
+cooldown_ms = 8000
+damage = [4, 8]
+dmg_type = "arcane"
+scale = "str"
+scale_k = 0.6
+radius = 3
+glyph = "!"
+color = "#ff80c0"
+fx = "sound"
+desc = "Тайная магия в радиусе 3 и −25% скорости атаки врагов на 5 с."
+[abilities.on_hit]
+key = "daunted"
+name = "Устрашение"
+duration_ms = 5000
+stats = { attack_speed = -25 }
+color = "#ff80c0"
+
+[[abilities]]
+key = "skd_rending_verse"
+name = "Рвущий куплет"
+kind = "strike"
+mana = 10
+cooldown_ms = 5000
+damage = [6, 10]
+dmg_type = "slash"
+scale = "str"
+scale_k = 0.8
+count = 2
+equip = "melee"
+glyph = "!"
+color = "#ff7060"
+fx = "sound"
+desc = "Два удара и кровотечение на 5 с."
+[abilities.on_hit]
+key = "rent"
+name = "Кровотечение"
+duration_ms = 5000
+dot_per_sec = 4
+dmg_type = "slash"
+color = "#ff7060"
+
+[[abilities]]
+key = "skd_fury_ballad"
+name = "Баллада ярости"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+color = "#ff5040"
+fx = "sound"
+desc = "10 с: +30% скорости атаки и +5% вампиризма."
+[abilities.buff]
+key = "fury_ballad"
+name = "Баллада ярости"
+duration_ms = 10000
+stats = { attack_speed = 30, life_leech = 5 }
+color = "#ff5040"
+
+[[abilities]]
+key = "skd_last_verse"
+name = "Последний куплет"
+kind = "cleave"
+mana = 24
+cooldown_ms = 14000
+damage = [16, 26]
+dmg_type = "weapon"
+scale = "str"
+scale_k = 1.4
+radius = 2
+equip = "melee"
+glyph = "*"
+color = "#ff4030"
+fx = "whirlwind"
+desc = "Удар по всем в радиусе 2."
+
+[[abilities]]
+key = "skd_lullaby"
+name = "Колыбельная"
+kind = "nova"
+mana = 16
+cooldown_ms = 18000
+damage = [0, 0]
+radius = 4
+glyph = "z"
+color = "#a0e0c0"
+fx = "sleep"
+desc = "Враги в радиусе 4 засыпают на 3 с."
+[abilities.on_hit]
+key = "asleep"
+name = "Сон"
+duration_ms = 3000
+stun = true
+color = "#a0e0c0"
+
+[[abilities]]
+key = "skd_song_of_rest"
+name = "Песнь отдыха"
+kind = "heal"
+mana = 14
+cooldown_ms = 9000
+damage = [16, 24]
+scale = "int"
+scale_k = 1.3
+radius = 5
+glyph = "+"
+color = "#a0f0c0"
+fx = "sound"
+desc = "Лечит вас и союзников в радиусе 5."
+
+[[abilities]]
+key = "skd_epic_tale"
+name = "Эпическое сказание"
+kind = "buff"
+mana = 26
+cooldown_ms = 40000
+radius = 6
+color = "#c0ffe0"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 6: +15% сопротивления всему и +40 здоровья на 15 с."
+[abilities.buff]
+key = "epic_tale"
+name = "Эпическое сказание"
+duration_ms = 15000
+stats = { res_all = 15, max_hp = 40 }
+color = "#c0ffe0"
+
+[[abilities]]
+key = "skd_thunder_word"
+name = "Громовое слово"
+kind = "projectile"
+mana = 6
+cooldown_ms = 2000
+damage = [8, 13]
+dmg_type = "lightning"
+scale = "int"
+scale_k = 1
+range = 8
+speed_ms = 15
+glyph = "*"
+color = "#fff06a"
+desc = "Молния и −15% сопротивления молнии на 5 с."
+[abilities.on_hit]
+key = "thunderstruck"
+name = "Громовой удар"
+duration_ms = 5000
+stats = { res_lightning = -15 }
+color = "#fff06a"
+
+[[abilities]]
+key = "skd_echo_shout"
+name = "Раскатистый клич"
+kind = "chain"
+mana = 14
+cooldown_ms = 6000
+damage = [9, 14]
+dmg_type = "lightning"
+scale = "int"
+scale_k = 1.1
+range = 8
+count = 4
+glyph = "*"
+color = "#fff8a0"
+desc = "Молния перескакивает на 4 врагов."
+
+[[abilities]]
+key = "skd_voice_of_storm"
+name = "Голос бури"
+kind = "nova"
+mana = 30
+cooldown_ms = 15000
+damage = [18, 28]
+dmg_type = "lightning"
+scale = "int"
+scale_k = 1.5
+radius = 4
+glyph = "*"
+color = "#ffff80"
+fx = "thunder"
+desc = "Гром в радиусе 4: урон молнией и оглушение на 1 с."
+[abilities.on_hit]
+key = "storm_voice_stun"
+name = "Оглушение"
+duration_ms = 1000
+stun = true
+color = "#ffff80"
+# <<< contentgen: class
+
+# >>> contentgen: secret_path
+# ---- Певец тризны (скальд) ----
+
+[[subclasses]]
+key = "dirge"
+name = "Певец тризны"
+class = "skald"
+color = "#8a7aaa"
+desc = "Погребальные песни: тьма, плач и пляска смерти."
+secret = true
+
+[[branches]]
+key = "dirge"
+name = "Певец тризны"
+color = "#8a7aaa"
+desc = "Песни смерти."
+class = "skald"
+subclass = "dirge"
+
+[[skills]]
+key = "dg_dirge"
+name = "Погребальный напев"
+branch = "dirge"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон тьмой и сила заклинаний."
+stats = { shadow_pct = 6, spell_pct = 2 }
+
+[[skills]]
+key = "dg_funeral_song"
+name = "Погребальная песнь"
+branch = "dirge"
+tier = 1
+max_rank = 1
+level = 5
+grants = "dg_funeral_song"
+desc = "Песнь, от которой стынет кровь."
+
+[[abilities]]
+key = "dg_funeral_song"
+name = "Погребальная песнь"
+kind = "nova"
+mana = 14
+cooldown_ms = 9000
+damage = [8, 13]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 1
+radius = 4
+glyph = "%"
+color = "#8a7aaa"
+fx = "shadow"
+desc = "Тьма в радиусе 4 и тьма терзает врагов 6 с."
+[abilities.on_hit]
+key = "dirge_doom"
+name = "Плач"
+duration_ms = 6000
+dot_per_sec = 5
+dmg_type = "shadow"
+color = "#8a7aaa"
+
+[[skills]]
+key = "dg_requiem"
+name = "Реквием"
+branch = "dirge"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["dg_funeral_song"]
+grants = "dg_requiem"
+desc = "Скорбная нота перелетает от врага к врагу."
+
+[[abilities]]
+key = "dg_requiem"
+name = "Реквием"
+kind = "chain"
+mana = 16
+cooldown_ms = 7000
+damage = [12, 18]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 1.2
+range = 8
+count = 4
+glyph = "%"
+color = "#6a5a8a"
+desc = "Тьма перескакивает на 4 врагов."
+
+[[skills]]
+key = "dg_dance_of_death"
+name = "Пляска смерти"
+branch = "dirge"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["dg_requiem"]
+grants = "dg_dance_of_death"
+desc = "Вы и союзники пьёте жизнь врагов."
+
+[[abilities]]
+key = "dg_dance_of_death"
+name = "Пляска смерти"
+kind = "buff"
+mana = 24
+cooldown_ms = 40000
+radius = 5
+color = "#a08ac0"
+fx = "shadow"
+desc = "Вам и союзникам в радиусе 5: +6% вампиризма и +15% урона в ближнем бою на 12 с."
+[abilities.buff]
+key = "dance_of_death"
+name = "Пляска смерти"
+duration_ms = 12000
+stats = { life_leech = 6, melee_pct = 15 }
+color = "#a08ac0"
+
+
+# ---- Рунный скальд (скальд) ----
+
+[[subclasses]]
+key = "rune_skald"
+name = "Рунный скальд"
+class = "skald"
+color = "#80c0ff"
+desc = "Руны льда, грома и защиты, вырезанные голосом."
+secret = true
+
+[[branches]]
+key = "rune_skald"
+name = "Рунный скальд"
+color = "#80c0ff"
+desc = "Песни рун."
+class = "skald"
+subclass = "rune_skald"
+
+[[skills]]
+key = "rs_rune_lore"
+name = "Знание рун"
+branch = "rune_skald"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Мана и сопротивление всему."
+stats = { max_mp = 5, res_all = 2 }
+
+[[skills]]
+key = "rs_rune_of_frost"
+name = "Руна стужи"
+branch = "rune_skald"
+tier = 1
+max_rank = 1
+level = 5
+grants = "rs_rune_of_frost"
+desc = "Руна холода сковывает врагов вокруг."
+
+[[abilities]]
+key = "rs_rune_of_frost"
+name = "Руна стужи"
+kind = "nova"
+mana = 12
+cooldown_ms = 8000
+damage = [10, 15]
+dmg_type = "cold"
+scale = "int"
+scale_k = 1
+radius = 3
+glyph = "*"
+color = "#80c0ff"
+fx = "rune frost"
+desc = "Холод в радиусе 3 и замедление на 50% на 5 с."
+[abilities.on_hit]
+key = "rune_frost"
+name = "Руна стужи"
+duration_ms = 5000
+stats = { move_speed = -50, attack_speed = -20 }
+color = "#80c0ff"
+
+[[skills]]
+key = "rs_rune_of_thunder"
+name = "Руна грома"
+branch = "rune_skald"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["rs_rune_of_frost"]
+grants = "rs_rune_of_thunder"
+desc = "Брошенная руна взрывается молнией."
+
+[[abilities]]
+key = "rs_rune_of_thunder"
+name = "Руна грома"
+kind = "projectile"
+mana = 14
+cooldown_ms = 6000
+damage = [14, 20]
+dmg_type = "lightning"
+scale = "int"
+scale_k = 1.3
+range = 9
+radius = 2
+speed_ms = 30
+glyph = "R"
+color = "#fff06a"
+fx = "rune"
+desc = "Молния в радиусе 2."
+
+[[skills]]
+key = "rs_rune_of_aegis"
+name = "Руна щита"
+branch = "rune_skald"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["rs_rune_of_thunder"]
+grants = "rs_rune_of_aegis"
+desc = "Руна защиты над вами и союзниками."
+
+[[abilities]]
+key = "rs_rune_of_aegis"
+name = "Руна щита"
+kind = "buff"
+mana = 22
+cooldown_ms = 40000
+radius = 5
+color = "#a0d0ff"
+fx = "shield"
+desc = "Вам и союзникам в радиусе 5: +12 брони и +15% сопротивления всему на 15 с."
+[abilities.buff]
+key = "rune_aegis"
+name = "Руна щита"
+duration_ms = 15000
+stats = { armor = 12, res_all = 15 }
+color = "#a0d0ff"
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Скальд ----
+
+[[branches]]
+key = "skald_hidden"
+name = "Скрытые навыки: Скальд"
+color = "#ff9ad0"
+desc = "Навыки, которые открываются сами за деяния."
+class = "skald"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hsk_songs"
+name = "Тысяча песен"
+branch = "skald_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "casts"
+deed_count = 400
+desc = "Вы знаете песню на любой случай."
+stats = { max_mp = 15, spell_pct = 4 }
+
+[[skills]]
+key = "hsk_battle_saga"
+name = "Сага о битвах"
+branch = "skald_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kills"
+deed_count = 300
+desc = "О ваших битвах уже слагают саги."
+stats = { melee_pct = 6, max_hp = 10 }
+
+[[skills]]
+key = "hsk_heroes_song"
+name = "Песнь о героях"
+branch = "skald_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "bosses"
+deed_count = 3
+desc = "Вы — герой собственной песни."
+stats = { res_all = 4, melee_pct = 5 }
+
+[[skills]]
+key = "hsk_thunder_throat"
+name = "Громовое горло"
+branch = "skald_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:lightning"
+deed_count = 10000
+desc = "Ваш голос гремит, как буря."
+stats = { lightning_pct = 12 }
+
+[[skills]]
+key = "hsk_healing_song"
+name = "Целебная песнь"
+branch = "skald_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "heal"
+deed_count = 8000
+desc = "Ваши песни лечат."
+stats = { heal_pct = 10 }
+
+[[skills]]
+key = "hsk_wandering_singer"
+name = "Странствующий певец"
+branch = "skald_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "quests"
+deed_count = 10
+desc = "Песни открывают кошельки."
+stats = { gold_find = 20 }
+
+[[skills]]
+key = "hsk_north_songs"
+name = "Песни севера"
+branch = "skald_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:tundra"
+deed_count = 120
+desc = "Северный холод вам по душе."
+stats = { res_cold = 15 }
+
+[[skills]]
+key = "hsk_praise"
+name = "Хвалебная песнь"
+branch = "skald_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "elites"
+deed_count = 20
+desc = "Каждый славный удар — строка в песне."
+stats = { crit = 4 }
+
+[[skills]]
+key = "hsk_fallen_song"
+name = "Песнь о павших"
+branch = "skald_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 4
+desc = "Вы пели и на своей тризне."
+stats = { hp_regen = 1.5 }
+
+[[skills]]
+key = "hsk_anthem"
+name = "Гимн королей"
+branch = "skald_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hsk_anthem"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути скальда: песнь, от которой встают армии."
+
+[[abilities]]
+key = "hsk_anthem"
+name = "Гимн королей"
+kind = "buff"
+mana = 26
+cooldown_ms = 60000
+radius = 7
+color = "#ffb0e0"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 7: +25% урона любого рода и +10% сопротивления всему на 15 с."
+[abilities.buff]
+key = "anthem"
+name = "Гимн королей"
+duration_ms = 15000
+stats = { melee_pct = 25, spell_pct = 25, ranged_pct = 25, res_all = 10 }
+color = "#ffb0e0"
+# <<< contentgen: hidden

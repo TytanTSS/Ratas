@@ -1,0 +1,866 @@
+# Зельевар: подклассы Подрывник, Мутаген и Целитель-зельевар; секретные подклассы Чумной доктор и Трансмутатор;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# >>> contentgen: class
+# ---- Зельевар ----
+
+[[subclasses]]
+key = "demolitionist"
+name = "Подрывник"
+class = "brewer"
+color = "#ff8a3a"
+desc = "Кассетные, ледяные и огромные бомбы."
+
+[[subclasses]]
+key = "mutagenist"
+name = "Мутаген"
+class = "brewer"
+color = "#a0ff60"
+desc = "Пьёт мутагены и рвёт врагов голыми руками."
+
+[[subclasses]]
+key = "apothecary"
+name = "Целитель-зельевар"
+class = "brewer"
+color = "#80ffc0"
+desc = "Целебные туманы и эликсир жизни."
+
+[[branches]]
+key = "brewer"
+name = "Зельевар"
+color = "#80e0a0"
+desc = "Склянки, смеси и выдержка."
+class = "brewer"
+
+[[branches]]
+key = "demolitionist"
+name = "Подрывник"
+color = "#ff8a3a"
+desc = "Взрывы."
+class = "brewer"
+subclass = "demolitionist"
+
+[[branches]]
+key = "mutagenist"
+name = "Мутаген"
+color = "#a0ff60"
+desc = "Мутации."
+class = "brewer"
+subclass = "mutagenist"
+
+[[branches]]
+key = "apothecary"
+name = "Целитель-зельевар"
+color = "#80ffc0"
+desc = "Целебные смеси."
+class = "brewer"
+subclass = "apothecary"
+
+[[skills]]
+key = "brw_volatile"
+name = "Летучие смеси"
+branch = "brewer"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Урон огнём и ядом."
+stats = { fire_pct = 4, poison_pct = 4 }
+
+[[skills]]
+key = "brw_tolerance"
+name = "Закалка ядами"
+branch = "brewer"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Защита от яда и огня."
+stats = { res_poison = 4, res_fire = 3 }
+
+[[skills]]
+key = "brw_acid_flask"
+name = "Склянка кислоты"
+branch = "brewer"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["brw_volatile"]
+grants = "brw_acid_flask"
+desc = "Кислота разъедает доспехи врагов."
+
+[[skills]]
+key = "brw_quick_draught"
+name = "Глоток эликсира"
+branch = "brewer"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["brw_tolerance"]
+grants = "brw_quick_draught"
+desc = "Быстрое исцеление себя."
+
+[[skills]]
+key = "brw_experience"
+name = "Опыт алхимика"
+branch = "brewer"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["brw_acid_flask"]
+desc = "Здоровье и сила лечения."
+stats = { max_hp = 6, heal_pct = 5 }
+
+[[skills]]
+key = "brw_blast_lore"
+name = "Наука взрывов"
+branch = "demolitionist"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон огнём и сила заклинаний."
+stats = { fire_pct = 6, spell_pct = 2 }
+
+[[skills]]
+key = "brw_cluster_bomb"
+name = "Кассетная бомба"
+branch = "demolitionist"
+tier = 1
+max_rank = 1
+level = 5
+grants = "brw_cluster_bomb"
+desc = "Три бомбы разом."
+
+[[skills]]
+key = "brw_frost_bomb"
+name = "Ледяная бомба"
+branch = "demolitionist"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["brw_blast_lore"]
+grants = "brw_frost_bomb"
+desc = "Взрыв холода замедляет врагов."
+
+[[skills]]
+key = "brw_great_blast"
+name = "Великий взрыв"
+branch = "demolitionist"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["brw_frost_bomb"]
+grants = "brw_great_blast"
+desc = "Огромная бомба с огромным радиусом."
+
+[[skills]]
+key = "brw_mutation"
+name = "Мутация"
+branch = "mutagenist"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила и урон в ближнем бою."
+stats = { str = 1, melee_pct = 3 }
+
+[[skills]]
+key = "brw_mutagen_strength"
+name = "Мутаген силы"
+branch = "mutagenist"
+tier = 1
+max_rank = 1
+level = 5
+grants = "brw_mutagen_strength"
+desc = "Мышцы раздуваются от силы."
+
+[[skills]]
+key = "brw_mutagen_speed"
+name = "Мутаген скорости"
+branch = "mutagenist"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["brw_mutation"]
+grants = "brw_mutagen_speed"
+desc = "Движения становятся стремительными."
+
+[[skills]]
+key = "brw_abomination"
+name = "Облик чудовища"
+branch = "mutagenist"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["brw_mutagen_speed"]
+grants = "brw_abomination"
+desc = "Вы превращаетесь в неуязвимое чудовище."
+
+[[skills]]
+key = "brw_herbalism"
+name = "Травничество"
+branch = "apothecary"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила лечения."
+stats = { heal_pct = 7 }
+
+[[skills]]
+key = "brw_healing_mist"
+name = "Целебный туман"
+branch = "apothecary"
+tier = 1
+max_rank = 1
+level = 5
+grants = "brw_healing_mist"
+desc = "Туман лечит вас и союзников."
+
+[[skills]]
+key = "brw_antidote_cloud"
+name = "Облако противоядия"
+branch = "apothecary"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["brw_herbalism"]
+grants = "brw_antidote_cloud"
+desc = "Защита от яда и восстановление для всех рядом."
+
+[[skills]]
+key = "brw_elixir_of_life"
+name = "Эликсир жизни"
+branch = "apothecary"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["brw_antidote_cloud"]
+grants = "brw_elixir_of_life"
+desc = "Огромное исцеление и долгое восстановление."
+
+[[abilities]]
+key = "brw_firebomb"
+name = "Огненная бомба"
+kind = "projectile"
+mana = 4
+cooldown_ms = 1500
+damage = [5, 9]
+dmg_type = "fire"
+scale = "int"
+scale_k = 1
+range = 7
+radius = 1
+speed_ms = 45
+glyph = "o"
+color = "#ff8a3a"
+fx = "flask"
+desc = "Бомба взрывается огнём в радиусе 1."
+
+[[abilities]]
+key = "brw_acid_flask"
+name = "Склянка кислоты"
+kind = "projectile"
+mana = 8
+cooldown_ms = 5000
+damage = [7, 11]
+dmg_type = "poison"
+scale = "int"
+scale_k = 1
+range = 7
+radius = 1
+speed_ms = 45
+glyph = "o"
+color = "#a0e040"
+fx = "flask"
+desc = "Яд в радиусе 1 и −6 брони на 6 с."
+[abilities.on_hit]
+key = "acid"
+name = "Кислота"
+duration_ms = 6000
+stats = { armor = -6 }
+dot_per_sec = 2
+dmg_type = "poison"
+color = "#a0e040"
+
+[[abilities]]
+key = "brw_quick_draught"
+name = "Глоток эликсира"
+kind = "heal"
+mana = 8
+cooldown_ms = 20000
+damage = [20, 30]
+scale = "int"
+scale_k = 1.3
+glyph = "+"
+color = "#80e0a0"
+fx = "alchemy"
+desc = "Быстрое исцеление."
+
+[[abilities]]
+key = "brw_cluster_bomb"
+name = "Кассетная бомба"
+kind = "projectile"
+mana = 12
+cooldown_ms = 6000
+damage = [6, 10]
+dmg_type = "fire"
+scale = "int"
+scale_k = 0.8
+range = 7
+radius = 1
+count = 3
+speed_ms = 45
+glyph = "o"
+color = "#ff9a3a"
+fx = "flask"
+desc = "Три огненные бомбы веером."
+
+[[abilities]]
+key = "brw_frost_bomb"
+name = "Ледяная бомба"
+kind = "projectile"
+mana = 14
+cooldown_ms = 8000
+damage = [9, 14]
+dmg_type = "cold"
+scale = "int"
+scale_k = 1
+range = 8
+radius = 2
+speed_ms = 45
+glyph = "o"
+color = "#8ad8ff"
+fx = "flask"
+desc = "Холод в радиусе 2 и замедление на 50% на 5 с."
+[abilities.on_hit]
+key = "frost_bombed"
+name = "Обморожение"
+duration_ms = 5000
+stats = { move_speed = -50, attack_speed = -20 }
+color = "#8ad8ff"
+
+[[abilities]]
+key = "brw_great_blast"
+name = "Великий взрыв"
+kind = "projectile"
+mana = 32
+cooldown_ms = 16000
+damage = [26, 40]
+dmg_type = "fire"
+scale = "int"
+scale_k = 2
+range = 8
+radius = 3
+speed_ms = 70
+glyph = "@"
+color = "#ff6a1a"
+fx = "flask"
+desc = "Огромный взрыв огня в радиусе 3."
+
+[[abilities]]
+key = "brw_mutagen_strength"
+name = "Мутаген силы"
+kind = "buff"
+mana = 12
+cooldown_ms = 30000
+color = "#a0ff60"
+fx = "alchemy"
+desc = "20 с: +8 силы, +20% урона в ближнем бою, +30 здоровья."
+[abilities.buff]
+key = "mutagen_strength"
+name = "Мутаген силы"
+duration_ms = 20000
+stats = { str = 8, melee_pct = 20, max_hp = 30 }
+color = "#a0ff60"
+
+[[abilities]]
+key = "brw_mutagen_speed"
+name = "Мутаген скорости"
+kind = "buff"
+mana = 12
+cooldown_ms = 30000
+color = "#c0ff80"
+fx = "alchemy"
+desc = "20 с: +25% скорости бега и атаки, +10% уклонения."
+[abilities.buff]
+key = "mutagen_speed"
+name = "Мутаген скорости"
+duration_ms = 20000
+stats = { move_speed = 25, attack_speed = 25, dodge = 10 }
+color = "#c0ff80"
+
+[[abilities]]
+key = "brw_abomination"
+name = "Облик чудовища"
+kind = "buff"
+mana = 24
+cooldown_ms = 50000
+color = "#60c040"
+fx = "form alchemy"
+desc = "15 с: +25% сопротивления всему, +10 брони, +30% урона в ближнем бою, +5 к восстановлению здоровья."
+[abilities.buff]
+key = "abomination"
+name = "Облик чудовища"
+duration_ms = 15000
+stats = { res_all = 25, armor = 10, melee_pct = 30, hp_regen = 5 }
+color = "#60c040"
+
+[[abilities]]
+key = "brw_healing_mist"
+name = "Целебный туман"
+kind = "heal"
+mana = 14
+cooldown_ms = 8000
+damage = [16, 24]
+scale = "int"
+scale_k = 1.3
+radius = 5
+glyph = "+"
+color = "#80ffc0"
+fx = "alchemy"
+desc = "Лечит вас и союзников в радиусе 5."
+
+[[abilities]]
+key = "brw_antidote_cloud"
+name = "Облако противоядия"
+kind = "buff"
+mana = 16
+cooldown_ms = 25000
+radius = 5
+color = "#a0ffd0"
+fx = "alchemy"
+desc = "Вам и союзникам в радиусе 5: +30% сопротивления яду, +10% всему и +3 к восстановлению здоровья на 12 с."
+[abilities.buff]
+key = "antidote_cloud"
+name = "Облако противоядия"
+duration_ms = 12000
+stats = { res_poison = 30, res_all = 10, hp_regen = 3 }
+color = "#a0ffd0"
+
+[[abilities]]
+key = "brw_elixir_of_life"
+name = "Эликсир жизни"
+kind = "heal"
+mana = 26
+cooldown_ms = 45000
+damage = [45, 65]
+scale = "int"
+scale_k = 2.5
+glyph = "+"
+color = "#c0ffe0"
+fx = "alchemy"
+desc = "Огромное исцеление и +8 к восстановлению здоровья на 10 с."
+[abilities.buff]
+key = "elixir_of_life"
+name = "Эликсир жизни"
+duration_ms = 10000
+stats = { hp_regen = 8 }
+color = "#c0ffe0"
+# <<< contentgen: class
+
+# >>> contentgen: secret_path
+# ---- Чумной доктор (зельевар) ----
+
+[[subclasses]]
+key = "plague_doctor"
+name = "Чумной доктор"
+class = "brewer"
+color = "#6a8a4a"
+desc = "Лечит болезнь болезнью: чумные склянки и чёрная смерть для врагов."
+secret = true
+
+[[branches]]
+key = "plague_doctor"
+name = "Чумной доктор"
+color = "#6a8a4a"
+desc = "Миазмы."
+class = "brewer"
+subclass = "plague_doctor"
+
+[[skills]]
+key = "pd_miasma"
+name = "Миазмы"
+branch = "plague_doctor"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон ядом и защита от него."
+stats = { poison_pct = 7, res_poison = 5 }
+
+[[skills]]
+key = "pd_plague_flask"
+name = "Чумная склянка"
+branch = "plague_doctor"
+tier = 1
+max_rank = 1
+level = 5
+grants = "pd_plague_flask"
+desc = "Склянка с заразой разбивается среди врагов."
+
+[[abilities]]
+key = "pd_plague_flask"
+name = "Чумная склянка"
+kind = "projectile"
+mana = 12
+cooldown_ms = 5000
+damage = [8, 12]
+dmg_type = "poison"
+scale = "int"
+scale_k = 1
+range = 8
+radius = 2
+speed_ms = 45
+glyph = "o"
+color = "#6a8a4a"
+fx = "flask"
+desc = "Яд в радиусе 2 и болезнь на 8 с."
+[abilities.on_hit]
+key = "black_plague"
+name = "Чума"
+duration_ms = 8000
+stats = { res_poison = -15 }
+dot_per_sec = 5
+dmg_type = "poison"
+color = "#6a8a4a"
+
+[[skills]]
+key = "pd_leech_cure"
+name = "Пиявки"
+branch = "plague_doctor"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["pd_plague_flask"]
+grants = "pd_leech_cure"
+desc = "Старый докторский способ — помогает."
+
+[[abilities]]
+key = "pd_leech_cure"
+name = "Пиявки"
+kind = "heal"
+mana = 14
+cooldown_ms = 10000
+damage = [18, 26]
+scale = "int"
+scale_k = 1.4
+radius = 4
+glyph = "+"
+color = "#8a6a4a"
+fx = "blood"
+desc = "Исцеляет вас и союзников в радиусе 4."
+
+[[skills]]
+key = "pd_black_death"
+name = "Чёрная смерть"
+branch = "plague_doctor"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["pd_leech_cure"]
+grants = "pd_black_death"
+desc = "Мор накрывает всех врагов вокруг."
+
+[[abilities]]
+key = "pd_black_death"
+name = "Чёрная смерть"
+kind = "nova"
+mana = 34
+cooldown_ms = 18000
+damage = [14, 22]
+dmg_type = "poison"
+scale = "int"
+scale_k = 1.3
+radius = 5
+glyph = "%"
+color = "#3a4a2a"
+desc = "Яд в радиусе 5 и страшная болезнь на 10 с."
+[abilities.on_hit]
+key = "black_death"
+name = "Чёрная смерть"
+duration_ms = 10000
+stats = { res_poison = -20, attack_speed = -15 }
+dot_per_sec = 12
+dmg_type = "poison"
+color = "#3a4a2a"
+
+
+# ---- Трансмутатор (зельевар) ----
+
+[[subclasses]]
+key = "transmuter"
+name = "Трансмутатор"
+class = "brewer"
+color = "#ffd040"
+desc = "Превращает металлы и плоть: ртутная скорость, железный голем и золотая буря."
+secret = true
+
+[[branches]]
+key = "transmuter"
+name = "Трансмутатор"
+color = "#ffd040"
+desc = "Великое делание."
+class = "brewer"
+subclass = "transmuter"
+
+[[skills]]
+key = "tm_transmute"
+name = "Превращение"
+branch = "transmuter"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Больше золота и урон тайной магией."
+stats = { gold_find = 15, arcane_pct = 4 }
+
+[[skills]]
+key = "tm_quicksilver"
+name = "Ртуть в крови"
+branch = "transmuter"
+tier = 1
+max_rank = 1
+level = 5
+grants = "tm_quicksilver"
+desc = "Тело становится текучим, как ртуть."
+
+[[abilities]]
+key = "tm_quicksilver"
+name = "Ртуть в крови"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+color = "#d0d8e0"
+fx = "wind"
+desc = "12 с: +30% скорости бега, +15% скорости атаки, +10% уклонения."
+[abilities.buff]
+key = "quicksilver"
+name = "Ртуть в крови"
+duration_ms = 12000
+stats = { move_speed = 30, attack_speed = 15, dodge = 10 }
+color = "#d0d8e0"
+
+[[skills]]
+key = "tm_iron_golem"
+name = "Железный голем"
+branch = "transmuter"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["tm_quicksilver"]
+grants = "tm_iron_golem"
+desc = "Голем из превращённого железа."
+
+[[abilities]]
+key = "tm_iron_golem"
+name = "Железный голем"
+kind = "summon"
+mana = 26
+cooldown_ms = 50000
+count = 1
+summon = "tm_golem"
+duration_ms = 45000
+color = "#a0a0b0"
+fx = "steel"
+desc = "Железный голем на 45 с."
+
+[[skills]]
+key = "tm_golden_storm"
+name = "Золотая буря"
+branch = "transmuter"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["tm_iron_golem"]
+grants = "tm_golden_storm"
+desc = "Вихрь расплавленного золота."
+
+[[abilities]]
+key = "tm_golden_storm"
+name = "Золотая буря"
+kind = "nova"
+mana = 32
+cooldown_ms = 16000
+damage = [22, 32]
+split = ["arcane", "fire"]
+scale = "int"
+scale_k = 1.6
+radius = 4
+glyph = "$"
+color = "#ffd040"
+fx = "gold"
+desc = "Тайная магия и огонь пополам в радиусе 4."
+
+[[monsters]]
+key = "tm_golem"
+name = "Железный голем"
+glyph = "Q"
+color = "#a0a0b0"
+hp = 240
+damage = [12, 20]
+armor = 10
+dmg_type = "blunt"
+move_ms = 260
+attack_ms = 1300
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+model = "golem"
+resist = { poison = 100, slash = 30, pierce = 30, lightning = -40 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Зельевар ----
+
+[[branches]]
+key = "brewer_hidden"
+name = "Скрытые навыки: Зельевар"
+color = "#80e0a0"
+desc = "Навыки, которые открываются сами за деяния."
+class = "brewer"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hbr_connoisseur"
+name = "Знаток зелий"
+branch = "brewer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "potions"
+deed_count = 60
+desc = "Вы чувствуете зелье на вкус."
+stats = { heal_pct = 10, hp_regen = 0.5 }
+
+[[skills]]
+key = "hbr_fire_master"
+name = "Мастер огня"
+branch = "brewer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:fire"
+deed_count = 12000
+desc = "Огненные смеси — ваш конёк."
+stats = { fire_pct = 12 }
+
+[[skills]]
+key = "hbr_poison_master"
+name = "Ядовар"
+branch = "brewer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:poison"
+deed_count = 12000
+desc = "Ваши яды безупречны."
+stats = { poison_pct = 12 }
+
+[[skills]]
+key = "hbr_golden_hands"
+name = "Золотые руки"
+branch = "brewer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "gold"
+deed_count = 6000
+desc = "Всё, к чему вы прикасаетесь, превращается в золото. Почти."
+stats = { gold_find = 25 }
+
+[[skills]]
+key = "hbr_swamp_herbs"
+name = "Болотные травы"
+branch = "brewer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:swamp"
+deed_count = 120
+desc = "Болото — ваша аптека."
+stats = { res_poison = 15 }
+
+[[skills]]
+key = "hbr_steady_hand"
+name = "Твёрдая рука"
+branch = "brewer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "casts"
+deed_count = 400
+desc = "Склянки не дрожат в ваших руках."
+stats = { max_mp = 15 }
+
+[[skills]]
+key = "hbr_fireproof"
+name = "Огнеупорный"
+branch = "brewer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:volcano"
+deed_count = 100
+desc = "Пламя недр вам привычно."
+stats = { res_fire = 15 }
+
+[[skills]]
+key = "hbr_self_test"
+name = "Испытатель на себе"
+branch = "brewer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 5
+desc = "Каждый неудачный опыт закалял вас."
+stats = { res_all = 4 }
+
+[[skills]]
+key = "hbr_slime_sample"
+name = "Образец слизи"
+branch = "brewer_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "kill:slime"
+deed_count = 40
+desc = "Слизь — ценнейший реагент."
+stats = { res_poison = 8, max_hp = 10 }
+
+[[skills]]
+key = "hbr_philosophers_elixir"
+name = "Философский эликсир"
+branch = "brewer_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hbr_philosophers_elixir"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути зельевара: эликсир, что лечит всё."
+
+[[abilities]]
+key = "hbr_philosophers_elixir"
+name = "Философский эликсир"
+kind = "heal"
+mana = 20
+cooldown_ms = 120000
+damage = [200, 260]
+scale = "int"
+scale_k = 4
+glyph = "+"
+color = "#c0ffe0"
+fx = "alchemy"
+desc = "Полное исцеление и +5 ко всем характеристикам на 20 с."
+[abilities.buff]
+key = "philosophers_elixir"
+name = "Философский эликсир"
+duration_ms = 20000
+stats = { str = 5, dex = 5, int = 5, vit = 5 }
+color = "#c0ffe0"
+# <<< contentgen: hidden

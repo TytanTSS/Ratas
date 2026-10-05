@@ -7,6 +7,10 @@ use std::collections::{BTreeMap, HashMap};
 
 pub type Id = u32;
 
+/// The radius of a creature's body in tiles; bosses are bigger.
+pub const BODY_RADIUS: f32 = 0.32;
+pub const BOSS_RADIUS: f32 = 0.45;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Kind {
     #[default]
@@ -152,14 +156,16 @@ impl Entity {
             Kind::Item => 0.2,
             Kind::Projectile => 0.12,
             _ => {
-                if let Some(m) = &self.monster {
-                    if let Some(d) = db().monster(&m.def) {
-                        if d.boss {
-                            return 0.45;
-                        }
-                    }
+                let boss = self
+                    .monster
+                    .as_ref()
+                    .and_then(|m| db().monster(&m.def))
+                    .is_some_and(|d| d.boss);
+                if boss {
+                    BOSS_RADIUS
+                } else {
+                    BODY_RADIUS
                 }
-                0.32
             }
         }
     }

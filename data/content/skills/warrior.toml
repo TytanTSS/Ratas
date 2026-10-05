@@ -1,6 +1,76 @@
-# Воин: базовая ветка и подклассы Страж, Гладиатор, Рыцарь и секретный Солнечный рыцарь.
-# equip у навыка — бонусы работают только с этим снаряжением; у умения — без него умение не применить:
-# weapon — любое оружие, shield — щит, twohand_dual — двуручное оружие или по оружию в каждой руке, bow — лук или арбалет.
+# Воин: подклассы Страж, Гладиатор и Рыцарь; секретные подклассы Солнечный рыцарь, Полководец и Берсерк;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "guardian"
+name = "Страж"
+class = "warrior"
+color = "#8ab0ff"
+desc = "Защита и живучесть, провокация врагов на себя. Многие навыки требуют щит."
+
+[[subclasses]]
+key = "gladiator"
+name = "Гладиатор"
+class = "warrior"
+color = "#ff4a3a"
+desc = "Сила, которая растёт вместе с ранами. Навыки требуют двуручное оружие или два оружия."
+
+[[subclasses]]
+key = "knight"
+name = "Рыцарь"
+class = "warrior"
+color = "#d8d8e8"
+desc = "Равновесие силы и стойкости. Навыкам нужно лишь оружие в руках."
+
+[[subclasses]]
+key = "sun_knight"
+name = "Солнечный рыцарь"
+class = "warrior"
+color = "#ffb83a"
+desc = "Испепеляет врагов божественным светом: удары разом наносят физический урон, урон светом и огнём. Сильнее прочих путей воина."
+secret = true
+
+[[branches]]
+key = "warrior"
+name = "Воин"
+color = "#ff6a4a"
+desc = "Основы ближнего боя и выживания."
+class = "warrior"
+
+[[branches]]
+key = "guardian"
+name = "Страж"
+color = "#8ab0ff"
+desc = "Щит, провокация и несокрушимость."
+class = "warrior"
+subclass = "guardian"
+
+[[branches]]
+key = "gladiator"
+name = "Гладиатор"
+color = "#ff4a3a"
+desc = "Ярость, кровь и тяжёлое оружие."
+class = "warrior"
+subclass = "gladiator"
+
+[[branches]]
+key = "knight"
+name = "Рыцарь"
+color = "#d8d8e8"
+desc = "Выучка, честь и тактика."
+class = "warrior"
+subclass = "knight"
+
+[[branches]]
+key = "sun_knight"
+name = "Солнечный рыцарь"
+color = "#ffb83a"
+desc = "Пламя рассвета в каждом ударе."
+class = "warrior"
+subclass = "sun_knight"
 
 # ---- Воин ----
 
@@ -428,6 +498,7 @@ kind = "buff"
 mana = 10
 cooldown_ms = 20000
 color = "#ff4a4a"
+fx = "sound"
 desc = "Временно усиливает урон и броню."
 [abilities.buff]
 key = "war_cry"
@@ -467,6 +538,7 @@ cooldown_ms = 10000
 radius = 4
 glyph = "!"
 color = "#ff8a5a"
+fx = "sound"
 desc = "Враги в радиусе 4 на 5 с атакуют только вас; ваша броня растёт."
 [abilities.on_hit]
 key = "taunted"
@@ -489,6 +561,7 @@ mana = 10
 cooldown_ms = 20000
 equip = "shield"
 color = "#8ab0ff"
+fx = "shield steel"
 desc = "6 с: +40% сопротивления всему, +30% блока, но вы медленнее. Нужен щит."
 [abilities.buff]
 key = "shield_wall"
@@ -508,6 +581,7 @@ scale = "vit"
 scale_k = 3.0
 glyph = "+"
 color = "#c0d8ff"
+fx = "blood"
 desc = "Восстанавливает много здоровья и даёт +8 брони на 8 с."
 [abilities.buff]
 key = "last_stand"
@@ -530,6 +604,7 @@ scale_k = 1.4
 radius = 2
 glyph = "@"
 color = "#ffd0a0"
+fx = "whirlwind"
 desc = "Удар по всем врагам в радиусе 2. Нужно двуручное оружие или два оружия."
 
 [[abilities]]
@@ -557,6 +632,7 @@ mana = 0
 cooldown_ms = 25000
 equip = "twohand_dual"
 color = "#ff2a2a"
+fx = "blood"
 desc = "8 с: +40% скорости атаки и +30% урона, но здоровье утекает."
 [abilities.buff]
 key = "blood_frenzy"
@@ -579,6 +655,7 @@ scale_k = 1.0
 range = 1
 glyph = "#"
 color = "#d0a070"
+fx = "earth"
 desc = "Цель на 6 с теряет 6 брони и 25% сопротивления физическому урону."
 [abilities.on_hit]
 key = "sundered"
@@ -617,6 +694,7 @@ mana = 12
 cooldown_ms = 25000
 radius = 4
 color = "#e8e8f8"
+fx = "sound"
 desc = "Вам и союзникам в радиусе 4: +20% урона в ближнем бою и +4 брони на 10 с."
 [abilities.buff]
 key = "rally"
@@ -655,6 +733,7 @@ scale_k = 1.0
 range = 1
 glyph = "*"
 color = "#ffb83a"
+fx = "sun"
 desc = "Удар оружием плюс урон светом и огнём, цель горит 3 с."
 [abilities.on_hit]
 key = "sunburn"
@@ -677,6 +756,7 @@ scale = "str"
 scale_k = 1.0
 glyph = "*"
 color = "#ffd06a"
+fx = "sun"
 desc = "Свет и огонь по всем врагам в радиусе 2."
 [abilities.on_hit]
 key = "sunburn"
@@ -694,6 +774,7 @@ mana = 14
 cooldown_ms = 25000
 radius = 4
 color = "#ffd06a"
+fx = "sun"
 desc = "Вам и союзникам рядом: +6 урона светом и +6 огнём к ударам, +15% сопротивления тьме на 12 с."
 [abilities.buff]
 key = "dawn_aura"
@@ -717,6 +798,7 @@ scale = "str"
 scale_k = 1.8
 glyph = "@"
 color = "#ffc040"
+fx = "supernova"
 desc = "Огромный взрыв света и огня в радиусе 3."
 [abilities.on_hit]
 key = "sunburn"
@@ -725,3 +807,412 @@ duration_ms = 4000
 dot_per_sec = 6
 dmg_type = "fire"
 color = "#ffb83a"
+
+# >>> contentgen: secret_path
+# ---- Полководец (воин) ----
+
+[[subclasses]]
+key = "warlord"
+name = "Полководец"
+class = "warrior"
+color = "#e0a040"
+desc = "Ведёт за собой: боевое знамя, натиск и призрачный легион."
+secret = true
+
+[[branches]]
+key = "warlord"
+name = "Полководец"
+color = "#e0a040"
+desc = "Знамя, натиск и легион."
+class = "warrior"
+subclass = "warlord"
+
+[[skills]]
+key = "wl_command"
+name = "Командирский голос"
+branch = "warlord"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон в ближнем бою и здоровье."
+stats = { melee_pct = 3, max_hp = 6 }
+
+[[skills]]
+key = "wl_banner"
+name = "Боевое знамя"
+branch = "warlord"
+tier = 1
+max_rank = 1
+level = 5
+grants = "wl_banner"
+desc = "Знамя вдохновляет вас и союзников."
+
+[[abilities]]
+key = "wl_banner"
+name = "Боевое знамя"
+kind = "buff"
+mana = 16
+cooldown_ms = 30000
+radius = 6
+color = "#e0a040"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 6: +10% урона в ближнем бою, +10% сопротивления всему и +5 брони на 20 с."
+[abilities.buff]
+key = "battle_banner"
+name = "Боевое знамя"
+duration_ms = 20000
+stats = { melee_pct = 10, res_all = 10, armor = 5 }
+color = "#e0a040"
+
+[[skills]]
+key = "wl_charge"
+name = "Натиск"
+branch = "warlord"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["wl_banner"]
+grants = "wl_charge"
+desc = "Рывок к врагу с оглушающим ударом."
+
+[[abilities]]
+key = "wl_charge"
+name = "Натиск"
+kind = "dash"
+mana = 12
+cooldown_ms = 8000
+damage = [10, 16]
+dmg_type = "blunt"
+scale = "str"
+scale_k = 1.1
+range = 4
+glyph = "~"
+color = "#ffb040"
+desc = "Рывок на 4 клетки: урон и оглушение на 1,5 с первому на пути."
+[abilities.on_hit]
+key = "charge_stun"
+name = "Оглушение"
+duration_ms = 1500
+stun = true
+color = "#ffb040"
+
+[[skills]]
+key = "wl_legion"
+name = "Легион"
+branch = "warlord"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["wl_charge"]
+grants = "wl_legion"
+desc = "Призрачные солдаты встают в строй рядом с вами."
+
+[[abilities]]
+key = "wl_legion"
+name = "Легион"
+kind = "summon"
+mana = 30
+cooldown_ms = 50000
+count = 3
+summon = "wl_soldier"
+duration_ms = 40000
+color = "#c0d0ff"
+fx = "spirit"
+desc = "Три призрачных солдата на 40 с."
+
+[[monsters]]
+key = "wl_soldier"
+name = "Призрачный солдат"
+glyph = "@"
+color = "#c0d0ff"
+hp = 60
+damage = [5, 9]
+armor = 4
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 950
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+model = "town_guard"
+resist = { poison = 100, shadow = 25 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+# <<< contentgen: secret_path
+
+# ---- Секретный подкласс: Берсерк ----
+
+[[subclasses]]
+key = "berserker"
+name = "Берсерк"
+class = "warrior"
+color = "#ff3a2a"
+desc = "Ярость без страха: чем ближе смерть, тем сильнее удары. Вихрь клинков и бешенство, которое не даёт упасть."
+secret = true
+
+[[branches]]
+key = "berserker"
+name = "Берсерк"
+color = "#ff3a2a"
+desc = "Кровь, ярость и вихрь стали."
+class = "warrior"
+subclass = "berserker"
+
+# ---- Навыки: Берсерк ----
+
+[[skills]]
+key = "blood_rage"
+name = "Кровавая ярость"
+branch = "berserker"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Чем меньше здоровья, тем сильнее удары; часть урона возвращается здоровьем."
+stats = { fury = 8, life_leech = 0.6 }
+
+[[skills]]
+key = "blood_whirl"
+name = "Кровавый вихрь"
+branch = "berserker"
+tier = 1
+max_rank = 1
+level = 5
+equip = "melee"
+grants = "blood_whirl"
+desc = "Вы кружитесь со сталью в руках и рубите всех вокруг."
+
+[[skills]]
+key = "frenzy"
+name = "Бешенство"
+branch = "berserker"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["blood_rage"]
+grants = "frenzy"
+desc = "Удары и шаги быстрее, но защита слабее."
+
+[[skills]]
+key = "thick_hide"
+name = "Шкура зверя"
+branch = "berserker"
+tier = 2
+max_rank = 3
+level = 7
+desc = "Здоровье и стойкость к физическому урону."
+stats = { max_hp = 12, res_physical = 3 }
+
+[[skills]]
+key = "undying_rage"
+name = "Неумирающая ярость"
+branch = "berserker"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["frenzy"]
+grants = "undying_rage"
+desc = "Несколько секунд вас почти невозможно убить."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "blood_whirl"
+name = "Кровавый вихрь"
+kind = "cleave"
+mana = 14
+cooldown_ms = 6000
+radius = 2
+dmg_type = "weapon"
+damage = [6, 12]
+scale = "str"
+scale_k = 1.0
+equip = "melee"
+glyph = "*"
+color = "#ff6a4a"
+fx = "whirlwind blood"
+desc = "Удар по всем врагам в радиусе 2."
+
+[[abilities]]
+key = "frenzy"
+name = "Бешенство"
+kind = "buff"
+mana = 10
+cooldown_ms = 25000
+color = "#ff3a2a"
+fx = "blood"
+desc = "12 с: +40% скорости атаки, +15% скорости бега, −5 брони."
+[abilities.buff]
+key = "frenzy"
+name = "Бешенство"
+duration_ms = 12000
+stats = { attack_speed = 40, move_speed = 15, armor = -5 }
+color = "#ff3a2a"
+
+[[abilities]]
+key = "undying_rage"
+name = "Неумирающая ярость"
+kind = "buff"
+mana = 20
+cooldown_ms = 60000
+color = "#ff2a2a"
+fx = "blood"
+desc = "6 с: +50% сопротивления всему и +20 к восстановлению здоровья."
+[abilities.buff]
+key = "undying_rage"
+name = "Неумирающая ярость"
+duration_ms = 6000
+stats = { res_all = 50, hp_regen = 20 }
+color = "#ff2a2a"
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Воин ----
+
+[[branches]]
+key = "warrior_hidden"
+name = "Скрытые навыки: Воин"
+color = "#ff6a4a"
+desc = "Навыки, которые открываются сами за деяния."
+class = "warrior"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hwa_battles"
+name = "Тысяча битв"
+branch = "warrior_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kills"
+deed_count = 300
+desc = "Опыт сотен схваток."
+stats = { melee_pct = 6, max_hp = 15 }
+
+[[skills]]
+key = "hwa_last_stand"
+name = "На краю"
+branch = "warrior_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "lowhp"
+deed_count = 15
+desc = "Вы сильнее всего, когда почти мертвы."
+stats = { fury = 20, res_all = 3 }
+
+[[skills]]
+key = "hwa_wall"
+name = "Живая стена"
+branch = "warrior_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "block"
+deed_count = 150
+desc = "Щит стал частью руки."
+stats = { block = 5, armor = 4 }
+
+[[skills]]
+key = "hwa_kingslayer"
+name = "Убийца королей"
+branch = "warrior_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "bosses"
+deed_count = 3
+desc = "Короли подземелий падают от вашей руки."
+stats = { melee_pct = 8, crit = 3 }
+
+[[skills]]
+key = "hwa_cave_bane"
+name = "Гроза пещер"
+branch = "warrior_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "theme:cave"
+deed_count = 150
+desc = "Пещерные твари знают вас в лицо."
+stats = { armor = 3, res_poison = 8 }
+
+[[skills]]
+key = "hwa_orcbreaker"
+name = "Сокрушитель орков"
+branch = "warrior_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "kill:orc"
+deed_count = 40
+desc = "Орки поют о вас страшные песни."
+stats = { str = 3, melee_pct = 4 }
+
+[[skills]]
+key = "hwa_bloodied"
+name = "Кровавый клинок"
+branch = "warrior_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "dmg:slash"
+deed_count = 15000
+desc = "Ваш клинок помнит вкус крови."
+stats = { life_leech = 1.5, crit_mult = 0.2 }
+
+[[skills]]
+key = "hwa_champion_bane"
+name = "Гроза чемпионов"
+branch = "warrior_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "elites"
+deed_count = 25
+desc = "Самые сильные враги — ваши любимые."
+stats = { max_hp = 25, melee_pct = 5 }
+
+[[skills]]
+key = "hwa_iron_will"
+name = "Железная воля"
+branch = "warrior_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 5
+desc = "Смерть не сломила вас. Пять раз."
+stats = { res_all = 5, hp_regen = 1 }
+
+[[skills]]
+key = "hwa_unbreakable"
+name = "Несокрушимый"
+branch = "warrior_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hwa_unbreakable"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути воина: на миг вас ничто не берёт."
+
+[[abilities]]
+key = "hwa_unbreakable"
+name = "Несокрушимый"
+kind = "buff"
+mana = 10
+cooldown_ms = 90000
+color = "#ff6a4a"
+fx = "shield steel"
+desc = "8 с: +50% сопротивления всему и +10 к восстановлению здоровья."
+[abilities.buff]
+key = "unbreakable"
+name = "Несокрушимый"
+duration_ms = 8000
+stats = { res_all = 50, hp_regen = 10 }
+color = "#ff6a4a"
+# <<< contentgen: hidden

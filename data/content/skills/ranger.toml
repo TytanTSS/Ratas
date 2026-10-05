@@ -1,0 +1,938 @@
+# Следопыт: подклассы Снайпер, Повелитель зверей и Лесной страж; секретные подклассы Звёздный лучник и Дикая охота;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# >>> contentgen: class
+# ---- Следопыт ----
+
+[[subclasses]]
+key = "sharpshooter"
+name = "Снайпер"
+class = "ranger"
+color = "#c0d080"
+desc = "Дальние смертельные выстрелы, пробивающие любую броню."
+
+[[subclasses]]
+key = "beastmaster"
+name = "Повелитель зверей"
+class = "ranger"
+color = "#b08a50"
+desc = "Звери-спутники сражаются рядом: волк, соколы и медведь."
+
+[[subclasses]]
+key = "warden"
+name = "Лесной страж"
+class = "ranger"
+color = "#5a9a5a"
+desc = "Копьё и сила леса: ближний бой, шипы и стойкость."
+
+[[branches]]
+key = "ranger"
+name = "Следопыт"
+color = "#6ab04a"
+desc = "Меткость, ловкость и знание троп."
+class = "ranger"
+
+[[branches]]
+key = "sharpshooter"
+name = "Снайпер"
+color = "#c0d080"
+desc = "Выстрелы с убийственной точностью."
+class = "ranger"
+subclass = "sharpshooter"
+
+[[branches]]
+key = "beastmaster"
+name = "Повелитель зверей"
+color = "#b08a50"
+desc = "Звери-спутники."
+class = "ranger"
+subclass = "beastmaster"
+
+[[branches]]
+key = "warden"
+name = "Лесной страж"
+color = "#5a9a5a"
+desc = "Копьё и шипы леса."
+class = "ranger"
+subclass = "warden"
+
+[[skills]]
+key = "rng_keen_eye"
+name = "Меткий глаз"
+branch = "ranger"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Урон в дальнем бою и крит. шанс."
+stats = { ranged_pct = 5, crit = 1 }
+
+[[skills]]
+key = "rng_fieldcraft"
+name = "Бывалый странник"
+branch = "ranger"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Быстрее бег, чаще уклонение."
+stats = { move_speed = 2, dodge = 1 }
+
+[[skills]]
+key = "rng_volley"
+name = "Залп"
+branch = "ranger"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["rng_keen_eye"]
+equip = "bow"
+grants = "rng_volley"
+desc = "Веер из пяти стрел."
+
+[[skills]]
+key = "rng_snare"
+name = "Капкан"
+branch = "ranger"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["rng_fieldcraft"]
+grants = "rng_snare"
+desc = "Капканы вокруг вас ранят и держат врагов."
+
+[[skills]]
+key = "rng_survivor"
+name = "Закалённый"
+branch = "ranger"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["rng_volley"]
+desc = "Здоровье и защита от яда."
+stats = { max_hp = 8, res_poison = 4 }
+
+[[skills]]
+key = "rng_deadeye"
+name = "Мёртвый глаз"
+branch = "sharpshooter"
+tier = 1
+max_rank = 5
+level = 5
+equip = "bow"
+desc = "С луком: урон и сила критических ударов."
+stats = { ranged_pct = 6, crit_mult = 0.1 }
+
+[[skills]]
+key = "rng_piercing_shot"
+name = "Бронебойный выстрел"
+branch = "sharpshooter"
+tier = 1
+max_rank = 1
+level = 5
+grants = "rng_piercing_shot"
+desc = "Стрела пробивает доспех и ослабляет его."
+
+[[skills]]
+key = "rng_headshot"
+name = "Выстрел в голову"
+branch = "sharpshooter"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["rng_deadeye"]
+grants = "rng_headshot"
+desc = "Мощный выстрел, оглушающий цель."
+
+[[skills]]
+key = "rng_rain_of_arrows"
+name = "Дождь стрел"
+branch = "sharpshooter"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["rng_headshot"]
+grants = "rng_rain_of_arrows"
+desc = "Стрелы падают с неба на большую площадь."
+
+[[skills]]
+key = "rng_pack_bond"
+name = "Узы стаи"
+branch = "beastmaster"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Здоровье и урон в ближнем бою."
+stats = { max_hp = 6, melee_pct = 2 }
+
+[[skills]]
+key = "rng_call_wolf"
+name = "Зов волка"
+branch = "beastmaster"
+tier = 1
+max_rank = 1
+level = 5
+grants = "rng_call_wolf"
+desc = "Верный волк сражается рядом."
+
+[[skills]]
+key = "rng_call_hawk"
+name = "Соколы"
+branch = "beastmaster"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["rng_pack_bond"]
+grants = "rng_call_hawk"
+desc = "Два сокола клюют врагов с неба."
+
+[[skills]]
+key = "rng_call_bear"
+name = "Медведь-побратим"
+branch = "beastmaster"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["rng_call_hawk"]
+grants = "rng_call_bear"
+desc = "Могучий медведь встаёт на вашу сторону."
+
+[[skills]]
+key = "rng_warden_might"
+name = "Сила стража"
+branch = "warden"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон в ближнем бою и броня."
+stats = { melee_pct = 4, armor = 1 }
+
+[[skills]]
+key = "rng_thorn_spear"
+name = "Терновое копьё"
+branch = "warden"
+tier = 1
+max_rank = 1
+level = 5
+equip = "melee"
+grants = "rng_thorn_spear"
+desc = "Два укола с ядом шипов."
+
+[[skills]]
+key = "rng_barkguard"
+name = "Кора стража"
+branch = "warden"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["rng_warden_might"]
+grants = "rng_barkguard"
+desc = "Броня, шипы и восстановление на время."
+
+[[skills]]
+key = "rng_forest_wrath"
+name = "Ярость леса"
+branch = "warden"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["rng_barkguard"]
+grants = "rng_forest_wrath"
+desc = "Удар по всем вокруг: колющий урон и яд."
+
+[[abilities]]
+key = "rng_aimed_shot"
+name = "Прицельный выстрел"
+kind = "projectile"
+mana = 3
+cooldown_ms = 1500
+damage = [6, 10]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 1
+range = 10
+speed_ms = 25
+equip = "bow"
+glyph = "dir"
+color = "#d0e0a0"
+desc = "Выверенный выстрел из лука."
+
+[[abilities]]
+key = "rng_volley"
+name = "Залп"
+kind = "projectile"
+mana = 10
+cooldown_ms = 6000
+damage = [4, 7]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 0.6
+range = 8
+count = 5
+speed_ms = 25
+equip = "bow"
+glyph = "dir"
+color = "#d0e0a0"
+desc = "Пять стрел веером."
+
+[[abilities]]
+key = "rng_snare"
+name = "Капкан"
+kind = "nova"
+mana = 10
+cooldown_ms = 10000
+damage = [4, 8]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 0.6
+radius = 2
+glyph = "#"
+color = "#a08a60"
+fx = "web"
+desc = "Капканы в радиусе 2: урон и почти полная остановка на 4 с."
+[abilities.on_hit]
+key = "snared"
+name = "В капкане"
+duration_ms = 4000
+stats = { move_speed = -75 }
+color = "#a08a60"
+
+[[abilities]]
+key = "rng_piercing_shot"
+name = "Бронебойный выстрел"
+kind = "projectile"
+mana = 10
+cooldown_ms = 5000
+damage = [12, 18]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 1.3
+range = 11
+speed_ms = 20
+glyph = "dir"
+color = "#e0e0c0"
+desc = "Сильный выстрел: −8 брони и −15% сопротивления физическому урону на 6 с."
+[abilities.on_hit]
+key = "armor_pierced"
+name = "Пробитый доспех"
+duration_ms = 6000
+stats = { armor = -8, res_physical = -15 }
+color = "#e0e0c0"
+
+[[abilities]]
+key = "rng_headshot"
+name = "Выстрел в голову"
+kind = "projectile"
+mana = 16
+cooldown_ms = 10000
+damage = [20, 30]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 1.8
+range = 12
+speed_ms = 15
+glyph = "dir"
+color = "#ffffff"
+desc = "Огромный урон и оглушение на 1,5 с."
+[abilities.on_hit]
+key = "headshot_stun"
+name = "Оглушение"
+duration_ms = 1500
+stun = true
+color = "#ffffff"
+
+[[abilities]]
+key = "rng_rain_of_arrows"
+name = "Дождь стрел"
+kind = "projectile"
+mana = 28
+cooldown_ms = 14000
+damage = [16, 26]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 1.5
+range = 10
+radius = 3
+speed_ms = 40
+glyph = "|"
+color = "#d0e0a0"
+fx = "rain"
+desc = "Стрелы накрывают круг радиусом 3."
+
+[[abilities]]
+key = "rng_call_wolf"
+name = "Зов волка"
+kind = "summon"
+mana = 14
+cooldown_ms = 30000
+count = 1
+summon = "rng_wolf_companion"
+duration_ms = 60000
+color = "#a0a0a0"
+fx = "beast"
+desc = "Волк-спутник на 60 с."
+
+[[abilities]]
+key = "rng_call_hawk"
+name = "Соколы"
+kind = "summon"
+mana = 16
+cooldown_ms = 30000
+count = 2
+summon = "rng_hawk"
+duration_ms = 40000
+color = "#c09a6a"
+fx = "beast"
+desc = "Два сокола на 40 с."
+
+[[abilities]]
+key = "rng_call_bear"
+name = "Медведь-побратим"
+kind = "summon"
+mana = 26
+cooldown_ms = 50000
+count = 1
+summon = "rng_bear_companion"
+duration_ms = 50000
+color = "#8a5a3a"
+fx = "beast"
+desc = "Медведь на 50 с."
+
+[[abilities]]
+key = "rng_thorn_spear"
+name = "Терновое копьё"
+kind = "strike"
+mana = 10
+cooldown_ms = 5000
+damage = [5, 9]
+dmg_type = "pierce"
+scale = "str"
+scale_k = 0.8
+count = 2
+equip = "melee"
+glyph = "!"
+color = "#7ab04a"
+fx = "nature"
+desc = "Два удара и яд на 5 с."
+[abilities.on_hit]
+key = "thorn_venom"
+name = "Яд шипов"
+duration_ms = 5000
+dot_per_sec = 3
+dmg_type = "poison"
+color = "#7ab04a"
+
+[[abilities]]
+key = "rng_barkguard"
+name = "Кора стража"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+color = "#8a6a3a"
+fx = "shield nature"
+desc = "12 с: +10 брони, +8 шипов, +2 к восстановлению здоровья."
+[abilities.buff]
+key = "barkguard"
+name = "Кора стража"
+duration_ms = 12000
+stats = { armor = 10, thorns = 8, hp_regen = 2 }
+color = "#8a6a3a"
+
+[[abilities]]
+key = "rng_forest_wrath"
+name = "Ярость леса"
+kind = "cleave"
+mana = 20
+cooldown_ms = 12000
+damage = [12, 20]
+split = ["pierce", "poison"]
+scale = "str"
+scale_k = 1.2
+radius = 2
+glyph = "*"
+color = "#5aa03a"
+fx = "whirlwind nature"
+desc = "Удар по всем в радиусе 2: колющий урон и яд пополам."
+
+[[monsters]]
+key = "rng_wolf_companion"
+name = "Волк-спутник"
+glyph = "w"
+color = "#a0a0a0"
+hp = 70
+damage = [5, 9]
+armor = 2
+dmg_type = "pierce"
+move_ms = 140
+attack_ms = 800
+xp = 0
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+model = "wolf"
+resist = { cold = 25 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "rng_hawk"
+name = "Ловчий сокол"
+glyph = "v"
+color = "#c09a6a"
+hp = 30
+damage = [3, 6]
+armor = 0
+dmg_type = "pierce"
+move_ms = 110
+attack_ms = 700
+xp = 0
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+model = "giant_bat"
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "rng_bear_companion"
+name = "Медведь-побратим"
+glyph = "B"
+color = "#8a5a3a"
+hp = 200
+damage = [10, 16]
+armor = 6
+dmg_type = "slash"
+move_ms = 220
+attack_ms = 1200
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+model = "bear"
+resist = { cold = 25, poison = 25 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+# <<< contentgen: class
+
+# >>> contentgen: secret_path
+# ---- Звёздный лучник (следопыт) ----
+
+[[subclasses]]
+key = "starshot"
+name = "Звёздный лучник"
+class = "ranger"
+color = "#e0e8ff"
+desc = "Стрелы из звёздного света: тайная магия на огромном расстоянии."
+secret = true
+
+[[branches]]
+key = "starshot"
+name = "Звёздный лучник"
+color = "#e0e8ff"
+desc = "Стрелы звёзд."
+class = "ranger"
+subclass = "starshot"
+
+[[skills]]
+key = "ss_celestial"
+name = "Небесная меткость"
+branch = "starshot"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон тайной магией и в дальнем бою."
+stats = { arcane_pct = 6, ranged_pct = 4 }
+
+[[skills]]
+key = "ss_star_arrow"
+name = "Звёздная стрела"
+branch = "starshot"
+tier = 1
+max_rank = 1
+level = 5
+grants = "ss_star_arrow"
+desc = "Стрела света летит очень далеко."
+
+[[abilities]]
+key = "ss_star_arrow"
+name = "Звёздная стрела"
+kind = "projectile"
+mana = 8
+cooldown_ms = 2500
+damage = [12, 18]
+dmg_type = "arcane"
+scale = "dex"
+scale_k = 1.2
+range = 13
+speed_ms = 12
+glyph = "dir"
+color = "#e0e8ff"
+fx = "star"
+desc = "Тайная магия на 13 клеток."
+
+[[skills]]
+key = "ss_constellation"
+name = "Созвездие"
+branch = "starshot"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["ss_star_arrow"]
+grants = "ss_constellation"
+desc = "Пять звёздных стрел разом."
+
+[[abilities]]
+key = "ss_constellation"
+name = "Созвездие"
+kind = "projectile"
+mana = 16
+cooldown_ms = 8000
+damage = [8, 12]
+dmg_type = "arcane"
+scale = "dex"
+scale_k = 0.9
+range = 11
+count = 5
+speed_ms = 15
+glyph = "*"
+color = "#c0d0ff"
+fx = "star"
+desc = "Пять стрел тайной магии веером."
+
+[[skills]]
+key = "ss_supernova"
+name = "Сверхновая"
+branch = "starshot"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["ss_constellation"]
+grants = "ss_supernova"
+desc = "Стрела взрывается, как рождение звезды."
+
+[[abilities]]
+key = "ss_supernova"
+name = "Сверхновая"
+kind = "projectile"
+mana = 36
+cooldown_ms = 20000
+damage = [30, 46]
+split = ["arcane", "fire"]
+scale = "dex"
+scale_k = 2.2
+range = 12
+radius = 4
+speed_ms = 40
+glyph = "*"
+color = "#fff0c0"
+fx = "supernova"
+desc = "Взрыв в радиусе 4: тайная магия и огонь пополам."
+
+
+# ---- Дикая охота (следопыт) ----
+
+[[subclasses]]
+key = "wild_hunt"
+name = "Дикая охота"
+class = "ranger"
+color = "#7a9a6a"
+desc = "Призрачная свора и рог охоты."
+secret = true
+
+[[branches]]
+key = "wild_hunt"
+name = "Дикая охота"
+color = "#7a9a6a"
+desc = "Гон."
+class = "ranger"
+subclass = "wild_hunt"
+
+[[skills]]
+key = "wh_hunt_lord"
+name = "Владыка охоты"
+branch = "wild_hunt"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Здоровье и урон любого боя."
+stats = { max_hp = 6, melee_pct = 3, ranged_pct = 3 }
+
+[[skills]]
+key = "wh_spectral_hounds"
+name = "Призрачная свора"
+branch = "wild_hunt"
+tier = 1
+max_rank = 1
+level = 5
+grants = "wh_spectral_hounds"
+desc = "Три призрачных пса гонят добычу."
+
+[[abilities]]
+key = "wh_spectral_hounds"
+name = "Призрачная свора"
+kind = "summon"
+mana = 18
+cooldown_ms = 30000
+count = 3
+summon = "wh_hound"
+duration_ms = 30000
+color = "#9ab08a"
+fx = "spirit"
+desc = "Три призрачных пса на 30 с."
+
+[[skills]]
+key = "wh_horn"
+name = "Рог охоты"
+branch = "wild_hunt"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["wh_spectral_hounds"]
+grants = "wh_horn"
+desc = "Звук рога гонит вас и союзников вперёд."
+
+[[abilities]]
+key = "wh_horn"
+name = "Рог охоты"
+kind = "buff"
+mana = 12
+cooldown_ms = 25000
+radius = 6
+color = "#c0b080"
+fx = "sound"
+desc = "Вам и союзникам в радиусе 6: +20% скорости бега и атаки на 15 с."
+[abilities.buff]
+key = "hunt_horn"
+name = "Рог охоты"
+duration_ms = 15000
+stats = { move_speed = 20, attack_speed = 20 }
+color = "#c0b080"
+
+[[skills]]
+key = "wh_huntsman"
+name = "Призрачный егерь"
+branch = "wild_hunt"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["wh_horn"]
+grants = "wh_huntsman"
+desc = "Сам Егерь Дикой охоты приходит на зов."
+
+[[abilities]]
+key = "wh_huntsman"
+name = "Призрачный егерь"
+kind = "summon"
+mana = 30
+cooldown_ms = 50000
+count = 1
+summon = "wh_huntsman"
+duration_ms = 45000
+color = "#8ab07a"
+fx = "spirit"
+desc = "Призрачный егерь на 45 с."
+
+[[monsters]]
+key = "wh_hound"
+name = "Призрачный пёс"
+glyph = "w"
+color = "#9ab08a"
+hp = 50
+damage = [5, 8]
+armor = 1
+dmg_type = "shadow"
+move_ms = 120
+attack_ms = 750
+xp = 0
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+model = "wolf"
+resist = { physical = 30, poison = 100 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "wh_huntsman"
+name = "Призрачный егерь"
+glyph = "@"
+color = "#8ab07a"
+hp = 140
+damage = [10, 16]
+armor = 4
+dmg_type = "pierce"
+move_ms = 170
+attack_ms = 1000
+xp = 0
+sight = 9
+behavior = "ranged"
+role = "ranged"
+model = "hunter"
+resist = { physical = 30, poison = 100 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Следопыт ----
+
+[[branches]]
+key = "ranger_hidden"
+name = "Скрытые навыки: Следопыт"
+color = "#6ab04a"
+desc = "Навыки, которые открываются сами за деяния."
+class = "ranger"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hrg_arrows"
+name = "Тысяча стрел"
+branch = "ranger_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:pierce"
+deed_count = 20000
+desc = "Вы стреляете, не думая."
+stats = { ranged_pct = 10 }
+
+[[skills]]
+key = "hrg_sharp_eye"
+name = "Соколиный глаз"
+branch = "ranger_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "crits"
+deed_count = 300
+desc = "Вы видите слабое место за сто шагов."
+stats = { crit = 4, crit_mult = 0.15 }
+
+[[skills]]
+key = "hrg_tireless_legs"
+name = "Неутомимые ноги"
+branch = "ranger_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "steps"
+deed_count = 30000
+desc = "Вы не устаёте в пути."
+stats = { move_speed = 8 }
+
+[[skills]]
+key = "hrg_forest_ghost"
+name = "Лесной призрак"
+branch = "ranger_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:forest"
+deed_count = 200
+desc = "В лесу вас не заметить."
+stats = { dodge = 4, sight = 1 }
+
+[[skills]]
+key = "hrg_birdshot"
+name = "Сбивающий птиц"
+branch = "ranger_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "kill:harpy"
+deed_count = 30
+desc = "Гарпии падают на лету."
+stats = { ranged_pct = 6, crit = 2 }
+
+[[skills]]
+key = "hrg_beast_friend"
+name = "Друг зверей"
+branch = "ranger_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "summons"
+deed_count = 40
+desc = "Звери идут за вами охотно."
+stats = { max_hp = 15 }
+
+[[skills]]
+key = "hrg_pathfinder"
+name = "Первопроходец"
+branch = "ranger_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "landmarks"
+deed_count = 10
+desc = "Вы видели все чудеса этих земель."
+stats = { move_speed = 4, sight = 1 }
+
+[[skills]]
+key = "hrg_big_game"
+name = "Охотник на крупную дичь"
+branch = "ranger_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "elites"
+deed_count = 20
+desc = "Чем крупнее зверь, тем азартнее охота."
+stats = { ranged_pct = 8 }
+
+[[skills]]
+key = "hrg_night_vision"
+name = "Ночное зрение"
+branch = "ranger_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "night"
+deed_count = 100
+desc = "Темнота вам не помеха."
+stats = { sight = 2 }
+
+[[skills]]
+key = "hrg_hail"
+name = "Град стрел"
+branch = "ranger_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hrg_hail"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути следопыта: небо, полное стрел."
+
+[[abilities]]
+key = "hrg_hail"
+name = "Град стрел"
+kind = "projectile"
+mana = 20
+cooldown_ms = 25000
+damage = [8, 13]
+dmg_type = "pierce"
+scale = "dex"
+scale_k = 0.9
+range = 10
+count = 9
+speed_ms = 20
+glyph = "dir"
+color = "#d0e0a0"
+desc = "Девять стрел веером."
+# <<< contentgen: hidden

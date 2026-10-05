@@ -1,7 +1,8 @@
 //! All data-driven game definitions: tiles, monsters, items, abilities, the
 //! skill tree, classes and NPC roles.
 //!
-//! Built-in definitions are embedded from data/content/*.toml. Additional TOML
+//! Built-in definitions are embedded from `data/content/**/*.toml` (the skill
+//! tree of every class in its own `skills/<class>.toml`). Additional TOML
 //! (or JSON) files in a mods directory are merged on top: an entry with an
 //! existing key replaces the built-in one, a new key is appended. This is how
 //! the skill tree and everything else can be extended without touching code.
@@ -12,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::OnceLock;
 
 pub use validate::*;
 
@@ -80,6 +82,37 @@ pub const DAMAGE_GROUPS: &[(&str, &str)] = &[
     ("all", "Сопр. всему урону"),
 ];
 
+/// Elements of ability effects (the colours and particles they are drawn with).
+pub const FX_ELEMENTS: &[&str] = &[
+    "fire", "frost", "storm", "holy", "shadow", "poison", "arcane", "nature", "earth", "wind",
+    "steel", "arrow", "blood", "bone", "spirit", "sound", "time", "void", "star", "sun", "gold",
+    "smoke", "beast", "illusion", "water", "chi", "demon", "alchemy",
+];
+
+/// Signature shapes of ability effects.
+pub const FX_SHAPES: &[&str] = &[
+    "meteor",
+    "blizzard",
+    "rain",
+    "thunder",
+    "whirlwind",
+    "inferno",
+    "eruption",
+    "pillars",
+    "eclipse",
+    "orbit",
+    "supernova",
+    "shield",
+    "flask",
+    "web",
+    "hammer",
+    "lance",
+    "rune",
+    "mark",
+    "form",
+    "sleep",
+];
+
 pub fn damage_group(key: &str) -> Option<&'static str> {
     DAMAGE_GROUPS
         .iter()
@@ -124,6 +157,10 @@ pub struct AbilityDef {
     pub count: i32,
     pub glyph: String,
     pub color: String,
+    /// how its effects look: an element and/or a signature shape from
+    /// FX_ELEMENTS and FX_SHAPES, by spaces ("meteor", "shield frost");
+    /// the element defaults to the damage type
+    pub fx: String,
     /// projectile ms per tile
     pub speed_ms: i32,
     pub buff: Option<BuffDef>,
@@ -374,10 +411,17 @@ keyed!(
 );
 
 fn merge_by_key<T: Keyed + Clone>(dst: &mut Vec<T>, src: &[T]) {
+    if src.is_empty() {
+        return;
+    }
+    let mut at: HashMap<String, usize> = idx(dst);
     for s in src {
-        match dst.iter_mut().find(|d| d.key() == s.key()) {
-            Some(d) => *d = s.clone(),
-            None => dst.push(s.clone()),
+        match at.get(s.key()) {
+            Some(&i) => dst[i] = s.clone(),
+            None => {
+                at.insert(s.key().to_string(), dst.len());
+                dst.push(s.clone());
+            }
         }
     }
 }
@@ -421,7 +465,8 @@ pub struct Db {
     subs: HashMap<String, usize>,
     squads: HashMap<String, usize>,
     uniques: HashMap<String, usize>,
-    pub json: Vec<u8>,
+    /// the bundle as JSON for network clients, made when the first one joins
+    json: OnceLock<Vec<u8>>,
 }
 
 static ACTIVE: AtomicPtr<Db> = AtomicPtr::new(std::ptr::null_mut());
@@ -491,7 +536,7 @@ pub fn load_default(mods_dir: Option<&Path>) -> Result<(Db, Vec<String>), String
     if let Some(dir) = mods_dir {
         if let Ok(rd) = std::fs::read_dir(dir) {
             let mut files: Vec<_> = rd
-                .filter_map(|e| e.ok())
+                .filter_map(Result::ok)
                 .map(|e| e.path())
                 .filter(|p| {
                     matches!(
@@ -562,7 +607,6 @@ pub fn index(mut b: Bundle) -> Result<Db, String> {
             s.max_rank = 1;
         }
     }
-    let json = serde_json::to_vec(&b).unwrap_or_default();
     let d = Db {
         tile_by_key: idx(&b.tiles),
         monsters: idx(&b.monsters),
@@ -576,7 +620,7 @@ pub fn index(mut b: Bundle) -> Result<Db, String> {
         subs: idx(&b.subclasses),
         squads: idx(&b.squads),
         uniques: idx(&b.uniques),
-        json,
+        json: OnceLock::new(),
         b,
     };
     let problems = d.validate();
@@ -587,6 +631,11 @@ pub fn index(mut b: Bundle) -> Result<Db, String> {
 }
 
 impl Db {
+    /// The content as JSON: what a server sends to joining clients.
+    pub fn json(&self) -> &[u8] {
+        self.json
+            .get_or_init(|| serde_json::to_vec(&self.b).unwrap_or_default())
+    }
     pub fn tile(&self, id: u8) -> &TileDef {
         self.b.tiles.get(id as usize).unwrap_or(&self.b.tiles[0])
     }
@@ -694,6 +743,41 @@ mod tests {
             }
         }
         assert!(dups.is_empty(), "duplicate keys: {dups:?}");
+    }
+
+    /// Every class keeps its skill tree in its own file: subclasses, branches
+    /// and skills in skills/<class>.toml (branches of no class in
+    /// skills/common.toml), the classes themselves in classes.toml.
+    #[test]
+    fn class_content_layout() {
+        let (d, _) = load_default(None).unwrap();
+        let file_of = |class: &str| match class {
+            "" => "skills/common.toml".to_string(),
+            c => format!("skills/{c}.toml"),
+        };
+        let mut misplaced = Vec::new();
+        for (name, text) in crate::embedded::CONTENT {
+            let b = decode_toml(text).unwrap();
+            let mut check = |what: &str, key: &str, want: String| {
+                if *name != want {
+                    misplaced.push(format!("{what} {key} in {name}, not in {want}"));
+                }
+            };
+            for c in &b.classes {
+                check("class", &c.key, "classes.toml".into());
+            }
+            for s in &b.subclasses {
+                check("subclass", &s.key, file_of(&s.class));
+            }
+            for br in &b.branches {
+                check("branch", &br.key, file_of(&br.class));
+            }
+            for s in &b.skills {
+                let class = d.branch(&s.branch).map_or("", |br| br.class.as_str());
+                check("skill", &s.key, file_of(class));
+            }
+        }
+        assert!(misplaced.is_empty(), "{misplaced:#?}");
     }
 
     #[test]

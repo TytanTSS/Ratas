@@ -1771,8 +1771,7 @@ pub fn resolve(model: &str, def: &str, glyph: char, kind: u8) -> String {
         let name = ALIASES
             .iter()
             .find(|(a, _)| *a == name)
-            .map(|(_, b)| *b)
-            .unwrap_or(name);
+            .map_or(name, |(_, b)| *b);
         if exists(name) {
             return name.to_string();
         }
@@ -1909,9 +1908,7 @@ pub fn dress(mut h: Hum, gear: &[String]) -> Hum {
         h.trim = NONE;
         h.pants = hex("#6a5a48");
     }
-    h.cape = gear_item(gear, GEAR_BACK)
-        .map(|d| hex(&d.color))
-        .unwrap_or(NONE);
+    h.cape = gear_item(gear, GEAR_BACK).map_or(NONE, |d| hex(&d.color));
     h
 }
 

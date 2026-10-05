@@ -298,8 +298,7 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                 .hotbar
                 .iter()
                 .position(|h| h == key)
-                .map(|s| (s + 1).to_string())
-                .unwrap_or_else(|| " ".into());
+                .map_or_else(|| " ".into(), |s| (s + 1).to_string());
             g.text_raw(
                 &format!("[{slot}]"),
                 rr.x + 6.0 * s,

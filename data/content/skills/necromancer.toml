@@ -1,0 +1,709 @@
+# Некромант: подклассы Повелитель костей и Чумной мор; секретный подкласс Повелитель призраков;
+# скрытые навыки, которые открываются деяниями. Как устроены классы и поле equip — см. classes.toml.
+# Части между метками contentgen создаёт tools/contentgen/run.py: их правят в tools/contentgen/*_data.py.
+
+# ---- Подклассы и ветки ----
+
+[[subclasses]]
+key = "bonelord"
+name = "Повелитель костей"
+class = "necromancer"
+color = "#e8e0c8"
+desc = "Армия скелетов, костяной доспех и костяной колосс."
+
+[[subclasses]]
+key = "plaguebringer"
+name = "Чумной мор"
+class = "necromancer"
+color = "#9ad04a"
+desc = "Ядовитые облака и зараза, перескакивающая с врага на врага."
+
+[[branches]]
+key = "necromancer"
+name = "Некромант"
+color = "#7ad07a"
+desc = "Холод могил и власть над мёртвыми."
+class = "necromancer"
+
+[[branches]]
+key = "bonelord"
+name = "Повелитель костей"
+color = "#e8e0c8"
+desc = "Скелеты и костяная броня."
+class = "necromancer"
+subclass = "bonelord"
+
+[[branches]]
+key = "plaguebringer"
+name = "Чумной мор"
+color = "#9ad04a"
+desc = "Яд и зараза."
+class = "necromancer"
+subclass = "plaguebringer"
+
+# ---- Навыки: Некромант ----
+
+[[skills]]
+key = "dark_lore"
+name = "Тёмная наука"
+branch = "necromancer"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Урон тьмой и сила заклинаний."
+stats = { shadow_pct = 6, spell_pct = 2 }
+
+[[skills]]
+key = "grave_chill"
+name = "Могильный холод"
+branch = "necromancer"
+tier = 1
+max_rank = 5
+level = 1
+desc = "Урон холодом и защита от него."
+stats = { cold_pct = 6, res_cold = 3 }
+
+[[skills]]
+key = "raise_skeleton"
+name = "Поднять скелетов"
+branch = "necromancer"
+tier = 2
+max_rank = 1
+level = 3
+requires = ["dark_lore"]
+grants = "raise_skeleton"
+desc = "Два скелета-воина сражаются за вас."
+
+[[skills]]
+key = "deathly_grasp"
+name = "Хватка смерти"
+branch = "necromancer"
+tier = 2
+max_rank = 1
+level = 4
+requires = ["grave_chill"]
+grants = "deathly_grasp"
+desc = "Холод могилы сковывает врагов вокруг."
+
+[[skills]]
+key = "unholy_vigor"
+name = "Нечестивая сила"
+branch = "necromancer"
+tier = 3
+max_rank = 3
+level = 6
+requires = ["raise_skeleton"]
+desc = "Мана и её восстановление."
+stats = { max_mp = 8, mp_regen = 0.3 }
+
+[[skills]]
+key = "bone_mastery"
+name = "Власть над костью"
+branch = "bonelord"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Сила заклинаний и здоровье."
+stats = { spell_pct = 4, max_hp = 6 }
+
+[[skills]]
+key = "bone_armor"
+name = "Костяной доспех"
+branch = "bonelord"
+tier = 1
+max_rank = 1
+level = 5
+grants = "bone_armor"
+desc = "Кости окружают вас прочной бронёй."
+
+[[skills]]
+key = "raise_skeleton_mage"
+name = "Скелеты-маги"
+branch = "bonelord"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["bone_mastery"]
+grants = "raise_skeleton_mage"
+desc = "Два скелета-мага бьют врагов ледяными стрелами."
+
+[[skills]]
+key = "bone_colossus"
+name = "Костяной колосс"
+branch = "bonelord"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["raise_skeleton_mage"]
+grants = "raise_bone_golem"
+desc = "Огромный голем из костей встаёт рядом с вами."
+
+[[skills]]
+key = "plague_lore"
+name = "Знание мора"
+branch = "plaguebringer"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Урон ядом."
+stats = { poison_pct = 8 }
+
+[[skills]]
+key = "plague_cloud"
+name = "Чумное облако"
+branch = "plaguebringer"
+tier = 1
+max_rank = 1
+level = 5
+grants = "plague_cloud"
+desc = "Облако яда разрывается среди врагов и ослабляет их защиту от яда."
+
+[[skills]]
+key = "contagion"
+name = "Зараза"
+branch = "plaguebringer"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["plague_cloud"]
+grants = "contagion"
+desc = "Болезнь перескакивает с врага на врага."
+
+[[skills]]
+key = "pestilence"
+name = "Моровое поветрие"
+branch = "plaguebringer"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["contagion"]
+grants = "pestilence"
+desc = "Мор накрывает всё вокруг: долгий и страшный урон ядом."
+
+# ---- Умения ----
+
+[[abilities]]
+key = "bone_spear"
+name = "Костяное копьё"
+kind = "projectile"
+mana = 4
+cooldown_ms = 1000
+dmg_type = "shadow"
+damage = [5, 9]
+scale = "int"
+scale_k = 1.0
+range = 9
+speed_ms = 25
+glyph = "dir"
+color = "#e8e0c8"
+fx = "bone"
+desc = "Острый осколок кости, заряженный тьмой."
+
+[[abilities]]
+key = "raise_skeleton"
+name = "Поднять скелетов"
+kind = "summon"
+mana = 16
+cooldown_ms = 25000
+count = 2
+summon = "skeleton_minion"
+duration_ms = 40000
+color = "#e8e0c8"
+fx = "bone"
+desc = "Два скелета-воина на 40 с."
+
+[[abilities]]
+key = "deathly_grasp"
+name = "Хватка смерти"
+kind = "nova"
+mana = 12
+cooldown_ms = 8000
+radius = 3
+dmg_type = "cold"
+damage = [6, 11]
+scale = "int"
+scale_k = 1.0
+glyph = "*"
+color = "#9ad0e0"
+fx = "spirit"
+desc = "Холод в радиусе 3: урон и замедление атак и бега на 5 с."
+[abilities.on_hit]
+key = "grave_cold"
+name = "Могильный холод"
+duration_ms = 5000
+stats = { move_speed = -35, attack_speed = -25 }
+color = "#9ad0e0"
+
+[[abilities]]
+key = "bone_armor"
+name = "Костяной доспех"
+kind = "buff"
+mana = 14
+cooldown_ms = 25000
+color = "#e8e0c8"
+fx = "shield bone"
+desc = "15 с: +12 брони и +15% сопротивления физическому урону."
+[abilities.buff]
+key = "bone_armor"
+name = "Костяной доспех"
+duration_ms = 15000
+stats = { armor = 12, res_physical = 15 }
+color = "#e8e0c8"
+
+[[abilities]]
+key = "raise_skeleton_mage"
+name = "Скелеты-маги"
+kind = "summon"
+mana = 20
+cooldown_ms = 30000
+count = 2
+summon = "skeleton_mage_minion"
+duration_ms = 40000
+color = "#a0d0ff"
+fx = "bone"
+desc = "Два скелета-мага на 40 с."
+
+[[abilities]]
+key = "raise_bone_golem"
+name = "Костяной колосс"
+kind = "summon"
+mana = 32
+cooldown_ms = 50000
+count = 1
+summon = "bone_golem_minion"
+duration_ms = 45000
+color = "#f0e8d0"
+fx = "bone"
+desc = "Костяной голем на 45 с."
+
+[[abilities]]
+key = "plague_cloud"
+name = "Чумное облако"
+kind = "projectile"
+mana = 12
+cooldown_ms = 5000
+dmg_type = "poison"
+damage = [6, 10]
+scale = "int"
+scale_k = 1.0
+range = 9
+radius = 2
+speed_ms = 60
+glyph = "%"
+color = "#9ad04a"
+desc = "Облако яда: урон, яд на 6 с и −20% сопротивления яду."
+[abilities.on_hit]
+key = "plague"
+name = "Чума"
+duration_ms = 6000
+dot_per_sec = 4
+dmg_type = "poison"
+stats = { res_poison = -20 }
+color = "#9ad04a"
+
+[[abilities]]
+key = "contagion"
+name = "Зараза"
+kind = "chain"
+mana = 14
+cooldown_ms = 6000
+count = 5
+range = 8
+dmg_type = "poison"
+damage = [7, 12]
+scale = "int"
+scale_k = 1.1
+glyph = "%"
+color = "#b0e04a"
+desc = "Болезнь перескакивает на 5 врагов и травит их."
+[abilities.on_hit]
+key = "contagion"
+name = "Зараза"
+duration_ms = 5000
+dot_per_sec = 3
+dmg_type = "poison"
+color = "#b0e04a"
+
+[[abilities]]
+key = "pestilence"
+name = "Моровое поветрие"
+kind = "nova"
+mana = 34
+cooldown_ms = 18000
+radius = 5
+dmg_type = "poison"
+damage = [10, 16]
+scale = "int"
+scale_k = 1.2
+glyph = "%"
+color = "#7ab03a"
+desc = "Мор в радиусе 5: урон и сильный яд на 10 с."
+[abilities.on_hit]
+key = "pestilence"
+name = "Мор"
+duration_ms = 10000
+dot_per_sec = 10
+dmg_type = "poison"
+stats = { res_poison = -15 }
+color = "#7ab03a"
+
+# ---- Призванные союзники ----
+
+[[monsters]]
+key = "skeleton_minion"
+name = "Скелет-слуга"
+glyph = "z"
+color = "#e8e0c8"
+hp = 50
+damage = [4, 8]
+armor = 3
+dmg_type = "slash"
+move_ms = 200
+attack_ms = 950
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+model = "skeleton"
+resist = { pierce = 50, poison = 100, blunt = -50, holy = -50 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "skeleton_mage_minion"
+name = "Скелет-маг"
+glyph = "z"
+color = "#a0d0ff"
+hp = 35
+damage = [2, 4]
+armor = 1
+dmg_type = "cold"
+move_ms = 210
+attack_ms = 1100
+xp = 0
+sight = 9
+behavior = "ranged"
+role = "caster"
+ability = "m_frost"
+model = "skeleton_mage"
+resist = { poison = 100, cold = 50, holy = -50 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+[[monsters]]
+key = "bone_golem_minion"
+name = "Костяной колосс"
+glyph = "Q"
+color = "#f0e8d0"
+hp = 220
+damage = [12, 20]
+armor = 8
+dmg_type = "blunt"
+move_ms = 260
+attack_ms = 1300
+xp = 0
+sight = 9
+behavior = "melee"
+role = "frontline"
+ability = "m_stomp"
+model = "bone_golem"
+resist = { poison = 100, pierce = 40, slash = 20, holy = -40 }
+depth = [0, 0]
+themes = []
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+
+# >>> contentgen: secret_path
+# ---- Повелитель призраков (некромант) ----
+
+[[subclasses]]
+key = "wraithlord"
+name = "Повелитель призраков"
+class = "necromancer"
+color = "#a0c8d0"
+desc = "Призраки, вопль мёртвых и бесплотная форма."
+secret = true
+
+[[branches]]
+key = "wraithlord"
+name = "Повелитель призраков"
+color = "#a0c8d0"
+desc = "Мир теней."
+class = "necromancer"
+subclass = "wraithlord"
+
+[[skills]]
+key = "wr_ethereal"
+name = "Бесплотность"
+branch = "wraithlord"
+tier = 1
+max_rank = 5
+level = 5
+desc = "Уклонение и защита от тьмы."
+stats = { dodge = 3, res_shadow = 5 }
+
+[[skills]]
+key = "wr_summon_ghosts"
+name = "Зов призраков"
+branch = "wraithlord"
+tier = 1
+max_rank = 1
+level = 5
+grants = "wr_summon_ghosts"
+desc = "Призраки служат вам."
+
+[[abilities]]
+key = "wr_summon_ghosts"
+name = "Зов призраков"
+kind = "summon"
+mana = 18
+cooldown_ms = 30000
+count = 2
+summon = "wr_ghost"
+duration_ms = 40000
+color = "#a0c8d0"
+fx = "spirit"
+desc = "Два призрака на 40 с."
+
+[[skills]]
+key = "wr_wail"
+name = "Вопль мёртвых"
+branch = "wraithlord"
+tier = 2
+max_rank = 1
+level = 7
+requires = ["wr_summon_ghosts"]
+grants = "wr_wail"
+desc = "Вопль ранит и обессиливает врагов."
+
+[[abilities]]
+key = "wr_wail"
+name = "Вопль мёртвых"
+kind = "nova"
+mana = 16
+cooldown_ms = 10000
+damage = [10, 16]
+dmg_type = "shadow"
+scale = "int"
+scale_k = 1.1
+radius = 4
+glyph = "%"
+color = "#80a8b0"
+fx = "spirit"
+desc = "Тьма в радиусе 4 и −30% скорости атаки врагов на 6 с."
+[abilities.on_hit]
+key = "wailed"
+name = "Ужас"
+duration_ms = 6000
+stats = { attack_speed = -30 }
+color = "#80a8b0"
+
+[[skills]]
+key = "wr_spectral_form"
+name = "Призрачная форма"
+branch = "wraithlord"
+tier = 3
+max_rank = 1
+level = 10
+requires = ["wr_wail"]
+grants = "wr_spectral_form"
+desc = "Вы становитесь почти бесплотным."
+
+[[abilities]]
+key = "wr_spectral_form"
+name = "Призрачная форма"
+kind = "buff"
+mana = 20
+cooldown_ms = 40000
+color = "#c0e0f0"
+fx = "form spirit"
+desc = "10 с: +40% уклонения, +20% скорости бега, +30% сопротивления физическому урону."
+[abilities.buff]
+key = "spectral_form"
+name = "Призрачная форма"
+duration_ms = 10000
+stats = { dodge = 40, move_speed = 20, res_physical = 30 }
+color = "#c0e0f0"
+
+[[monsters]]
+key = "wr_ghost"
+name = "Призрак-слуга"
+glyph = "G"
+color = "#a0c8d0"
+hp = 45
+damage = [4, 8]
+armor = 0
+dmg_type = "shadow"
+move_ms = 170
+attack_ms = 900
+xp = 0
+sight = 9
+behavior = "melee"
+role = "skirmisher"
+model = "ghost"
+resist = { physical = 50, poison = 100, holy = -50 }
+depth = [0, 0]
+gold = [0, 0]
+weight = 0
+group = [1, 1]
+ally = true
+# <<< contentgen: secret_path
+
+# >>> contentgen: hidden
+# ---- Скрытые навыки: Некромант ----
+
+[[branches]]
+key = "necromancer_hidden"
+name = "Скрытые навыки: Некромант"
+color = "#7ad07a"
+desc = "Навыки, которые открываются сами за деяния."
+class = "necromancer"
+secret = true
+hidden = true
+
+[[skills]]
+key = "hnc_crypt_master"
+name = "Хозяин склепов"
+branch = "necromancer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "theme:crypt"
+deed_count = 250
+desc = "Склепы — ваш дом."
+stats = { shadow_pct = 10, res_shadow = 10 }
+
+[[skills]]
+key = "hnc_dead_army"
+name = "Армия мёртвых"
+branch = "necromancer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "summons"
+deed_count = 60
+desc = "Мёртвые встают легче."
+stats = { max_mp = 20, spell_pct = 4 }
+
+[[skills]]
+key = "hnc_bone_skin"
+name = "Костяная кожа"
+branch = "necromancer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "kill:skeleton"
+deed_count = 60
+desc = "Кожа твердеет, как кость."
+stats = { armor = 4, res_physical = 5 }
+
+[[skills]]
+key = "hnc_icy_breath"
+name = "Ледяное дыхание"
+branch = "necromancer_hidden"
+tier = 1
+max_rank = 1
+level = 1
+deed = "dmg:cold"
+deed_count = 12000
+desc = "Ваше дыхание — могильный холод."
+stats = { cold_pct = 12 }
+
+[[skills]]
+key = "hnc_death_friend"
+name = "Знакомый со смертью"
+branch = "necromancer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "deaths"
+deed_count = 5
+desc = "Смерть — старая знакомая."
+stats = { hp_regen = 1.5 }
+
+[[skills]]
+key = "hnc_lichbane"
+name = "Победитель лича"
+branch = "necromancer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "kill:lich"
+deed_count = 1
+desc = "Сила лича перешла к вам."
+stats = { int = 4, shadow_pct = 8 }
+
+[[skills]]
+key = "hnc_night_reaper"
+name = "Ночной жнец"
+branch = "necromancer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "night"
+deed_count = 120
+desc = "Ночь — время жатвы."
+stats = { sight = 1, shadow_pct = 6 }
+
+[[skills]]
+key = "hnc_plague_lore"
+name = "Знаток мора"
+branch = "necromancer_hidden"
+tier = 2
+max_rank = 1
+level = 1
+deed = "dmg:poison"
+deed_count = 10000
+desc = "Болезни — ваши инструменты."
+stats = { poison_pct = 12 }
+
+[[skills]]
+key = "hnc_soul_reaper"
+name = "Жнец душ"
+branch = "necromancer_hidden"
+tier = 3
+max_rank = 1
+level = 1
+deed = "kills"
+deed_count = 400
+desc = "Каждая смерть делает вас сильнее."
+stats = { max_hp = 20, life_leech = 1 }
+
+[[skills]]
+key = "hnc_bone_storm"
+name = "Костяная буря"
+branch = "necromancer_hidden"
+tier = 3
+max_rank = 1
+level = 1
+grants = "hnc_bone_storm"
+deed = "classlevel"
+deed_count = 25
+desc = "Вершина пути некроманта: буря костей."
+
+[[abilities]]
+key = "hnc_bone_storm"
+name = "Костяная буря"
+kind = "nova"
+mana = 28
+cooldown_ms = 30000
+damage = [26, 40]
+split = ["shadow", "cold"]
+scale = "int"
+scale_k = 1.9
+radius = 4
+glyph = "%"
+color = "#e8e0c8"
+fx = "orbit bone"
+desc = "Кости и холод в радиусе 4: тьма и холод пополам."
+# <<< contentgen: hidden

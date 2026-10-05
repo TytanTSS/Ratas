@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::world::{find_path, Pos, Vec2, DIRS8};
+use std::collections::HashSet;
 
 /// How far apart two bodies must stay (multiplied radii sum).
 const BODY_GAP: f32 = 0.98;
@@ -51,7 +52,25 @@ impl Grid {
             .map(|i| self.cells[i].as_slice())
             .unwrap_or(&[])
     }
+
+    /// Adds the ids stored in the squares a box of half-size r around p touches.
+    fn around(&self, p: Vec2, r: f32, out: &mut Vec<Id>) {
+        let span = |a: f32, n: i32| {
+            let lo = ((a - r).floor() as i32).div_euclid(GRID).max(0);
+            let hi = ((a + r).floor() as i32).div_euclid(GRID).min(n - 1);
+            lo..=hi
+        };
+        for y in span(p.y, self.ch) {
+            for x in span(p.x, self.cw) {
+                out.extend_from_slice(&self.cells[(y * self.cw + x) as usize]);
+            }
+        }
+    }
 }
+
+/// The spatial index is rebuilt once a tick and a creature walks less than
+/// this in between, so lookups around a point look this much further.
+const NEAR_SLACK: f32 = 1.5;
 
 impl Game {
     /// Rebuilds the indices of entities: the spatial grid of every level and
@@ -150,10 +169,25 @@ impl Game {
             .map(|v| {
                 v.iter()
                     .copied()
-                    .filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false))
+                    .filter(|id| self.ents.get(id).is_some_and(|e| e.level == level))
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// The entities of a level that may be within r of p, asleep or not, by
+    /// ascending id (callers check the exact distance): a lookup in the
+    /// spatial index instead of a walk through the whole level.
+    pub(crate) fn near(&self, level: &str, p: Vec2, r: f32) -> Vec<Id> {
+        let Some(g) = self.grids.get(level) else {
+            return self.on_level(level);
+        };
+        let mut ids = Vec::new();
+        g.around(p, r + NEAR_SLACK, &mut ids);
+        ids.sort_unstable();
+        ids.dedup();
+        ids.retain(|id| self.ents.get(id).is_some_and(|e| e.level == level));
+        ids
     }
 
     /// Is a cell taken by a living body (asleep or not)?
@@ -161,8 +195,7 @@ impl Game {
         let taken = |id: &Id| {
             self.ents
                 .get(id)
-                .map(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p)
-                .unwrap_or(false)
+                .is_some_and(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p)
         };
         match self.grids.get(level) {
             Some(g) => g.at(p).iter().any(taken),
@@ -265,35 +298,31 @@ impl Game {
             };
             let mut to = l.slide(from, want * step, r, &blocked);
             // bodies push each other apart: the mover stops at the other
-            if let Some(list) = self.by_level.get(&e.level) {
-                for oid in list {
-                    let Some(o) = self.ents.get(oid) else {
-                        continue;
-                    };
-                    if o.level != e.level || !self.collides(e, o) {
-                        continue;
-                    }
-                    let min = (r + o.radius()) * BODY_GAP;
-                    let d = to - o.pos;
-                    let dl = d.len();
-                    if dl >= min {
-                        continue;
-                    }
-                    // only resolve if the move brought us closer
-                    if dl >= (from - o.pos).len() - 1e-4 && dl > 0.01 {
-                        continue;
-                    }
-                    let n = if dl > 1e-4 {
-                        d * (1.0 / dl)
-                    } else {
-                        (from - o.pos).norm()
-                    };
-                    let pushed = o.pos + n * min;
-                    if l.circle_fits(pushed, r, &blocked) {
-                        to = pushed;
-                    } else {
-                        to = from;
-                    }
+            for oid in self.near(&e.level, to, r + BOSS_RADIUS) {
+                let o = &self.ents[&oid];
+                if !self.collides(e, o) {
+                    continue;
+                }
+                let min = (r + o.radius()) * BODY_GAP;
+                let d = to - o.pos;
+                let dl = d.len();
+                if dl >= min {
+                    continue;
+                }
+                // only resolve if the move brought us closer
+                if dl >= (from - o.pos).len() - 1e-4 && dl > 0.01 {
+                    continue;
+                }
+                let n = if dl > 1e-4 {
+                    d * (1.0 / dl)
+                } else {
+                    (from - o.pos).norm()
+                };
+                let pushed = o.pos + n * min;
+                if l.circle_fits(pushed, r, &blocked) {
+                    to = pushed;
+                } else {
+                    to = from;
                 }
             }
             let moved = to - from;
@@ -369,12 +398,12 @@ impl Game {
         let mut path: Vec<Pos> = match e.monster.as_ref() {
             Some(ms) if !needs_path => ms.path.clone(),
             _ => {
-                let taken: Vec<Pos> = self
-                    .on_level(&level)
+                let taken: HashSet<Pos> = self
+                    .near(&level, pos, 12.0)
                     .iter()
-                    .filter_map(|o| self.ents.get(o))
+                    .map(|o| &self.ents[o])
                     .filter(|o| o.id != id && o.blocks() && o.alive() && o.pos.dist(pos) < 12.0)
-                    .map(|o| o.cell())
+                    .map(|e| e.cell())
                     .collect();
                 let mut cost = |x: i32, y: i32| -> f64 {
                     let def = l.def(x, y);

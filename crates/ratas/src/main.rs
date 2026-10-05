@@ -267,8 +267,7 @@ fn main() {
 fn log_line(s: &str) {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_secs());
     let (h, m, sec) = ((secs / 3600) % 24, (secs / 60) % 60, secs % 60);
     println!("{h:02}:{m:02}:{sec:02} {}", t(s));
 }
@@ -319,7 +318,7 @@ fn run_dedicated(cfg: &Config, args: &Args, mods: &[String]) {
             let skip = std::sync::atomic::AtomicBool::new(false);
             match g.write_lore(&skip, &|s| log_line(s)) {
                 Ok(title) => {
-                    let n = g.lore.as_ref().map(|l| l.characters().len()).unwrap_or(0);
+                    let n = g.lore.as_ref().map_or(0, |l| l.characters().len());
                     log_line(&format!(
                         "летопись мира: «{title}», персонажей истории: {n}"
                     ));
@@ -368,7 +367,7 @@ fn run_dedicated(cfg: &Config, args: &Args, mods: &[String]) {
         let _ = tx.send(());
     });
     let _ = rx.recv();
-    let path = save_path.clone();
+    let path = save_path;
     match srv.call(move |g| g.save(&path)) {
         Some(Ok(())) => log_line("мир сохранён"),
         Some(Err(e)) => log_line(&format!("сохранение: {e}")),
@@ -414,7 +413,7 @@ mod tests {
     use super::*;
 
     fn args(s: &[&str]) -> Result<Args, String> {
-        parse_args(&s.iter().map(|x| x.to_string()).collect::<Vec<_>>())
+        parse_args(&s.iter().map(ToString::to_string).collect::<Vec<_>>())
     }
 
     #[test]

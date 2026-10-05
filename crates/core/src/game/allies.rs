@@ -133,7 +133,7 @@ impl Game {
         let e = &self.ents[&id];
         let n = e.npc.as_ref().unwrap();
         let pos = e.pos;
-        let arrived = n.travel.map(|t| pos.dist(t) <= 2.5).unwrap_or(false);
+        let arrived = n.travel.is_some_and(|t| pos.dist(t) <= 2.5);
         if n.travel.is_none() || arrived || now > n.travel_until {
             if arrived && self.rng.chance(70.0) {
                 let rest = 4000.0 + self.rng.f64() * 8000.0;
@@ -180,7 +180,7 @@ impl Game {
         if e.monster.is_some() {
             e.pace = 0.7; // a travelling pace, slower than a charge
             let t = e.npc.as_ref().unwrap().travel.unwrap();
-            if e.goal.is_none() || e.goal.map(|g| g.dist(e.pos) < 0.3).unwrap_or(true) {
+            if e.goal.is_none_or(|g| g.dist(e.pos) < 0.3) {
                 self.step_toward(id, t);
             }
         }

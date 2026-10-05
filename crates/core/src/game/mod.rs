@@ -42,10 +42,10 @@ pub use save::*;
 pub use uniques::{quest_text, reward_name};
 pub use view::*;
 
-use crate::content::db;
+use crate::content::{db, AbilityDef};
 use crate::gen::{self, Entrance, Landmark, Rect, Region};
 use crate::llm::Brain;
-use crate::proto::{Dialogue, Fx, LogLine, TileChange};
+use crate::proto::{Dialogue, Fx, LogLine, TileChange, FX_SUMMON};
 use crate::rng::Rng;
 use crate::world::{Level, Pos, Vec2};
 use serde::{Deserialize, Serialize};
@@ -141,6 +141,8 @@ pub struct Game {
     pub(crate) gm: director::Director,
     /// lines for the dedicated server's console
     pub(crate) server_log: Vec<String>,
+    /// level -> its tiles packed for clients and the version they were packed at
+    pub(crate) packed_tiles: HashMap<String, (u64, Vec<u8>)>,
 }
 
 impl Game {
@@ -186,6 +188,7 @@ impl Game {
             revivals: Vec::new(),
             gm: Default::default(),
             server_log: Vec::new(),
+            packed_tiles: HashMap::new(),
         }
     }
 
@@ -338,12 +341,12 @@ impl Game {
         self.online
             .values()
             .copied()
-            .filter(|id| self.ents.get(id).map(|e| e.level == level).unwrap_or(false))
+            .filter(|id| self.ents.get(id).is_some_and(|e| e.level == level))
             .collect()
     }
 
     pub(crate) fn alive(&self, id: Id) -> bool {
-        self.ents.get(&id).map(|e| e.alive()).unwrap_or(false)
+        self.ents.get(&id).is_some_and(|e| e.alive())
     }
 
     // ---- levels ----
@@ -428,7 +431,7 @@ impl Game {
     }
 
     pub fn vision(&self, e: &Entity) -> i32 {
-        let lit = self.levels.get(&e.level).map(|l| l.lit).unwrap_or(false);
+        let lit = self.levels.get(&e.level).is_some_and(|l| l.lit);
         let r = if lit {
             6 + (11.0 * self.daylight()).round() as i32
         } else {
@@ -444,12 +447,7 @@ impl Game {
     }
 
     pub fn log(&mut self, id: Id, color: &str, text: String) {
-        if self
-            .ents
-            .get(&id)
-            .map(|e| e.kind == Kind::Player)
-            .unwrap_or(false)
-        {
+        if self.ents.get(&id).is_some_and(|e| e.kind == Kind::Player) {
             self.box_(id).logs.push(LogLine {
                 text,
                 color: color.into(),
@@ -474,62 +472,45 @@ impl Game {
         color: &str,
         ms: i32,
     ) {
-        self.fx.entry(level.to_string()).or_default().push(Fx {
-            x: p.x,
-            y: p.y,
-            x2: p.x,
-            y2: p.y,
-            text: text.into(),
-            glyph,
-            color: color.into(),
-            ms,
-            radius: 0.0,
-        });
+        self.push_fx(
+            level,
+            Fx {
+                text: text.into(),
+                ..fx_between(p, p, glyph, color, ms)
+            },
+        );
     }
 
-    /// A flash over an area.
-    pub(crate) fn fx_area(
+    /// A moment of an ability (FX_*), drawn by clients in the ability's look;
+    /// `other` is the second point the moment names (see FX_*).
+    pub(crate) fn fx_spell(
         &mut self,
         level: &str,
-        p: Vec2,
+        a: &AbilityDef,
+        part: u8,
+        at: Vec2,
+        other: Vec2,
         radius: f32,
-        glyph: char,
-        color: &str,
-        ms: i32,
     ) {
-        self.fx.entry(level.to_string()).or_default().push(Fx {
-            x: p.x,
-            y: p.y,
-            x2: p.x,
-            y2: p.y,
-            glyph,
-            color: color.into(),
-            ms,
-            radius,
-            ..Default::default()
-        });
+        let ms = if part == FX_SUMMON { 500 } else { 300 };
+        self.push_fx(
+            level,
+            Fx {
+                radius,
+                ability: a.key.clone(),
+                part,
+                ..fx_between(at, other, combat::glyph_of(a, '*'), &a.color, ms)
+            },
+        );
     }
 
-    /// A beam between two points (chain lightning, dashes).
-    pub(crate) fn fx_beam(
-        &mut self,
-        level: &str,
-        a: Vec2,
-        b: Vec2,
-        glyph: char,
-        color: &str,
-        ms: i32,
-    ) {
-        self.fx.entry(level.to_string()).or_default().push(Fx {
-            x: a.x,
-            y: a.y,
-            x2: b.x,
-            y2: b.y,
-            glyph,
-            color: color.into(),
-            ms,
-            ..Default::default()
-        });
+    fn push_fx(&mut self, level: &str, fx: Fx) {
+        match self.fx.get_mut(level) {
+            Some(v) => v.push(fx),
+            None => {
+                self.fx.insert(level.to_string(), vec![fx]);
+            }
+        }
     }
 
     pub(crate) fn say(&mut self, id: Id, text: &str, ms: f64) {
@@ -581,6 +562,19 @@ pub fn daylight(t: f64) -> f64 {
     }
 }
 
+fn fx_between(a: Vec2, b: Vec2, glyph: char, color: &str, ms: i32) -> Fx {
+    Fx {
+        x: a.x,
+        y: a.y,
+        x2: b.x,
+        y2: b.y,
+        glyph,
+        color: color.into(),
+        ms,
+        ..Default::default()
+    }
+}
+
 pub fn dungeon_level_id(idx: i32, depth: i32) -> String {
     format!("d{idx}-{depth}")
 }
@@ -594,20 +588,10 @@ pub(crate) fn parse_dungeon_id(id: &str) -> Option<(i32, i32)> {
 /// Searches outward from p for a walkable cell without an interaction that
 /// no creature stands on.
 pub(crate) fn find_free(l: &Level, p: Pos, taken: &dyn Fn(Pos) -> bool) -> Pos {
-    for rad in 0..40i32 {
-        for dy in -rad..=rad {
-            for dx in -rad..=rad {
-                if dx.abs().max(dy.abs()) != rad {
-                    continue;
-                }
-                let q = Pos::new(p.x + dx, p.y + dy);
-                if l.walkable(q.x, q.y) && l.def(q.x, q.y).interact.is_empty() && !taken(q) {
-                    return q;
-                }
-            }
-        }
-    }
-    p
+    (0..40)
+        .flat_map(|rad| p.ring(rad))
+        .find(|q| l.walkable(q.x, q.y) && l.def(q.x, q.y).interact.is_empty() && !taken(*q))
+        .unwrap_or(p)
 }
 
 pub(crate) fn lower(s: &str) -> String {

@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::content::{AbilityDef, BuffDef};
+use crate::proto::{FX_ALLY, FX_AREA, FX_BEAM, FX_CAST, FX_HIT, FX_IMPACT};
 use crate::world::{los, Vec2, DIRS8};
 
 /// The gap between bodies a melee blow reaches across (tiles).
@@ -49,145 +50,6 @@ pub(crate) fn glyph_of(a: &AbilityDef, def: char) -> char {
     }
 }
 
-struct Affix {
-    stat: &'static str,
-    suffix: &'static str,
-    base: f64,
-}
-
-const AFFIXES: &[Affix] = &[
-    Affix {
-        stat: "str",
-        suffix: "силы",
-        base: 1.5,
-    },
-    Affix {
-        stat: "dex",
-        suffix: "ловкости",
-        base: 1.5,
-    },
-    Affix {
-        stat: "int",
-        suffix: "мудрости",
-        base: 1.5,
-    },
-    Affix {
-        stat: "vit",
-        suffix: "здоровья",
-        base: 1.5,
-    },
-    Affix {
-        stat: "max_hp",
-        suffix: "жизни",
-        base: 8.0,
-    },
-    Affix {
-        stat: "crit",
-        suffix: "точности",
-        base: 2.0,
-    },
-    Affix {
-        stat: "armor",
-        suffix: "защиты",
-        base: 1.5,
-    },
-    Affix {
-        stat: "move_speed",
-        suffix: "ветра",
-        base: 4.0,
-    },
-    Affix {
-        stat: "spell_pct",
-        suffix: "чародейства",
-        base: 6.0,
-    },
-    Affix {
-        stat: "melee_pct",
-        suffix: "ярости",
-        base: 6.0,
-    },
-    Affix {
-        stat: "ranged_pct",
-        suffix: "меткости",
-        base: 6.0,
-    },
-    Affix {
-        stat: "mp_regen",
-        suffix: "покоя",
-        base: 0.4,
-    },
-    Affix {
-        stat: "res_fire",
-        suffix: "огнеупорности",
-        base: 8.0,
-    },
-    Affix {
-        stat: "res_cold",
-        suffix: "тепла",
-        base: 8.0,
-    },
-    Affix {
-        stat: "res_lightning",
-        suffix: "заземления",
-        base: 8.0,
-    },
-    Affix {
-        stat: "res_poison",
-        suffix: "противоядия",
-        base: 9.0,
-    },
-    Affix {
-        stat: "res_shadow",
-        suffix: "рассвета",
-        base: 8.0,
-    },
-    Affix {
-        stat: "res_elemental",
-        suffix: "стихий",
-        base: 4.0,
-    },
-    Affix {
-        stat: "life_leech",
-        suffix: "вампира",
-        base: 1.2,
-    },
-    Affix {
-        stat: "thorns",
-        suffix: "шипов",
-        base: 2.0,
-    },
-    Affix {
-        stat: "add_fire",
-        suffix: "пламени",
-        base: 1.5,
-    },
-    Affix {
-        stat: "add_cold",
-        suffix: "стужи",
-        base: 1.5,
-    },
-    Affix {
-        stat: "add_lightning",
-        suffix: "грома",
-        base: 1.5,
-    },
-    Affix {
-        stat: "add_poison",
-        suffix: "яда",
-        base: 1.5,
-    },
-    Affix {
-        stat: "holy_pct",
-        suffix: "праведника",
-        base: 6.0,
-    },
-    Affix {
-        stat: "shadow_pct",
-        suffix: "тьмы",
-        base: 6.0,
-    },
-];
-
 impl Game {
     pub(crate) fn kill(&mut self, id: Id, killer: Option<Id>) {
         let Some(e) = self.ents.get(&id) else { return };
@@ -205,8 +67,8 @@ impl Game {
         let (level, pos, cell) = (m.level.clone(), m.pos, m.cell());
         self.fx(&level, pos, "", '%', "#a03030", 1200);
         let killer = killer.and_then(|k| self.controller(k));
-        let is_boss = def.map(|d| d.boss).unwrap_or(false);
-        let is_elite = def.map(|d| d.elite).unwrap_or(false);
+        let is_boss = def.is_some_and(|d| d.boss);
+        let is_elite = def.is_some_and(|d| d.elite);
         if let Some(def) = def {
             let mut gold =
                 self.roll(def.gold[0] as f64, (def.gold[1] + 1) as f64) * monster_scale(ms.lvl);
@@ -264,9 +126,7 @@ impl Game {
                 continue;
             }
             let d = pe.pos.dist(pos);
-            let party_near = kc
-                .map(|k| self.same_party(p, k) && d <= 50.0)
-                .unwrap_or(false);
+            let party_near = kc.is_some_and(|k| self.same_party(p, k) && d <= 50.0);
             if d > 25.0 && !party_near {
                 continue;
             }
@@ -316,15 +176,14 @@ impl Game {
                 m.name
             ));
         }
-        if def.map(|d| d.role == "leader").unwrap_or(false) && ms.squad != 0 {
+        if def.is_some_and(|d| d.role == "leader") && ms.squad != 0 {
             // the squad loses heart when its leader falls
             for o in self.on_level(&level) {
                 let same = self
                     .ents
                     .get(&o)
                     .and_then(|oe| oe.monster.as_ref())
-                    .map(|om| om.squad == ms.squad)
-                    .unwrap_or(false);
+                    .is_some_and(|om| om.squad == ms.squad);
                 if same && self.chance(40.0) {
                     let now = self.now;
                     self.ents
@@ -339,7 +198,7 @@ impl Game {
             }
         }
         // let nearby elites know
-        for o in self.on_level(&level) {
+        for o in self.near(&level, pos, 12.0) {
             if let Some(oe) = self.ents.get_mut(&o) {
                 if oe.faction == Faction::Monster && oe.pos.dist(pos) < 12.0 {
                     if let Some(om) = oe.monster.as_mut() {
@@ -384,6 +243,12 @@ impl Game {
         self.roll_crit(a, &mut dmg);
         let dealt = self.damage(Some(a), d, dmg);
         self.weapon_hit(a, d, dealt);
+    }
+
+    /// The farthest (centre to centre) a melee blow of e can reach.
+    pub(crate) fn melee_reach(&self, e: Id) -> f32 {
+        let ee = &self.ents[&e];
+        ee.radius() + BOSS_RADIUS + MELEE_GAP + ee.stats.reach as f32
     }
 
     /// Melee attack from e reaches o: bodies close enough; with a long reach
@@ -436,13 +301,13 @@ impl Game {
         let e = &self.ents[&id];
         let fv = e.facing_vec();
         let mut best: Option<(Id, f32)> = None;
-        for o in self.on_level(&e.level) {
+        for o in self.near(&e.level, e.pos, self.melee_reach(id)) {
             if !self.hostile(id, o) || !self.can_see(id, o) || !self.in_reach(id, o) {
                 continue;
             }
             let oe = &self.ents[&o];
             let score = -(oe.pos - e.pos).norm().dot(fv) + oe.dist(e) * 0.1;
-            if best.map(|b| score < b.1).unwrap_or(true) {
+            if best.is_none_or(|b| score < b.1) {
                 best = Some((o, score));
             }
         }
@@ -578,7 +443,7 @@ impl Game {
         if !ce.alive() {
             return true;
         }
-        let free = ce.player.as_ref().map(|p| p.no_cd).unwrap_or(false);
+        let free = ce.player.as_ref().is_some_and(|p| p.no_cd);
         if now < ce.cooldowns.get(key).copied().unwrap_or(0.0) && !free {
             return false;
         }
@@ -647,7 +512,7 @@ impl Game {
         let l = &self.levels[&ce.level];
         let mut best = None;
         let mut bd = f32::MAX;
-        for o in self.on_level(&ce.level) {
+        for o in self.near(&ce.level, aim, 1.0 + BOSS_RADIUS) {
             if !self.hostile(c, o) || !self.can_see(c, o) {
                 continue;
             }
@@ -683,7 +548,12 @@ impl Game {
         let l = &self.levels[&ce.level];
         let mut best = None;
         let mut bd = f32::MAX;
-        for o in self.on_level(&ce.level) {
+        let reach = if rng <= 1.0 {
+            self.melee_reach(c)
+        } else {
+            rng + 0.5
+        };
+        for o in self.near(&ce.level, ce.pos, reach) {
             if !self.hostile(c, o) || !self.can_see(c, o) {
                 continue;
             }
@@ -728,10 +598,8 @@ impl Game {
             pos = next;
             // a body in the way
             let mut hit = None;
-            for o in self.on_level(&level) {
-                let Some(oe) = self.ents.get(&o) else {
-                    continue;
-                };
+            for o in self.near(&level, pos, BOSS_RADIUS + 0.15) {
+                let oe = &self.ents[&o];
                 if !oe.blocks() || !oe.alive() || oe.pos.dist(pos) > oe.radius() + 0.15 {
                     continue;
                 }
@@ -772,23 +640,35 @@ impl Game {
         let Some(p) = self.remove(id) else { return };
         let ps = p.proj.unwrap();
         let owner = Some(ps.owner).filter(|o| self.ents.contains_key(o));
+        let fallback;
+        let a = match db().ability(&ps.ability) {
+            Some(a) => a,
+            None => {
+                fallback = AbilityDef {
+                    key: ps.ability.clone(),
+                    color: p.color.clone(),
+                    ..Default::default()
+                };
+                &fallback
+            }
+        };
+        let from = at - ps.vel.norm();
         if ps.radius > 0 {
-            self.fx(&p.level, at, "", '*', &p.color, 250);
+            let r = ps.radius as f32;
+            self.fx_spell(&p.level, a, FX_IMPACT, at, from, r + 0.5);
             self.area_damage(
                 owner,
                 ps.faction,
                 &p.level,
                 at,
-                ps.radius as f32,
+                r,
                 &ps.damage,
                 ps.on_hit.as_ref(),
-                '*',
-                &p.color,
             );
             return;
         }
         if let Some(h) = hit {
-            self.fx(&p.level, at, "", '*', &p.color, 200);
+            self.fx_spell(&p.level, a, FX_IMPACT, at, from, 0.0);
             self.damage(owner, h, ps.damage.clone());
             if let Some(b) = &ps.on_hit {
                 self.apply_buff(h, b, ps.owner);
@@ -796,7 +676,7 @@ impl Game {
         }
     }
 
-    /// Hits every enemy of a faction within radius (and flashes the area).
+    /// Hits every enemy of a faction within radius.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn area_damage(
         &mut self,
@@ -807,15 +687,10 @@ impl Game {
         radius: f32,
         dmg: &Damage,
         on_hit: Option<&BuffDef>,
-        glyph: char,
-        color: &str,
     ) {
-        self.fx_area(level, at, radius + 0.5, glyph, color, 260);
         let mut victims = Vec::new();
-        for o in self.on_level(level) {
-            let Some(oe) = self.ents.get(&o) else {
-                continue;
-            };
+        for o in self.near(level, at, radius + 0.5 + BOSS_RADIUS) {
+            let oe = &self.ents[&o];
             if !oe.alive() || !oe.blocks() || oe.pos.dist(at) > radius + 0.5 + oe.radius() * 0.5 {
                 continue;
             }
@@ -935,7 +810,7 @@ pub(crate) fn cast(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> b
         "chain" => cast_chain(g, c, a, target),
         "taunt" => abilities::cast_taunt(g, c, a),
         "decoy" | "summon" => abilities::cast_summon(g, c, a),
-        "mimic" => abilities::cast_mimic(g, c, target),
+        "mimic" => abilities::cast_mimic(g, c, a, target),
         "copied" => g.cast_copy(c, target, 1.0),
         "echo" => g.cast_copy(c, target, 2.0),
         "revive" => abilities::cast_revive(g, c, a),
@@ -1003,6 +878,7 @@ pub(crate) fn cast_projectile(g: &mut Game, c: Id, a: &AbilityDef, target: Optio
         };
         g.spawn(e);
     }
+    g.fx_spell(&level, a, FX_CAST, pos, aim, 0.0);
     true
 }
 
@@ -1011,30 +887,22 @@ fn cast_nova(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     g.roll_crit(c, &mut dmg);
     let ce = &g.ents[&c];
     let (f, level, pos) = (ce.faction, ce.level.clone(), ce.pos);
-    g.area_damage(
-        Some(c),
-        f,
-        &level,
-        pos,
-        a.radius.max(1) as f32,
-        &dmg,
-        a.on_hit.as_ref(),
-        glyph_of(a, '*'),
-        &a.color,
-    );
+    let r = a.radius.max(1) as f32;
+    g.fx_spell(&level, a, FX_AREA, pos, pos, r + 0.5);
+    g.area_damage(Some(c), f, &level, pos, r, &dmg, a.on_hit.as_ref());
     true
 }
 
 fn cast_cleave(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let r = a.radius.max(1) as f32;
     let ce = &g.ents[&c];
-    let (level, pos) = (ce.level.clone(), ce.pos);
+    let (level, pos, ahead) = (ce.level.clone(), ce.pos, ce.pos + ce.facing_vec());
     let victims: Vec<Id> = g
-        .on_level(&level)
+        .near(&level, pos, r + 0.6 + BOSS_RADIUS)
         .into_iter()
         .filter(|&o| g.hostile(c, o) && g.ents[&o].pos.dist(pos) <= r + 0.6 + g.ents[&o].radius())
         .collect();
-    g.fx_area(&level, pos, r + 0.6, glyph_of(a, '*'), &a.color, 220);
+    g.fx_spell(&level, a, FX_AREA, pos, ahead, r + 0.6);
     for o in victims {
         let mut dmg = g.ability_damage(c, a);
         let md = g.melee_damage(c);
@@ -1065,7 +933,7 @@ fn cast_strike(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool 
     e.swings = e.swings.wrapping_add(1);
     let hits = a.count.max(1);
     let weapon_k = if hits > 1 { 0.5 } else { 1.0 };
-    let level = e.level.clone();
+    let (level, cpos) = (e.level.clone(), e.pos);
     for _ in 0..hits {
         if !g.alive(t) {
             break;
@@ -1080,7 +948,7 @@ fn cast_strike(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool 
         dmg.backstab = a.backstab;
         g.roll_crit(c, &mut dmg);
         let tp = g.ents[&t].pos;
-        g.fx(&level, tp, "", glyph_of(a, '!'), &a.color, 250);
+        g.fx_spell(&level, a, FX_HIT, tp, cpos, 0.0);
         let dealt = g.damage(Some(c), t, dmg);
         g.weapon_hit(c, t, dealt);
         if let Some(b) = &a.on_hit {
@@ -1098,12 +966,12 @@ fn cast_heal(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let amount = g.ability_power(c, a) * (1.0 + g.ents[&c].stats.heal_pct / 100.0);
     let ce = &g.ents[&c];
     let missing = ce.max_hp - ce.hp;
+    let (level, pos) = (ce.level.clone(), ce.pos);
+    g.fx_spell(&level, a, FX_CAST, pos, pos, a.radius as f32);
     g.deed(c, "heal", amount.min(missing) as i32);
     g.heal(c, amount);
     if a.radius > 0 {
-        let ce = &g.ents[&c];
-        let (level, pos) = (ce.level.clone(), ce.pos);
-        for o in g.on_level(&level) {
+        for o in g.near(&level, pos, a.radius as f32 + 0.5) {
             let oe = &g.ents[&o];
             if o != c
                 && oe.alive()
@@ -1111,7 +979,8 @@ fn cast_heal(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
                 && g.friendly(c, o)
                 && oe.pos.dist(pos) <= a.radius as f32 + 0.5
             {
-                let missing = oe.max_hp - oe.hp;
+                let (missing, op) = (oe.max_hp - oe.hp, oe.pos);
+                g.fx_spell(&level, a, FX_ALLY, op, pos, 0.0);
                 g.deed(c, "heal", (amount * 0.7).min(missing) as i32);
                 g.heal(o, amount * 0.7);
             }
@@ -1144,8 +1013,8 @@ fn cast_dash(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
         }
         // the first enemy in the way stops the dash
         let mut stop = false;
-        for o in g.on_level(&level) {
-            let Some(oe) = g.ents.get(&o) else { continue };
+        for o in g.near(&level, next, r + BOSS_RADIUS) {
+            let oe = &g.ents[&o];
             if o == c || !oe.blocks() || !oe.alive() || oe.pos.dist(next) > oe.radius() + r {
                 continue;
             }
@@ -1167,13 +1036,15 @@ fn cast_dash(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
         g.log(c, "#808080", "Некуда рвануться.".into());
         return false;
     }
-    g.fx_beam(&level, start, pos, glyph_of(a, '~'), &a.color, 300);
+    g.fx_spell(&level, a, FX_BEAM, start, pos, 0.0);
     if let Some(e) = g.ents.get_mut(&c) {
         e.pos = pos;
         e.goal = None;
     }
     if let Some(o) = hit {
         if a.damage[1] > 0.0 {
+            let op = g.ents[&o].pos;
+            g.fx_spell(&level, a, FX_HIT, op, pos, 0.0);
             let mut dmg = g.ability_damage(c, a);
             g.roll_crit(c, &mut dmg);
             g.damage(Some(c), o, dmg);
@@ -1182,7 +1053,7 @@ fn cast_dash(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
             }
         }
     }
-    if g.ents.get(&c).map(|e| e.player.is_some()).unwrap_or(false) {
+    if g.ents.get(&c).is_some_and(|e| e.player.is_some()) {
         g.after_player_move(c);
     }
     true
@@ -1194,9 +1065,10 @@ fn cast_buff(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
     let ce = &g.ents[&c];
     let (level, pos) = (ce.level.clone(), ce.pos);
     g.fx(&level, pos, &format!("{}!", b.name), '\0', &a.color, 1000);
+    g.fx_spell(&level, a, FX_CAST, pos, pos, a.radius as f32);
     if a.radius > 0 {
         // party buff: allies around get it too
-        for o in g.on_level(&level) {
+        for o in g.near(&level, pos, a.radius as f32 + 0.5) {
             let oe = &g.ents[&o];
             if o != c
                 && oe.alive()
@@ -1206,7 +1078,7 @@ fn cast_buff(g: &mut Game, c: Id, a: &AbilityDef) -> bool {
             {
                 let op = oe.pos;
                 g.apply_buff(o, b, c);
-                g.fx(&level, op, "", glyph_of(a, '+'), &a.color, 400);
+                g.fx_spell(&level, a, FX_ALLY, op, pos, 0.0);
             }
         }
     }
@@ -1227,7 +1099,7 @@ fn cast_chain(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool {
     for _ in 0..=a.count.max(1) {
         let Some(te) = g.ents.get(&t) else { break };
         let tp = te.pos;
-        g.fx_beam(&level, from, tp, glyph_of(a, '*'), &a.color, 260);
+        g.fx_spell(&level, a, FX_BEAM, from, tp, 0.0);
         let mut dmg = g.ability_damage(c, a);
         dmg.scale(k);
         g.roll_crit(c, &mut dmg);
@@ -1241,7 +1113,7 @@ fn cast_chain(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool {
         let l = &g.levels[&level];
         let mut next = None;
         let mut best = f32::MAX;
-        for o in g.on_level(&level) {
+        for o in g.near(&level, from, 4.5) {
             if hit.contains(&o) || !g.hostile(c, o) {
                 continue;
             }
@@ -1258,9 +1130,4 @@ fn cast_chain(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> bool {
         }
     }
     true
-}
-
-/// The random bonuses of magic items: stat, name suffix, base strength.
-pub(crate) fn affix_list() -> Vec<(&'static str, &'static str, f64)> {
-    AFFIXES.iter().map(|a| (a.stat, a.suffix, a.base)).collect()
 }

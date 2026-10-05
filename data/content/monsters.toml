@@ -1472,6 +1472,7 @@ range = 6
 speed_ms = 60
 glyph = "#"
 color = "#e0e0e0"
+fx = "web"
 dmg_type = "pierce"
 [abilities.on_hit]
 key = "web"
@@ -1594,6 +1595,7 @@ range = 8
 speed_ms = 40
 glyph = "*"
 color = "#e0c080"
+fx = "earth"
 dmg_type = "blunt"
 [abilities.on_hit]
 key = "blinded"
@@ -1623,6 +1625,7 @@ radius = 4
 damage = [10, 16]
 glyph = "+"
 color = "#80ff80"
+fx = "nature"
 
 [[abilities]]
 key = "m_war_cry"
@@ -1631,6 +1634,7 @@ kind = "buff"
 cooldown_ms = 18000
 radius = 5
 color = "#ff6a4a"
+fx = "sound"
 [abilities.buff]
 key = "m_war_cry"
 name = "Боевой рёв"
@@ -1645,6 +1649,7 @@ kind = "buff"
 cooldown_ms = 20000
 radius = 5
 color = "#ffe08a"
+fx = "shield holy"
 [abilities.buff]
 key = "m_shield"
 name = "Щит веры"

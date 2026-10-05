@@ -46,8 +46,7 @@ impl Game {
         let key = self.ents[&id]
             .monster
             .as_ref()
-            .map(|m| m.def.as_str())
-            .unwrap_or("bandit");
+            .map_or("bandit", |m| m.def.as_str());
         db().monster(key)
             .or_else(|| db().monster("bandit"))
             .unwrap_or(&db().b.monsters[0])
@@ -227,11 +226,9 @@ impl Game {
             _ => {
                 if self.in_reach(id, target) {
                     self.stop(id);
-                    if let (Some(a), true, true) = (
-                        attack,
-                        in_range,
-                        attack.map(|a| a.kind == "strike").unwrap_or(false),
-                    ) {
+                    if let (Some(a), true, true) =
+                        (attack, in_range, attack.is_some_and(|a| a.kind == "strike"))
+                    {
                         if self.chance(50.0) {
                             self.use_ability(id, &a.key, Some(target));
                             return true;
@@ -395,7 +392,7 @@ impl Game {
     /// Whether some ally (or the creature itself) within r needs healing.
     pub(crate) fn wounded_ally(&self, id: Id, r: f32) -> bool {
         let e = &self.ents[&id];
-        self.on_level(&e.level).into_iter().any(|o| {
+        self.near(&e.level, e.pos, r + 0.5).into_iter().any(|o| {
             let oe = &self.ents[&o];
             oe.alive()
                 && oe.blocks()
@@ -454,8 +451,7 @@ impl Game {
         let ok = self
             .ents
             .get(&t)
-            .map(|te| te.level == self.ents[&id].level)
-            .unwrap_or(false)
+            .is_some_and(|te| te.level == self.ents[&id].level)
             && self.hostile(id, t);
         if !ok {
             self.ms(id).target = 0;
@@ -506,7 +502,8 @@ impl Game {
     pub(crate) fn better_target(&self, id: Id, def: &MonsterDef, cur: Id) -> Option<Id> {
         let e = &self.ents[&id];
         let l = &self.levels[&e.level];
-        let others = self.on_level(&e.level);
+        // the frontline looks 6 steps around, at what stands right by its friends
+        let others = self.near(&e.level, e.pos, (def.sight as f32).max(8.0));
         match role_of(def) {
             "frontline" | "leader" => {
                 // protect our archers and casters from enemies who reached them
@@ -562,7 +559,7 @@ impl Game {
         }
         let mut best = None;
         let mut bs = f32::MAX;
-        for o in self.on_level(&e.level) {
+        for o in self.near(&e.level, e.pos, sight as f32 + 0.5) {
             if !self.hostile(id, o) || !self.can_see(id, o) {
                 continue;
             }
@@ -589,7 +586,7 @@ impl Game {
         // packs and squads alert each other
         if faction == Faction::Monster {
             let level = self.ents[&id].level.clone();
-            for o in self.on_level(&level) {
+            for o in self.near(&level, my_pos, 14.0) {
                 if o == id || !self.friendly(id, o) {
                     continue;
                 }
@@ -669,14 +666,14 @@ impl Game {
 
     pub(crate) fn maybe_ask_tactic(&mut self, id: Id, def: &MonsterDef, target: Id) {
         let now = self.now;
-        let enabled = self.brain.as_ref().map(|b| b.enabled()).unwrap_or(false);
+        let enabled = self.brain.as_ref().is_some_and(|b| b.enabled());
         let e = &self.ents[&id];
         let ms = e.monster.as_ref().unwrap();
         if !def.elite || !enabled || ms.llm_pending || now < ms.next_llm {
             return;
         }
         let mut allies: Vec<String> = self
-            .on_level(&e.level)
+            .near(&e.level, e.pos, 10.0)
             .into_iter()
             .filter(|&o| o != id)
             .filter_map(|o| self.ents.get(&o))
@@ -758,7 +755,7 @@ impl Game {
             }
         }
         if r.tactic == "call_allies" {
-            for o in self.on_level(&level) {
+            for o in self.near(&level, pos, 16.0) {
                 let Some(oe) = self.ents.get(&o) else {
                     continue;
                 };
@@ -802,7 +799,7 @@ impl Game {
         let Some(e) = self.ents.get(&id) else { return };
         let n = e.npc.as_ref().unwrap();
         let role = db().npc_role(&n.role);
-        if role.map(|r| r.world).unwrap_or(false) && !talking {
+        if role.is_some_and(|r| r.world) && !talking {
             self.travel(id);
         }
         let n = self.ents[&id].npc.as_ref().unwrap();

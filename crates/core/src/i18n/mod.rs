@@ -12,7 +12,7 @@
 //!     segments (" • ", ", ", "(…)") that are translated one by one;
 //!   - proper names: unknown words (people, villages) are transliterated.
 //!
-//! Catalogs are embedded TOML files (data/i18n/en/*.toml) and can be extended
+//! Catalogs are embedded TOML files (`data/i18n/en/**/*.toml`) and can be extended
 //! by mods.
 
 mod catalog;
@@ -84,12 +84,12 @@ pub fn add(l: &str, entries: &HashMap<String, String>) {
 /// Reports whether a language has a translation of exactly this text
 /// (after trimming), used by tests that check the catalog is complete.
 pub fn has(l: &str, s: &str) -> bool {
-    catalog_for(l).map(|c| c.has(s)).unwrap_or(false)
+    catalog_for(l).is_some_and(|c| c.has(s))
 }
 
 /// Like has, for texts that may be Rust format strings ("Убито: {n}").
 pub fn has_format(l: &str, s: &str) -> bool {
-    catalog_for(l).map(|c| c.has_format(s)).unwrap_or(false)
+    catalog_for(l).is_some_and(|c| c.has_format(s))
 }
 
 /// Texts that had no translation and were transliterated or left as is.
@@ -142,7 +142,7 @@ pub fn lower_first(s: &str) -> String {
 }
 
 fn is_upper_first(s: &str) -> bool {
-    s.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
+    s.chars().next().is_some_and(char::is_uppercase)
 }
 
 /// Translates a string literal or formatted text into the current language.

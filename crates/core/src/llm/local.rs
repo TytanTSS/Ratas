@@ -447,7 +447,7 @@ impl Runtime {
 
     fn check_child(&self) -> Result<(), String> {
         let mut k = self.keeper.lock().unwrap();
-        if let Some(st) = k.as_mut().and_then(|k| k.exited()) {
+        if let Some(st) = k.as_mut().and_then(Keeper::exited) {
             *k = None;
             return Err(format!(
                 "сервер модели завершился ({st}), подробности в {}",

@@ -19,7 +19,7 @@ HIDDEN = {
         ("unbreakable", ("Несокрушимый", "Unbreakable"), ("Вершина пути воина: на миг вас ничто не берёт.", "The peak of the warrior's path: for a moment nothing can harm you."), None, "classlevel", 25),
     ], dict(key="hwa_unbreakable", name=("Несокрушимый", "Unbreakable"), kind="buff", color="#ff6a4a",
             desc=("8 с: +50% сопротивления всему и +10 к восстановлению здоровья.", "8 s: +50% resistance to everything and +10 health regeneration."),
-            mana=10, cd=90000, buff_=buff("unbreakable", ("Несокрушимый", "Unbreakable"), 8000, {"res_all": 50, "hp_regen": 10}, color="#ff6a4a"))),
+            mana=10, cd=90000, buff_=buff("unbreakable", ("Несокрушимый", "Unbreakable"), 8000, {"res_all": 50, "hp_regen": 10}, color="#ff6a4a"), fx="shield steel")),
 
     "rogue": ("hro", "#a8b0c8", [
         ("precise", ("Точный удар", "Precise Strikes"), ("Вы знаете, куда бить.", "You know where to strike."), {"crit": 4, "crit_mult": 0.2}, "crits", 300),
@@ -34,7 +34,7 @@ HIDDEN = {
         ("vanish", ("Исчезновение", "Vanish"), ("Вершина пути плута: исчезнуть посреди боя.", "The peak of the rogue's path: vanishing in the middle of a fight."), None, "classlevel", 25),
     ], dict(key="hro_vanish", name=("Исчезновение", "Vanish"), kind="buff", color="#a8b0c8",
             desc=("Невидимость и +40% к скорости бега на 8 с.", "Stealth and +40% running speed for 8 s."),
-            mana=10, cd=40000, buff_=buff("vanish", ("Исчезновение", "Vanish"), 8000, {"move_speed": 40}, stealth=True, color="#a8b0c8"))),
+            mana=10, cd=40000, buff_=buff("vanish", ("Исчезновение", "Vanish"), 8000, {"move_speed": 40}, stealth=True, color="#a8b0c8"), fx="smoke")),
 
     "mage": ("hma", "#6aa8ff", [
         ("spells", ("Тысяча заклинаний", "A Thousand Spells"), ("Магия стала второй натурой.", "Magic has become second nature."), {"spell_pct": 6, "mp_regen": 0.5}, "casts", 500),
@@ -49,7 +49,7 @@ HIDDEN = {
         ("surge", ("Всплеск силы", "Arcane Surge"), ("Вершина пути мага: мгновение безграничной силы.", "The peak of the mage's path: a moment of boundless power."), None, "classlevel", 25),
     ], dict(key="hma_surge", name=("Всплеск силы", "Arcane Surge"), kind="buff", color="#6aa8ff",
             desc=("10 с: +50% силы заклинаний и +10 к восстановлению маны.", "10 s: +50% spell power and +10 mana regeneration."),
-            mana=0, cd=60000, buff_=buff("arcane_surge", ("Всплеск силы", "Arcane Surge"), 10000, {"spell_pct": 50, "mp_regen": 10}, color="#6aa8ff"))),
+            mana=0, cd=60000, buff_=buff("arcane_surge", ("Всплеск силы", "Arcane Surge"), 10000, {"spell_pct": 50, "mp_regen": 10}, color="#6aa8ff"), fx="arcane")),
 
     "priest": ("hpr", "#ffe08a", [
         ("healings", ("Тысяча исцелений", "A Thousand Healings"), ("Ваши руки помнят каждую рану.", "Your hands remember every wound."), {"heal_pct": 12}, "heal", 15000),
@@ -64,7 +64,7 @@ HIDDEN = {
         ("miracle", ("Чудо", "Miracle"), ("Вершина пути жреца: настоящее чудо.", "The peak of the priest's path: a true miracle."), None, "classlevel", 25),
     ], dict(key="hpr_miracle", name=("Чудо", "Miracle"), kind="heal", color="#fff8c0",
             desc=("Огромное исцеление вас и союзников в радиусе 6.", "A huge heal for you and allies in radius 6."),
-            mana=30, cd=90000, damage=[60, 90], scale="int", k=3.0, radius=6, glyph="+")),
+            mana=30, cd=90000, damage=[60, 90], scale="int", k=3.0, radius=6, glyph="+", fx="holy")),
 
     "shaman": ("hsh", "#7ad0ff", [
         ("thunder_child", ("Сын грома", "Child of Thunder"), ("Гром — ваш голос.", "Thunder is your voice."), {"lightning_pct": 12}, "dmg:lightning", 15000),
@@ -79,7 +79,7 @@ HIDDEN = {
         ("storm_avatar", ("Аватар бури", "Storm Avatar"), ("Вершина пути шамана: стать самой бурей.", "The peak of the shaman's path: becoming the storm itself."), None, "classlevel", 25),
     ], dict(key="hsh_storm_avatar", name=("Аватар бури", "Storm Avatar"), kind="buff", color="#fff06a",
             desc=("15 с: +50% урона молнией и +20% скорости бега.", "15 s: +50% lightning damage and +20% running speed."),
-            mana=20, cd=60000, buff_=buff("storm_avatar", ("Аватар бури", "Storm Avatar"), 15000, {"lightning_pct": 50, "move_speed": 20}, color="#fff06a"))),
+            mana=20, cd=60000, buff_=buff("storm_avatar", ("Аватар бури", "Storm Avatar"), 15000, {"lightning_pct": 50, "move_speed": 20}, color="#fff06a"), fx="form storm")),
 
     "warlock": ("hwl", "#b05aff", [
         ("shadow_lord", ("Владыка тени", "Shadowlord"), ("Тьма слушается вас.", "Darkness obeys you."), {"shadow_pct": 12}, "dmg:shadow", 15000),
@@ -94,7 +94,7 @@ HIDDEN = {
         ("abyss_gate", ("Врата бездны", "Gate of the Abyss"), ("Вершина пути чернокнижника: распахнуть бездну.", "The peak of the warlock's path: throwing open the abyss."), None, "classlevel", 25),
     ], dict(key="hwl_abyss_gate", name=("Врата бездны", "Gate of the Abyss"), kind="nova", color="#7a2aff",
             desc=("Тьма в радиусе 5: огромный урон.", "Darkness in radius 5: huge damage."),
-            mana=30, cd=40000, damage=[34, 50], dmg="shadow", scale="int", k=2.2, radius=5, glyph="@")),
+            mana=30, cd=40000, damage=[34, 50], dmg="shadow", scale="int", k=2.2, radius=5, glyph="@", fx="void")),
 
     "druid": ("hdr", "#5ec05e", [
         ("forest_heart", ("Сердце леса", "Heart of the Forest"), ("Лес делится с вами силой.", "The forest shares its strength with you."), {"max_hp": 15, "hp_regen": 0.8}, "theme:forest", 200),
@@ -109,7 +109,7 @@ HIDDEN = {
         ("world_tree", ("Мировое древо", "World Tree"), ("Вершина пути друида: сила Мирового древа.", "The peak of the druid's path: the power of the World Tree."), None, "classlevel", 25),
     ], dict(key="hdr_world_tree", name=("Мировое древо", "World Tree"), kind="buff", color="#5ec05e",
             desc=("Вам и союзникам в радиусе 6: восстановление 10 здоровья в секунду и +10% сопротивления всему на 12 с.", "You and allies in radius 6: regain 10 health per second and +10% resistance to everything for 12 s."),
-            mana=26, cd=60000, radius=6, buff_=buff("world_tree", ("Мировое древо", "World Tree"), 12000, {"res_all": 10}, dot=-10, color="#5ec05e"))),
+            mana=26, cd=60000, radius=6, buff_=buff("world_tree", ("Мировое древо", "World Tree"), 12000, {"res_all": 10}, dot=-10, color="#5ec05e"), fx="nature")),
 
     "necromancer": ("hnc", "#7ad07a", [
         ("crypt_master", ("Хозяин склепов", "Master of Crypts"), ("Склепы — ваш дом.", "The crypts are your home."), {"shadow_pct": 10, "res_shadow": 10}, "theme:crypt", 250),
@@ -124,7 +124,7 @@ HIDDEN = {
         ("bone_storm", ("Костяная буря", "Bone Storm"), ("Вершина пути некроманта: буря костей.", "The peak of the necromancer's path: a storm of bones."), None, "classlevel", 25),
     ], dict(key="hnc_bone_storm", name=("Костяная буря", "Bone Storm"), kind="nova", color="#e8e0c8",
             desc=("Кости и холод в радиусе 4: тьма и холод пополам.", "Bones and cold in radius 4: shadow and cold in halves."),
-            mana=28, cd=30000, damage=[26, 40], split=["shadow", "cold"], scale="int", k=1.9, radius=4, glyph="%")),
+            mana=28, cd=30000, damage=[26, 40], split=["shadow", "cold"], scale="int", k=1.9, radius=4, glyph="%", fx="orbit bone")),
 
     "ranger": ("hrg", "#6ab04a", [
         ("arrows", ("Тысяча стрел", "A Thousand Arrows"), ("Вы стреляете, не думая.", "You shoot without thinking."), {"ranged_pct": 10}, "dmg:pierce", 20000),
@@ -154,7 +154,7 @@ HIDDEN = {
         ("verdict", ("Приговор небес", "Heaven's Verdict"), ("Вершина пути паладина: удар самих небес.", "The peak of the paladin's path: a blow of heaven itself."), None, "classlevel", 25),
     ], dict(key="hpa_verdict", name=("Приговор небес", "Heaven's Verdict"), kind="strike", color="#fff0a0",
             desc=("Огромный удар светом: +2% урона за каждый процент недостающего здоровья цели.", "A huge holy blow: +2% damage per percent of the target's missing health."),
-            mana=20, cd=20000, damage=[30, 44], dmg="holy", scale="str", k=2.0, execute=2.0, glyph="!", equip="weapon")),
+            mana=20, cd=20000, damage=[30, 44], dmg="holy", scale="str", k=2.0, execute=2.0, glyph="!", equip="weapon", fx="pillars")),
 
     "monk": ("hmo", "#f0a050", [
         ("slippery", ("Ускользающий", "Slippery"), ("Удары скользят мимо.", "Blows slide past you."), {"dodge": 6}, "dodge", 300),
@@ -169,7 +169,7 @@ HIDDEN = {
         ("hundred_fists", ("Сто кулаков", "Hundred Fists"), ("Вершина пути монаха: сто ударов за один вдох.", "The peak of the monk's path: a hundred blows in one breath."), None, "classlevel", 25),
     ], dict(key="hmo_hundred_fists", name=("Сто кулаков", "Hundred Fists"), kind="strike", color="#ffc070",
             desc=("Двенадцать ударов по одной цели.", "Twelve blows at one target."),
-            mana=20, cd=25000, damage=[4, 7], dmg="blunt", scale="dex", k=0.6, count=12, glyph="!")),
+            mana=20, cd=25000, damage=[4, 7], dmg="blunt", scale="dex", k=0.6, count=12, glyph="!", fx="chi")),
 
     "skald": ("hsk", "#ff9ad0", [
         ("songs", ("Тысяча песен", "A Thousand Songs"), ("Вы знаете песню на любой случай.", "You know a song for every occasion."), {"max_mp": 15, "spell_pct": 4}, "casts", 400),
@@ -184,7 +184,7 @@ HIDDEN = {
         ("anthem", ("Гимн королей", "Anthem of Kings"), ("Вершина пути скальда: песнь, от которой встают армии.", "The peak of the skald's path: a song that raises armies."), None, "classlevel", 25),
     ], dict(key="hsk_anthem", name=("Гимн королей", "Anthem of Kings"), kind="buff", color="#ffb0e0",
             desc=("Вам и союзникам в радиусе 7: +25% урона любого рода и +10% сопротивления всему на 15 с.", "You and allies in radius 7: +25% damage of every kind and +10% resistance to everything for 15 s."),
-            mana=26, cd=60000, radius=7, buff_=buff("anthem", ("Гимн королей", "Anthem of Kings"), 15000, {"melee_pct": 25, "spell_pct": 25, "ranged_pct": 25, "res_all": 10}, color="#ffb0e0"))),
+            mana=26, cd=60000, radius=7, buff_=buff("anthem", ("Гимн королей", "Anthem of Kings"), 15000, {"melee_pct": 25, "spell_pct": 25, "ranged_pct": 25, "res_all": 10}, color="#ffb0e0"), fx="sound")),
 
     "brewer": ("hbr", "#80e0a0", [
         ("connoisseur", ("Знаток зелий", "Potion Connoisseur"), ("Вы чувствуете зелье на вкус.", "You can taste every potion."), {"heal_pct": 10, "hp_regen": 0.5}, "potions", 60),
@@ -200,7 +200,7 @@ HIDDEN = {
     ], dict(key="hbr_philosophers_elixir", name=("Философский эликсир", "Philosopher's Elixir"), kind="heal", color="#c0ffe0",
             desc=("Полное исцеление и +5 ко всем характеристикам на 20 с.", "A full heal and +5 to all attributes for 20 s."),
             mana=20, cd=120000, damage=[200, 260], scale="int", k=4.0, glyph="+",
-            buff_=buff("philosophers_elixir", ("Философский эликсир", "Philosopher's Elixir"), 20000, {"str": 5, "dex": 5, "int": 5, "vit": 5}, color="#c0ffe0"))),
+            buff_=buff("philosophers_elixir", ("Философский эликсир", "Philosopher's Elixir"), 20000, {"str": 5, "dex": 5, "int": 5, "vit": 5}, color="#c0ffe0"), fx="alchemy")),
 }
 
 
@@ -208,6 +208,7 @@ def build(out, class_names):
     for cls, (prefix, color, skills, cap) in HIDDEN.items():
         cname = class_names[cls]
         out.comment(f"Скрытые навыки: {cname[0]}")
+        out.at(f"skills/{cls}.toml", "hidden")
         bkey = f"{cls}_hidden"
         branch(out, bkey, (f"Скрытые навыки: {cname[0]}", f"Hidden skills: {cname[1]}"), color,
                ("Навыки, которые открываются сами за деяния.", "Skills that open by themselves for deeds."),

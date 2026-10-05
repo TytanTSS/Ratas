@@ -108,11 +108,7 @@ pub fn can_choose_subclass(p: &PlayerState, key: &str) -> String {
     if !p.has_class(&sc.class) {
         return "класс не начат".into();
     }
-    if p.subclasses
-        .get(&sc.class)
-        .map(|s| !s.is_empty())
-        .unwrap_or(false)
-    {
+    if p.subclasses.get(&sc.class).is_some_and(|s| !s.is_empty()) {
         return "подкласс этого класса уже выбран".into();
     }
     if sc.secret && !p.unlocked("subclass", key) {

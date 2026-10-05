@@ -92,7 +92,7 @@ pub struct Session {
     map_view: Option<(String, crate::gfx::atlas::MapView)>,
     map_drag: Option<Vec2>,
     debug_move: Option<[i8; 2]>,
-    debug_cmds: bool,
+    debug_done: Vec<usize>,
     debug_interact: bool,
 }
 
@@ -140,7 +140,7 @@ impl Session {
             map_view: None,
             map_drag: None,
             debug_move: None,
-            debug_cmds: false,
+            debug_done: Vec::new(),
             debug_interact: false,
         }
     }
@@ -197,11 +197,21 @@ impl Session {
     }
 
     /// Scripted checks: open a window, hold a direction.
-    pub fn debug(&mut self, window: &str, mv: &str, cmds: &str, late: bool) {
-        if !cmds.is_empty() && !self.debug_cmds && self.snap.is_some() {
-            self.debug_cmds = true;
-            for c in cmds.split('|') {
-                match c.trim() {
+    /// `left`: seconds until the screenshot.
+    pub fn debug(&mut self, window: &str, mv: &str, cmds: &str, left: f32) {
+        let late = left < 1.5;
+        if self.snap.is_some() {
+            for (i, c) in cmds.split('|').enumerate() {
+                // ">N command" waits until N seconds before the shot
+                let (when, c) = match c.trim().strip_prefix('>').and_then(|r| r.split_once(' ')) {
+                    Some((n, rest)) => (n.parse().unwrap_or(0.0), rest.trim()),
+                    None => (f32::MAX, c.trim()),
+                };
+                if c.is_empty() || left > when || self.debug_done.contains(&i) {
+                    continue;
+                }
+                self.debug_done.push(i);
+                match c {
                     // "!e" interacts with what is near (after the commands)
                     "!e" => self.debug_interact = true,
                     c => {
@@ -380,14 +390,11 @@ impl Session {
         l.tiles = tiles;
         l.lit = ld.lit;
         l.depth = ld.depth;
-        l.theme = ld.theme.clone();
+        l.theme = ld.theme;
         self.explored = Bitset::new((ld.w * ld.h) as usize);
         let explored = decompress(&ld.explored).unwrap_or_default();
-        for (i, b) in explored.iter().enumerate() {
-            if i < self.explored.0.len() {
-                self.explored.0[i] = *b;
-            }
-        }
+        let n = explored.len().min(self.explored.0.len());
+        self.explored.0[..n].copy_from_slice(&explored[..n]);
         self.level = Some(l);
         self.level_ver += 1;
         self.wr.atlas.reset();
@@ -692,7 +699,7 @@ impl Session {
         {
             let level = self.level.as_ref().unwrap();
             let snap = self.snap.as_ref().unwrap();
-            let you = self.welcome.as_ref().map(|w| w.you_id).unwrap_or(0);
+            let you = self.welcome.as_ref().map_or(0, |w| w.you_id);
             let scene = Scene {
                 level,
                 level_ver: self.level_ver,
