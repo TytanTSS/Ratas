@@ -35,6 +35,140 @@ Tactics:
 
 Choose what this character would plausibly do and keep the fight interesting but beatable: a coward flees when hurt, a proud boss rarely retreats, a commander calls for help when outnumbered. "say" is a short in-character line in the language named in the request (at most about 80 characters), or an empty string to stay silent — stay silent about half the time."#;
 
+pub(super) const GM_SYSTEM: &str = r#"You are the game master of Ratas, a real-time fantasy RPG world shared by the heroes listed in the request. You are not a character: like the game master of a tabletop game, you shape the world around the heroes with commands that the game carries out.
+
+Reply with an announcement and a list of commands. Every command names the hero it concerns in "player" (exactly as listed); fields a command does not use are "" or 0. The game checks every command and drops invalid ones.
+
+Commands:
+- spawn_monsters: a band of "amount" (1-5) monsters of type "key" (a key from the monster list) appears a short walk from the hero. For ambushes and hunts; fit the danger to the hero's level and health, never against a badly wounded hero or one resting in a village.
+- give_item: the hero finds or is given the item "key" from the item list.
+- give_gold: "amount" gold coins for the hero; keep it modest, about 10-30 per hero level.
+- heal: the hero's wounds close.
+- bless: a blessing for two minutes: stronger attacks and faster recovery.
+- rumor: "text" (one short sentence) becomes news that villagers gossip about.
+- message: "text" reaches only this hero: a vision, a voice in the wind, an omen.
+- set_time: "key" is day, night, dawn or dusk.
+- summon_unique: the legendary character "key" from the unique list appears next to the hero. Only when the admin asks for it.
+
+"announce" is one short line (at most about 150 characters) that every hero sees, or "" to stay silent.
+
+If the request contains an admin's wish, carry it out as well as the commands allow and tell the heroes what happens in the world. Otherwise act on your own: keep the world alive and surprising but fair — a reward after a hard fight, an ambush for a hero who wanders safely, a rumour that hints at an adventure, an omen before a dangerous dungeon. Most of the time do little: often no command at all, rarely more than one. Do not repeat what you did recently.
+
+Write every text in the language named in the request, in the voice of the world itself. Never mention being an AI, a model, a game master, commands or game mechanics."#;
+
+pub(super) fn gm_schema(local: bool) -> Value {
+    let mut s = json!({
+        "type": "object",
+        "properties": {
+            "announce": {"type": "string", "description": "A line every hero sees, or empty."},
+            "commands": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string", "enum": GM_ACTIONS},
+                        "player": {"type": "string", "description": "The hero's name as listed."},
+                        "key": {"type": "string", "description": "Monster, item or unique key; time for set_time; otherwise empty."},
+                        "amount": {"type": "integer", "description": "Monsters for spawn_monsters, coins for give_gold, otherwise 0."},
+                        "text": {"type": "string", "description": "The text of rumor and message, otherwise empty."}
+                    },
+                    "required": ["action", "player", "key", "amount", "text"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ["announce", "commands"],
+        "additionalProperties": false
+    });
+    if local {
+        // the local grammar can bound the list; Claude's structured outputs
+        // take no array limits, the game trims the list itself
+        s["properties"]["commands"]["maxItems"] = json!(3);
+    }
+    s
+}
+
+pub(super) const LORE_SYSTEM: &str = r#"You are the chronicler of Ratas, a real-time fantasy RPG. A new world has just been made, and the request names its real places. Write the story of this world and bring three living characters into it. The game shows players everything you write and builds characters, quests and artifacts from it, so make it vivid, concrete and consistent.
+
+The story ("history"): four short paragraphs, each of two to four sentences (at most about 350 characters), from the founding age to the present day. Build it on the real places of the request — the world, its cities, villages, lands, dungeons and their lords — and invent the people, wars, oaths, betrayals and catastrophes that shaped them. The last paragraph is the present: what threatens the world now and why it needs heroes. "title" names the chronicle, like "The Chronicle of the Ash Crown".
+
+The characters: three people living now, each with a part in the story (a survivor, an heir, a traitor who repents, the keeper of a secret...). Each asks a hero to finish something the story left unfinished:
+- slay: defeat a named villain of the story who still roams the wilds. "foe" is the villain's name, "target" its kind from the villain list.
+- boss: defeat a dungeon lord from the boss list ("target"). "foe" is empty.
+- relics: gather the scattered pieces of something from the story. "foe" names one piece, like "Shard of the Ash Crown"; "target" is empty.
+Give the three characters different kinds of quests when you can. The reward is an artifact of the story ("artifact"): a name, one sentence tying it to the story, its form and its power.
+"persona" (in English, one to three sentences) says who the character is, their part in the story and how they speak; another model will voice them from it. "greeting" is their first line to a hero ({player} stands for the hero's name), "about" one line about their past, "offer" asks for the quest (name the foe or the pieces and say why it matters to the story), "done" thanks the hero once it is done. "land" is where they live, "look" how they look.
+
+Every text is written twice: "ru" in Russian and "en" the same in English; in English texts write the English names of the places given in brackets. Invent names that sound like the place names of the world. Name only places from the request; invent only people, events, villains and artifacts. No game numbers or mechanics, and never mention being an AI."#;
+
+fn text2() -> Value {
+    json!({
+        "type": "object",
+        "properties": {"ru": {"type": "string"}, "en": {"type": "string"}},
+        "required": ["ru", "en"],
+        "additionalProperties": false
+    })
+}
+
+fn keys(opts: &[Option_]) -> Vec<String> {
+    opts.iter().map(|o| o.key.clone()).collect()
+}
+
+pub(super) fn lore_schema(r: &LoreRequest, local: bool) -> Value {
+    let mut targets: Vec<String> = vec![String::new()];
+    targets.extend(keys(&r.villains));
+    targets.extend(keys(&r.bosses));
+    let artifact = json!({
+        "type": "object",
+        "properties": {
+            "name": text2(),
+            "desc": text2(),
+            "form": {"type": "string", "enum": LORE_FORMS},
+            "power": {"type": "string", "enum": LORE_POWERS}
+        },
+        "required": ["name", "desc", "form", "power"],
+        "additionalProperties": false
+    });
+    let character = json!({
+        "type": "object",
+        "properties": {
+            "name": text2(),
+            "title": text2(),
+            "persona": {"type": "string"},
+            "greeting": text2(),
+            "about": text2(),
+            "land": {"type": "string", "enum": r.lands},
+            "look": {"type": "string", "enum": keys(&r.looks)},
+            "quest": {"type": "string", "enum": LORE_QUESTS},
+            "target": {"type": "string", "enum": targets},
+            "foe": text2(),
+            "offer": text2(),
+            "done": text2(),
+            "artifact": artifact
+        },
+        "required": ["name", "title", "persona", "greeting", "about", "land", "look", "quest", "target", "foe", "offer", "done", "artifact"],
+        "additionalProperties": false
+    });
+    let mut s = json!({
+        "type": "object",
+        "properties": {
+            "title": text2(),
+            "history": {"type": "array", "items": text2()},
+            "characters": {"type": "array", "items": character}
+        },
+        "required": ["title", "history", "characters"],
+        "additionalProperties": false
+    });
+    if local {
+        // the local grammar can hold the shape; Claude takes no array limits
+        s["properties"]["history"]["minItems"] = json!(3);
+        s["properties"]["history"]["maxItems"] = json!(5);
+        s["properties"]["characters"]["minItems"] = json!(3);
+        s["properties"]["characters"]["maxItems"] = json!(3);
+    }
+    s
+}
+
 pub(super) fn npc_schema() -> Value {
     json!({
         "type": "object",
@@ -189,5 +323,80 @@ pub(super) fn tactic_prompt(r: &TacticRequest) -> String {
     for e in &r.events {
         let _ = writeln!(b, "Recent event: {e}");
     }
+    b
+}
+
+pub(super) fn gm_prompt(r: &GmRequest) -> String {
+    let mut b = String::new();
+    let _ = write!(
+        b,
+        "<world>\nWorld: {}. Time of day: {}. Language: {}.\n</world>\n\n<heroes>\n",
+        r.world,
+        r.time_of_day,
+        lang_name(&r.lang)
+    );
+    for p in &r.players {
+        let _ = writeln!(b, "- {p}");
+    }
+    b += "</heroes>\n\n";
+    if !r.history.is_empty() {
+        b += "<history>\n";
+        for h in &r.history {
+            let _ = writeln!(b, "{h}");
+        }
+        b += "</history>\nLet your events echo this history now and then.\n\n";
+    }
+    if !r.news.is_empty() {
+        b += "<news>\n";
+        for n in &r.news {
+            let _ = writeln!(b, "- {n}");
+        }
+        b += "</news>\n\n";
+    }
+    if r.recent.is_empty() {
+        b += "You have not done anything yet.\n";
+    } else {
+        let _ = writeln!(b, "What you did recently: {}.", r.recent.join("; "));
+    }
+    let _ = writeln!(b, "Monster list (key: name): {}", options(&r.monsters));
+    let _ = writeln!(b, "Item list (key: name): {}", options(&r.items));
+    if !r.uniques.is_empty() {
+        let _ = writeln!(b, "Unique list (key: name): {}", options(&r.uniques));
+    }
+    if r.wish.trim().is_empty() {
+        b += "\nNo one asks you for anything: act on your own now, or do nothing.";
+    } else {
+        let _ = write!(
+            b,
+            "\nThe admin asks:\n<admin_wish>\n{}\n</admin_wish>",
+            r.wish.trim()
+        );
+    }
+    b
+}
+
+pub(super) fn lore_prompt(r: &LoreRequest) -> String {
+    let mut b = String::new();
+    let _ = writeln!(
+        b,
+        "World: {}. Heroes begin in the village {}.\n\n<places>",
+        r.world, r.start
+    );
+    for p in &r.places {
+        let _ = writeln!(b, "- {p}");
+    }
+    b += "</places>\n\n";
+    let _ = writeln!(b, "Lands (for \"land\"): {}.", r.lands.join(", "));
+    let _ = writeln!(b, "Looks (key: description): {}", options(&r.looks));
+    let _ = writeln!(
+        b,
+        "Villain kinds for slay (key: name): {}",
+        options(&r.villains)
+    );
+    let _ = writeln!(
+        b,
+        "Dungeon lords for boss (key: name): {}",
+        options(&r.bosses)
+    );
     b
 }

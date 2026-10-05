@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
-pub const VERSION: i32 = 101;
+pub const VERSION: i32 = 102;
 
 // ---- client -> server ----
 
@@ -83,6 +83,11 @@ pub struct Welcome {
     pub host: bool,
     /// admin commands are allowed (testing mode)
     pub admin: bool,
+    /// the world's own story (Russian; clients translate it)
+    pub lore_title: String,
+    pub lore: Vec<String>,
+    /// the hero sees the story for the first time: it opens by itself
+    pub lore_new: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

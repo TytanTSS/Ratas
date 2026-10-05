@@ -501,14 +501,22 @@ impl Loop {
             },
             world_name: self.game.world_name.clone(),
             seed: self.game.seed,
-            ai: self
-                .game
-                .brain
-                .as_ref()
-                .map(|b| b.enabled())
-                .unwrap_or(false),
+            // a local model may still be loading: it is on all the same
+            ai: self.game.brain.as_ref().is_some_and(|b| b.usable()),
             host,
             admin: self.is_admin(sid),
+            lore_title: self
+                .game
+                .lore
+                .as_ref()
+                .map(|l| l.title.clone())
+                .unwrap_or_default(),
+            lore: self
+                .game
+                .lore
+                .as_ref()
+                .map(|l| l.history.clone())
+                .unwrap_or_default(),
             ..Default::default()
         };
         if need_class {
@@ -532,6 +540,7 @@ impl Loop {
         ent.pm().lang = lang;
         s.level = ent.level.clone();
         w.you_id = e;
+        w.lore_new = self.game.lore_first_look(e);
         self.log(&format!("{name} входит в мир"));
         let level = self.game.level_data(e);
         let sheet = self.game.sheet(e);
@@ -549,6 +558,9 @@ impl Loop {
 
     fn tick(&mut self) {
         self.game.tick();
+        for line in self.game.take_server_log() {
+            self.log(&line);
+        }
         let sids: Vec<u64> = self.sessions.keys().copied().collect();
         for sid in sids {
             let Some(s) = self.sessions.get(&sid) else {

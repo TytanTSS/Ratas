@@ -13,9 +13,11 @@ mod combat;
 mod damage;
 mod deeds;
 mod dialogue;
+mod director;
 mod effects;
 mod entity;
 mod equip;
+mod lore;
 mod movement;
 mod player;
 mod rarity;
@@ -32,6 +34,7 @@ pub use damage::*;
 pub use deeds::*;
 pub use entity::*;
 pub use equip::*;
+pub use lore::{Lore, LORE_PREFIX};
 pub use player::*;
 pub use rarity::*;
 pub use relations::Party;
@@ -112,6 +115,10 @@ pub struct Game {
     pub champions: HashMap<String, Id>,
     /// recent deeds the world talks about
     pub chronicle: Vec<String>,
+    /// the world's own story, written by a model when the world was made
+    pub lore: Option<Lore>,
+    /// why the story could not be written (told to the first hero)
+    pub(crate) lore_note: Option<String>,
 
     pub(crate) rng: Rng,
     tasks_tx: Sender<Task>,
@@ -130,6 +137,10 @@ pub struct Game {
     pub(crate) grids: HashMap<String, movement::Grid>,
     pub(crate) village_grid: relations::VillageGrid,
     pub(crate) revivals: Vec<PendingNpc>,
+    /// the AI game master
+    pub(crate) gm: director::Director,
+    /// lines for the dedicated server's console
+    pub(crate) server_log: Vec<String>,
 }
 
 impl Game {
@@ -156,6 +167,8 @@ impl Game {
             pvp: true,
             champions: HashMap::new(),
             chronicle: Vec::new(),
+            lore: None,
+            lore_note: None,
             rng: Rng::from_time(),
             tasks_tx,
             tasks_rx,
@@ -171,6 +184,8 @@ impl Game {
             grids: HashMap::new(),
             village_grid: Default::default(),
             revivals: Vec::new(),
+            gm: Default::default(),
+            server_log: Vec::new(),
         }
     }
 
@@ -265,6 +280,7 @@ impl Game {
             self.next_spawn = self.now + 2000.0;
             self.run_spawner();
             self.revive_npcs();
+            self.director_tick();
         }
     }
 

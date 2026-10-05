@@ -1068,6 +1068,412 @@ fn npc_dialogue_with_claude() {
     );
 }
 
+/// A fake Ollama server: the model is missing at first and gets pulled;
+/// chats answer by the schema they ask for (an NPC or the game master).
+/// Returns the address and the paths requested.
+fn fake_ollama(
+    npc: serde_json::Value,
+    gm: serde_json::Value,
+    lore: serde_json::Value,
+) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::io::{BufRead, BufReader, Read, Write};
+    let ln = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = format!("http://{}", ln.local_addr().unwrap());
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let log = seen.clone();
+    std::thread::spawn(move || {
+        let mut pulled = false;
+        for s in ln.incoming() {
+            let Ok(mut s) = s else { continue };
+            let mut r = BufReader::new(s.try_clone().unwrap());
+            let mut first = String::new();
+            r.read_line(&mut first).ok();
+            let path = first.split(' ').nth(1).unwrap_or("").to_string();
+            let mut len = 0;
+            loop {
+                let mut line = String::new();
+                if r.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                    break;
+                }
+                if let Some(v) = line.to_lowercase().strip_prefix("content-length:") {
+                    len = v.trim().parse().unwrap_or(0);
+                }
+            }
+            let mut body = vec![0; len];
+            r.read_exact(&mut body).ok();
+            let req: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
+            log.lock().unwrap().push(path.clone());
+            let (code, resp) = match path.as_str() {
+                "/api/version" => (200, r#"{"version":"0.18.1"}"#.to_string()),
+                "/api/show" if !pulled => (404, r#"{"error":"model not found"}"#.to_string()),
+                "/api/show" => (200, "{}".to_string()),
+                "/api/pull" => {
+                    assert_eq!(req["model"], "mistral-test");
+                    pulled = true;
+                    let lines = [
+                        r#"{"status":"pulling manifest"}"#,
+                        r#"{"status":"pulling 1","digest":"sha256:1","total":1000,"completed":500}"#,
+                        r#"{"status":"pulling 1","digest":"sha256:1","total":1000,"completed":1000}"#,
+                        r#"{"status":"success"}"#,
+                    ];
+                    (200, lines.join("\n") + "\n")
+                }
+                "/api/generate" => (200, r#"{"done":true,"done_reason":"load"}"#.into()),
+                "/api/chat" => {
+                    // constrained decoding: the schema goes as "format"
+                    assert_eq!(req["format"]["type"], "object");
+                    assert_eq!(req["stream"], false);
+                    let content = req["messages"][0]["content"].as_str().unwrap_or("");
+                    let props = &req["format"]["properties"];
+                    let reply = if props["commands"].is_object() {
+                        assert!(content.contains("game master"));
+                        &gm
+                    } else if props["history"].is_object() {
+                        // the one long answer
+                        assert_eq!(req["options"]["num_predict"], 4096);
+                        assert!(content.contains("chronicler"));
+                        &lore
+                    } else {
+                        &npc
+                    };
+                    let v = serde_json::json!({
+                        "model": "mistral-test", "done": true, "done_reason": "stop",
+                        "message": {"role": "assistant", "content": reply.to_string()}
+                    });
+                    (200, v.to_string())
+                }
+                _ => (404, "{}".into()),
+            };
+            let _ = write!(s, "HTTP/1.1 {code} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", resp.len(), resp);
+        }
+    });
+    (addr, seen)
+}
+
+fn wolves_near(g: &Game, p: Id) -> usize {
+    let at = g.ents[&p].pos;
+    g.ents
+        .values()
+        .filter(|e| {
+            e.monster.as_ref().is_some_and(|m| m.def == "wolf")
+                && e.level == g.ents[&p].level
+                && e.pos.dist(at) < 16.0
+        })
+        .count()
+}
+
+fn logs_of(g: &mut Game, p: Id) -> Vec<String> {
+    g.take_outbox(p)
+        .map(|o| o.logs.into_iter().map(|l| l.text).collect())
+        .unwrap_or_default()
+}
+
+/// The local model: pulled into Ollama, warmed up, then NPCs talk and the
+/// game master carries out an admin's wish through it.
+#[test]
+fn local_model_talks_and_masters() {
+    use crate::llm::local;
+    let (base, seen) = fake_ollama(
+        serde_json::json!({"say": "Волки совсем обнаглели!", "action": "offer_quest", "item": "", "gold": 0, "quest_monster": "wolf", "quest_count": 3}),
+        serde_json::json!({"announce": "Из чащи доносится вой.", "commands": [
+            {"action": "spawn_monsters", "player": "Герой", "key": "wolf", "amount": 3, "text": ""},
+            {"action": "give_gold", "player": "герой", "key": "", "amount": 100, "text": ""},
+            {"action": "rumor", "player": "", "key": "", "amount": 0, "text": "В лесах снова видели волков"}
+        ]}),
+        serde_json::Value::Null,
+    );
+    let rt = local::spawn(local::Settings::new("ollama", "mistral-test", &base, ""));
+    let mut g = setup();
+    g.brain = Some(crate::llm::Brain::local(rt.clone()));
+    let p = g.join_for_test("Герой", "warrior");
+    assert!(!g.brain.as_ref().unwrap().enabled() || rt.ready());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !rt.ready() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(rt.state(), local::State::Ready);
+    let paths = seen.lock().unwrap().clone();
+    assert!(
+        paths.contains(&"/api/pull".to_string()),
+        "model not pulled: {paths:?}"
+    );
+    assert!(
+        paths.contains(&"/api/generate".to_string()),
+        "not warmed up"
+    );
+    // the players hear that the model is ready
+    g.director_tick();
+    assert!(logs_of(&mut g, p).iter().any(|l| l.contains("готова")));
+    // an NPC answers through the local model
+    let elder = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().map(|n| n.role == "elder").unwrap_or(false))
+        .map(|e| e.id)
+        .expect("an elder");
+    g.move_next_to(p, elder);
+    g.open_dialogue(p, elder);
+    g.command(p, &Command::text("talk", "Есть работа?"));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while g.ents[&p].p().quests.is_empty() && std::time::Instant::now() < deadline {
+        g.tick();
+        g.take_outbox(p);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(g.ents[&p].p().quests.len(), 1, "quest from the local model");
+    // the game master carries out an admin's wish
+    wild(&mut g, p);
+    let gold = g.ents[&p].p().gold;
+    g.admin(p, "/gm устрой засаду волков");
+    let mut logs = Vec::new();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while g.ents[&p].p().gold == gold && std::time::Instant::now() < deadline {
+        g.tick();
+        logs.extend(logs_of(&mut g, p));
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    logs.extend(logs_of(&mut g, p));
+    assert_eq!(g.ents[&p].p().gold, gold + 100);
+    assert_eq!(wolves_near(&g, p), 3);
+    assert!(g.chronicle.iter().any(|c| c.contains("видели волков")));
+    assert!(logs.iter().any(|l| l.contains("вой")), "announce: {logs:?}");
+    assert!(logs.iter().any(|l| l.starts_with("ИИ-мастер:")));
+    assert!(g.take_server_log().iter().any(|l| l.contains("Волк ×3")));
+    g.admin(p, "/ai");
+    let logs = logs_of(&mut g, p);
+    assert!(logs
+        .iter()
+        .any(|l| l.contains("Mistral") || l.contains("mistral-test")));
+}
+
+fn gm_cmd(action: &str, key: &str, amount: i32) -> crate::llm::GmCommand {
+    crate::llm::GmCommand {
+        action: action.into(),
+        key: key.into(),
+        amount,
+        ..Default::default()
+    }
+}
+
+/// Acting on its own, the master stays within limits: no bosses, no
+/// legendary visitors, small rewards, no ambushes in villages.
+#[test]
+fn game_master_limits() {
+    use crate::llm::GmReply;
+    let mut g = setup();
+    let p = g.join_for_test("Герой", "warrior");
+    wild(&mut g, p);
+    let gold = g.ents[&p].p().gold;
+    let boss = db().b.monsters.iter().find(|m| m.boss).unwrap().key.clone();
+    let unique = db().b.uniques[0].key.clone();
+    let n = g.ents.len();
+    g.apply_master(
+        None,
+        Ok(GmReply {
+            announce: String::new(),
+            commands: vec![
+                gm_cmd("give_gold", "", 99_999),
+                gm_cmd("spawn_monsters", &boss, 1),
+                gm_cmd("summon_unique", &unique, 0),
+                gm_cmd("spawn_monsters", "wolf", 2), // past the limit of a reply
+            ],
+        }),
+    );
+    let lvl = g.ents[&p].p().level;
+    assert_eq!(g.ents[&p].p().gold, gold + 30 * lvl, "a modest reward");
+    assert_eq!(g.ents.len(), n, "no boss, no unique, no fourth command");
+    g.apply_master(
+        None,
+        Ok(GmReply {
+            announce: String::new(),
+            commands: vec![
+                gm_cmd("spawn_monsters", "wolf", 50),
+                gm_cmd("nuke", "", 0),
+                gm_cmd("set_time", "night", 0),
+            ],
+        }),
+    );
+    assert_eq!(wolves_near(&g, p), 5, "a band is at most five");
+    assert!(g.is_night());
+    // heroes in a village are safe from its ambushes
+    let v = g.villages[0].center;
+    g.place_for_test(p, "overworld", v);
+    g.index_levels();
+    let n = g.ents.len();
+    g.apply_master(
+        None,
+        Ok(GmReply {
+            announce: String::new(),
+            commands: vec![gm_cmd("spawn_monsters", "wolf", 3)],
+        }),
+    );
+    assert_eq!(g.ents.len(), n);
+    // an admin may summon a legendary character
+    wild(&mut g, p);
+    g.apply_master(
+        Some(p),
+        Ok(GmReply {
+            announce: String::new(),
+            commands: vec![gm_cmd("summon_unique", &unique, 0)],
+        }),
+    );
+    // (it may have lived in this world already: then it is not doubled)
+    let copies = g
+        .ents
+        .values()
+        .filter(|e| e.npc.as_ref().is_some_and(|n| n.unique == unique))
+        .count();
+    assert_eq!(copies, 1);
+}
+
+/// On its own the master looks at the world now and then (Claude here).
+#[test]
+fn game_master_acts_on_its_own() {
+    let mut g = setup();
+    let base = fake_api(serde_json::json!({"announce": "", "commands": [
+        {"action": "rumor", "player": "", "key": "", "amount": 0, "text": "Над холмами кружат вороны"}
+    ]}));
+    g.brain = crate::llm::Brain::with_base("sk-test", "", &base);
+    let p = g.join_for_test("Герой", "warrior");
+    wild(&mut g, p);
+    g.director_tick();
+    assert!(g.chronicle.is_empty(), "the master is off by default");
+    g.set_director(true);
+    g.director_tick();
+    assert!(g.gm.next_at > Some(g.now), "its first look waits a minute");
+    g.gm.next_at = Some(g.now);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !g.chronicle.iter().any(|c| c.contains("вороны")) && std::time::Instant::now() < deadline
+    {
+        g.director_tick();
+        g.tick();
+        g.take_outbox(p);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(g.chronicle.iter().any(|c| c.contains("вороны")));
+    assert!(g.gm.next_at > Some(g.now + 60_000.0));
+}
+
+/// With Claude at hand a new world gets its own story: characters of the
+/// story live in it, their quests lead to its artifacts, and all of it
+/// survives a save.
+#[test]
+fn world_story_from_claude() {
+    use std::sync::atomic::AtomicBool;
+    let mut g = setup();
+    let req = g.lore_request();
+    let reply = serde_json::to_value(super::lore::tests::sample(&req)).unwrap();
+    let base = fake_api(reply);
+    g.brain = crate::llm::Brain::with_base("sk-test", "", &base);
+    let stages = std::sync::Mutex::new(Vec::<String>::new());
+    let title = g
+        .write_lore(&AtomicBool::new(false), &|s| {
+            stages.lock().unwrap().push(s.to_string())
+        })
+        .unwrap();
+    assert_eq!(title, "Летопись Пепельной Короны");
+    assert!(stages.lock().unwrap().iter().any(|s| s.contains("пишет")));
+    let lore = g.lore.clone().unwrap();
+    let key = format!("{LORE_PREFIX}{}", g.seed.unsigned_abs());
+    // the characters of the story live in the world, not far from the start
+    let people: Vec<Id> = g
+        .ents
+        .values()
+        .filter(|e| e.npc.as_ref().is_some_and(|n| n.unique.starts_with(&key)))
+        .map(|e| e.id)
+        .collect();
+    assert_eq!(people.len(), 3);
+    for &id in &people {
+        assert!(g.ents[&id].cell().dist(g.start) < 400);
+    }
+    // their content is the game's content now, with English
+    let relic_giver = lore
+        .content
+        .uniques
+        .iter()
+        .find(|u| u.quest == "relics")
+        .unwrap()
+        .clone();
+    assert!(db().unique(&relic_giver.key).is_some());
+    assert_eq!(crate::i18n::tr_in("en", &relic_giver.name), "Name");
+    // NPCs know the history
+    let elder = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.role == "elder"))
+        .map(|e| e.id)
+        .unwrap();
+    assert!(g
+        .world_facts(elder)
+        .iter()
+        .any(|f| f.contains("Пепельной Короны")));
+    // a hero sees the chronicle once
+    let p = g.join_for_test("Герой", "warrior");
+    assert!(g.lore_first_look(p));
+    assert!(!g.lore_first_look(p));
+    // the quest of the story leads to its artifact
+    let npc = *people
+        .iter()
+        .find(|&&id| g.ents[&id].npc.as_ref().unwrap().unique == relic_giver.key)
+        .unwrap();
+    g.offer_unique_quest(p, npc, &relic_giver);
+    for _ in 0..5 {
+        g.give_for_test(p, &relic_giver.target);
+    }
+    g.finish_unique_quest(p, &relic_giver);
+    let art = relic_giver.reward.strip_prefix("item:").unwrap();
+    assert!(
+        g.ents[&p].p().inventory.iter().any(|st| st.key == art),
+        "the artifact of the story"
+    );
+    // the story and its people survive a save
+    let dir = std::env::temp_dir().join(format!("ratas-lore-{}", std::process::id()));
+    let path = dir.join("lore.sav");
+    g.save(&path).unwrap();
+    let l = Game::load(&path, None).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(l.lore.as_ref().unwrap().title, title);
+    assert_eq!(
+        l.ents
+            .values()
+            .filter(|e| e.npc.as_ref().is_some_and(|n| n.unique.starts_with(&key)))
+            .count(),
+        3
+    );
+    assert!(db().item(art).is_some());
+}
+
+/// The local model writes the story too, as its one long answer.
+#[test]
+fn world_story_from_local_model() {
+    use crate::llm::local;
+    use std::sync::atomic::AtomicBool;
+    let mut g = setup();
+    let req = g.lore_request();
+    let lore = serde_json::to_value(super::lore::tests::sample(&req)).unwrap();
+    let (base, _) = fake_ollama(serde_json::Value::Null, serde_json::Value::Null, lore);
+    let rt = local::spawn(local::Settings::new("ollama", "mistral-test", &base, ""));
+    g.brain = Some(crate::llm::Brain::local(rt));
+    // it waits for the model to load first
+    let title = g.write_lore(&AtomicBool::new(false), &|_| {}).unwrap();
+    assert_eq!(title, "Летопись Пепельной Короны");
+    assert_eq!(g.lore.as_ref().unwrap().characters().len(), 3);
+}
+
+/// No story without a model, and none while a model is still downloading.
+#[test]
+fn no_story_without_a_model() {
+    use std::sync::atomic::AtomicBool;
+    let mut g = setup();
+    assert!(g.write_lore(&AtomicBool::new(false), &|_| {}).is_err());
+    assert!(g.lore.is_none());
+    // a skipped story leaves the world as it is
+    let base = fake_api(serde_json::json!({}));
+    g.brain = crate::llm::Brain::with_base("sk-test", "", &base);
+    assert!(g.write_lore(&AtomicBool::new(true), &|_| {}).is_err());
+    assert!(g.lore.is_none());
+}
+
 /// Creatures far from every player sleep: they are not simulated and AI
 /// queries do not see them, yet cell lookups still do.
 #[test]

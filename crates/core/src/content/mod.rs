@@ -425,17 +425,42 @@ pub struct Db {
 }
 
 static ACTIVE: AtomicPtr<Db> = AtomicPtr::new(std::ptr::null_mut());
+/// The content without any world's own additions (see install_world).
+static BASE: AtomicPtr<Db> = AtomicPtr::new(std::ptr::null_mut());
 
 /// Installs db as the active content set. The previous set is leaked on
 /// purpose: references to it may still be held by a renderer, and content
 /// changes only a few times per run (start, joining another server).
 pub fn install(d: Db) -> &'static Db {
+    let p = put(d);
+    BASE.store(p, Ordering::Release);
+    unsafe { &*p }
+}
+
+fn put(d: Db) -> *mut Db {
     for (l, m) in &d.b.translations {
         crate::i18n::add(l, m);
     }
     let p = Box::into_raw(Box::new(d));
     ACTIVE.store(p, Ordering::Release);
-    unsafe { &*p }
+    p
+}
+
+/// Installs the base content with a world's own additions on top (the
+/// characters, artifacts and translations its story brought). A world
+/// without them leaves the content as it is.
+pub fn install_world(extra: &Bundle) -> Result<&'static Db, String> {
+    let base = BASE.load(Ordering::Acquire);
+    let base = if base.is_null() {
+        db()
+    } else {
+        unsafe { &*base }
+    };
+    let mut b = base.b.clone();
+    b.merge(extra);
+    let d = index(b)?;
+    let p = put(d);
+    Ok(unsafe { &*p })
 }
 
 /// The active content set; the built-in content is installed on first use.

@@ -22,6 +22,14 @@ run = "cargo run --release -p ratas --"
 description = "Запустить выделенный сервер; флаги после --, например: mise run server -- --seed 7"
 run = "cargo run --release -p ratas --no-default-features -- --server"
 
+[tasks.play-local]
+description = "Играть с локальной нейросетью Mistral-7B (запускается вместе с миром)"
+run = "cargo run --release -p ratas -- --ai local"
+
+[tasks.server-local]
+description = "Выделенный сервер с локальной нейросетью Mistral-7B"
+run = "cargo run --release -p ratas --no-default-features -- --server --ai local"
+
 [tasks.test]
 description = "Все тесты"
 run = "cargo test --workspace"

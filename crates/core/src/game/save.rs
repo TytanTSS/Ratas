@@ -27,6 +27,8 @@ pub struct SaveData {
     pub no_pvp: bool,
     pub champions: HashMap<String, Id>,
     pub chronicle: Vec<String>,
+    /// the world's own story and content
+    pub lore: Option<Lore>,
     pub levels: Vec<Level>,
     pub entities: Vec<Entity>,
     pub characters: Vec<Entity>,
@@ -79,6 +81,7 @@ impl Game {
             no_pvp: !self.pvp,
             champions: self.champions.clone(),
             chronicle: self.chronicle.clone(),
+            lore: self.lore.clone(),
             levels: ids.into_iter().map(|id| self.levels[id].clone()).collect(),
             entities: self
                 .ents
@@ -153,6 +156,12 @@ impl Game {
         g.pvp = !sd.no_pvp;
         g.chronicle = sd.chronicle;
         g.champions = sd.champions;
+        // the world's own characters and artifacts before anything uses them
+        g.lore = sd.lore;
+        if let Err(e) = g.install_lore() {
+            g.lore = None;
+            g.note_lore(&e);
+        }
         for l in sd.levels {
             if l.tiles.len() != (l.w * l.h) as usize {
                 return Err(format!("повреждён уровень {}", l.id));

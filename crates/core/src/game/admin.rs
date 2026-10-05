@@ -121,6 +121,16 @@ pub const ADMIN_COMMANDS: &[AdminCommand] = &[
         args: "N",
         desc: "бонус к скорости бега в процентах (0 — снять)",
     },
+    AdminCommand {
+        name: "/gm",
+        args: "просьба | on | off",
+        desc: "поручить ИИ-мастеру изменить мир; on/off — его собственные события",
+    },
+    AdminCommand {
+        name: "/ai",
+        args: "",
+        desc: "состояние нейросети: модель, загрузка, ошибки",
+    },
 ];
 
 fn on_off(b: bool) -> &'static str {
@@ -145,7 +155,7 @@ fn split_tail(args: &[String], is_tail: impl Fn(&str) -> bool) -> (String, Vec<S
 }
 
 /// Finds a definition by exact key, then by a part of the key or name.
-fn find_def<'a, T>(
+pub(crate) fn find_def<'a, T>(
     all: &'a [T],
     key: impl Fn(&T) -> &str,
     name: impl Fn(&T) -> &str,
@@ -337,13 +347,14 @@ impl Game {
                     Some("night") => 0.0,
                     _ => (num(0, 12) % 24) as f64 / 24.0,
                 };
-                // moving the clock forward keeps every timer consistent
-                self.now += (target - self.time_of_day() + 1.0).rem_euclid(1.0) * DAY_MS;
+                self.set_clock(target);
                 say(
                     self,
                     format!("Время: {:02}:00.", ((target * 24.0).round() as i32) % 24),
                 );
             }
+            "gm" | "master" => self.admin_master(id, &args.join(" ")),
+            "ai" => self.admin_ai(id),
             "speed" => {
                 let n = num(0, 100);
                 let e = self.ents.get_mut(&id).unwrap();
@@ -596,6 +607,12 @@ impl Game {
         for r in rewards {
             self.unlock(id, &r);
         }
+    }
+
+    /// Moves the clock forward to a time of day (0 = midnight, 0.5 = noon);
+    /// moving forward keeps every timer consistent.
+    pub(crate) fn set_clock(&mut self, target: f64) {
+        self.now += (target - self.time_of_day() + 1.0).rem_euclid(1.0) * DAY_MS;
     }
 
     /// Places e next to target (on its level).

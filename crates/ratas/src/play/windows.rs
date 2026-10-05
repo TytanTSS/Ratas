@@ -843,6 +843,7 @@ pub fn help(_p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         ("K", "классы, подклассы, навыки и панель умений"),
         ("C", "персонаж и характеристики"),
         ("J", "журнал заданий"),
+        ("L", "летопись мира, если её написала нейросеть"),
         ("G", "группа: пригласить, принять, покинуть"),
         ("M / Tab", "карта уровня"),
         ("T / Enter", "чат с другими игроками"),
@@ -1142,6 +1143,99 @@ pub fn party(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     footer(g, r, "↑↓ выбор • Enter пригласить/принять • Esc");
 }
 
+// ---- the world's story ----
+
+/// Where a character of the story lives, for the reader.
+fn land_word(biome: &str) -> &'static str {
+    match biome {
+        "plains" => "равнины",
+        "forest" => "леса",
+        "swamp" => "болота",
+        "hills" => "холмы",
+        "desert" => "пустыня",
+        "tundra" => "тундра",
+        "ash" => "пепельные пустоши",
+        "cursed" => "проклятые земли",
+        _ => "дикие земли",
+    }
+}
+
+pub fn lore(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
+    let s = g.s;
+    let Some(w) = p.welcome.as_ref() else { return };
+    let r = centered(860.0 * s, 640.0 * s);
+    let inner = panel(g, r, "Летопись мира");
+    let size = 15.0 * s;
+    let lh = size * 1.3;
+    // the whole text as lines, then a window onto it
+    let mut lines: Vec<(String, Color, bool)> = Vec::new();
+    for l in g.wrap(&w.lore_title, inner.w, 18.0 * s, true) {
+        lines.push((l, c_accent(), true));
+    }
+    lines.push((String::new(), c_text(), false));
+    for para in &w.lore {
+        for l in g.wrap(para, inner.w, size, false) {
+            lines.push((l, c_text(), false));
+        }
+        lines.push((String::new(), c_text(), false));
+    }
+    let people: Vec<&ratas_core::content::UniqueDef> = content::db()
+        .b
+        .uniques
+        .iter()
+        .filter(|u| u.key.starts_with(ratas_core::game::LORE_PREFIX))
+        .collect();
+    if !people.is_empty() {
+        lines.push((tr("Живые свидетели этой истории:"), c_accent(), true));
+        for u in people {
+            let line = format!(
+                "• {}, {} — {}",
+                tr(&u.name),
+                tr(&ratas_core::i18n::lower_first(&u.title)),
+                tr(land_word(
+                    u.biomes.first().map(|b| b.as_str()).unwrap_or("")
+                ))
+            );
+            for l in g.wrap(&line, inner.w, size, false) {
+                lines.push((l, col(&u.color), false));
+            }
+        }
+        for l in g.wrap(
+            "Их просьбы ведут к артефактам этой истории. На карте мира они отмечены звёздами.",
+            inner.w,
+            size,
+            false,
+        ) {
+            lines.push((l, c_dim(), false));
+        }
+    }
+    let rows = ((inner.h - 10.0 * s) / lh).floor().max(1.0) as usize;
+    let max = lines.len().saturating_sub(rows);
+    let wheel = inp.scroll(r);
+    if wheel < 0.0 || inp.take(KeyCode::Down) || inp.take(KeyCode::PageDown) {
+        p.scroll = (p.scroll + if wheel < 0.0 { 3 } else { 1 }).min(max);
+    }
+    if wheel > 0.0 || inp.take(KeyCode::Up) || inp.take(KeyCode::PageUp) {
+        p.scroll = p.scroll.saturating_sub(if wheel > 0.0 { 3 } else { 1 });
+    }
+    p.scroll = p.scroll.min(max);
+    for (i, (l, c, bold)) in lines.iter().skip(p.scroll).take(rows).enumerate() {
+        g.text_raw(l, inner.x, inner.y + i as f32 * lh, size, *c, *bold);
+    }
+    if inp.take(KeyCode::Enter) || inp.take(KeyCode::Space) {
+        p.mode = Mode::Game;
+    }
+    footer(
+        g,
+        r,
+        if max > 0 {
+            "↑↓ / колесо — листать • L — летопись • Enter / Esc — закрыть"
+        } else {
+            "L — летопись • Enter / Esc — закрыть"
+        },
+    );
+}
+
 // ---- admin ----
 
 const ADMIN_ACTIONS: &[(&str, &str)] = &[
@@ -1162,6 +1256,11 @@ const ADMIN_ACTIONS: &[(&str, &str)] = &[
     ("Легендарное оружие и доспех", "/give long_sword legendary"),
     ("Список уникальных персонажей", "/uniques"),
     ("Список уровней мира", "/levels"),
+    (
+        "ИИ-мастер: устроить событие рядом",
+        "/gm Устрой интересное событие рядом со мной",
+    ),
+    ("Состояние нейросети", "/ai"),
     ("Все команды (/help)", "/help"),
     ("Ввести команду…", ""),
 ];
