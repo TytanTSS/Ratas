@@ -7,18 +7,143 @@ use crate::world::{find_path, Pos, Vec2, DIRS8};
 /// How far apart two bodies must stay (multiplied radii sum).
 const BODY_GAP: f32 = 0.98;
 
-impl Game {
-    /// Rebuilds the list of entities of every level.
-    pub(crate) fn index_levels(&mut self) {
-        for v in self.by_level.values_mut() {
-            v.clear();
-        }
-        for (id, e) in &self.ents {
-            self.by_level.entry(e.level.clone()).or_default().push(*id);
+/// Creatures farther than this from every player (cells along each axis,
+/// beyond what clients are shown) sleep: they are not simulated, and on a
+/// level with players only cell lookups see them.
+pub const AWAKE_RANGE: f32 = 80.0;
+
+/// Side of the cells of the spatial index, in tiles.
+const GRID: i32 = 16;
+
+/// The entities of one level by squares of GRID×GRID tiles: lookups of a cell
+/// cost the same on a small dungeon floor and on a huge overworld.
+#[derive(Default)]
+pub(crate) struct Grid {
+    cw: i32,
+    ch: i32,
+    cells: Vec<Vec<Id>>,
+}
+
+impl Grid {
+    fn new(w: i32, h: i32) -> Grid {
+        let (cw, ch) = ((w + GRID - 1) / GRID, (h + GRID - 1) / GRID);
+        Grid {
+            cw,
+            ch,
+            cells: vec![Vec::new(); (cw * ch).max(0) as usize],
         }
     }
 
-    /// The entities of a level (as of the last index).
+    fn slot(&self, p: Pos) -> Option<usize> {
+        let (x, y) = (p.x.div_euclid(GRID), p.y.div_euclid(GRID));
+        (x >= 0 && y >= 0 && x < self.cw && y < self.ch).then(|| (y * self.cw + x) as usize)
+    }
+
+    pub(crate) fn add(&mut self, p: Pos, id: Id) {
+        if let Some(i) = self.slot(p) {
+            self.cells[i].push(id);
+        }
+    }
+
+    /// The ids stored in the square of a cell.
+    fn at(&self, p: Pos) -> &[Id] {
+        self.slot(p)
+            .map(|i| self.cells[i].as_slice())
+            .unwrap_or(&[])
+    }
+}
+
+impl Game {
+    /// Rebuilds the indices of entities: the spatial grid of every level and
+    /// the lists of entities to simulate and query — on a level with players
+    /// only the awake ones near them, elsewhere all.
+    pub(crate) fn index_levels(&mut self) {
+        let players: Vec<(String, Vec2)> = self
+            .online
+            .values()
+            .filter_map(|id| self.ents.get(id))
+            .map(|e| (e.level.clone(), e.pos))
+            .collect();
+        for v in self.by_level.values_mut() {
+            v.clear();
+        }
+        for g in self.grids.values_mut() {
+            for c in &mut g.cells {
+                c.clear();
+            }
+        }
+        for (lid, l) in &self.levels {
+            if !self.grids.contains_key(lid) {
+                self.grids.insert(lid.clone(), Grid::new(l.w, l.h));
+            }
+        }
+        // entities come in runs of one level: look the level up once per run
+        let mut last = String::new();
+        let mut watched: Vec<Vec2> = Vec::new();
+        let mut list: Option<&mut Vec<Id>> = None;
+        let mut grid: Option<&mut Grid> = None;
+        let (by_level, grids) = (&mut self.by_level, &mut self.grids);
+        for (id, e) in &self.ents {
+            if e.level != last {
+                last.clone_from(&e.level);
+                watched = players
+                    .iter()
+                    .filter(|(lv, _)| *lv == e.level)
+                    .map(|(_, p)| *p)
+                    .collect();
+                if !by_level.contains_key(&e.level) {
+                    by_level.insert(e.level.clone(), Vec::new());
+                }
+                // two disjoint maps: both entries can be held at once
+                list = by_level.get_mut(&e.level);
+                grid = grids.get_mut(&e.level);
+            }
+            if let Some(g) = grid.as_deref_mut() {
+                g.add(e.cell(), *id);
+            }
+            let awake = watched.is_empty()
+                || watched.iter().any(|p| {
+                    (p.x - e.pos.x).abs() <= AWAKE_RANGE && (p.y - e.pos.y).abs() <= AWAKE_RANGE
+                });
+            if awake {
+                if let Some(v) = list.as_deref_mut() {
+                    v.push(*id);
+                }
+            }
+        }
+    }
+
+    /// Ids of the entities of a level to simulate: the awake ones on a level
+    /// with players (see AWAKE_RANGE), all of them elsewhere.
+    pub(crate) fn awake_ids(&self) -> Vec<Id> {
+        let played: std::collections::HashSet<&str> = self
+            .online
+            .values()
+            .filter_map(|id| self.ents.get(id))
+            .map(|e| e.level.as_str())
+            .collect();
+        let mut ids: Vec<Id> = self
+            .by_level
+            .iter()
+            .filter(|(l, _)| played.contains(l.as_str()))
+            .flat_map(|(_, v)| v.iter().copied())
+            .collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    /// Every entity of a level, asleep or not (a full scan: for rare needs
+    /// such as despawning or looking someone up).
+    pub(crate) fn all_on_level(&self, level: &str) -> Vec<Id> {
+        self.ents
+            .iter()
+            .filter(|(_, e)| e.level == level)
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
+    /// The entities of a level as of the last index: on a level with players
+    /// only those awake near them.
     pub(crate) fn on_level(&self, level: &str) -> Vec<Id> {
         self.by_level
             .get(level)
@@ -31,16 +156,21 @@ impl Game {
             .unwrap_or_default()
     }
 
-    /// Is a cell taken by a living body?
+    /// Is a cell taken by a living body (asleep or not)?
     pub(crate) fn cell_taken(&self, level: &str, p: Pos) -> bool {
-        self.by_level.get(level).map(|v| {
-            v.iter().any(|id| {
-                self.ents
-                    .get(id)
-                    .map(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p)
-                    .unwrap_or(false)
-            })
-        }) == Some(true)
+        let taken = |id: &Id| {
+            self.ents
+                .get(id)
+                .map(|e| e.level == level && e.blocks() && e.alive() && e.cell() == p)
+                .unwrap_or(false)
+        };
+        match self.grids.get(level) {
+            Some(g) => g.at(p).iter().any(taken),
+            None => self
+                .by_level
+                .get(level)
+                .is_some_and(|v| v.iter().any(taken)),
+        }
     }
 
     /// A free walkable cell near p (no body, no interaction).

@@ -218,7 +218,7 @@ impl Game {
         let mut found = Vec::new();
         let p = self.ents[&id].p();
         for (i, lm) in self.landmarks.iter().enumerate() {
-            if p.found.contains(&i) || cell.dist(lm.pos) > 7 || !los(l, cell, lm.pos) {
+            if cell.dist(lm.pos) > 7 || p.found.contains(&i) || !los(l, cell, lm.pos) {
                 continue;
             }
             found.push(i);

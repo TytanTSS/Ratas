@@ -48,7 +48,7 @@ impl Game {
     }
 
     pub(crate) fn overworld_level_at(&self, p: Pos, night: bool) -> i32 {
-        let mut lvl = 1 + p.manhattan(self.start) / 70;
+        let mut lvl = ring_level(p.manhattan(self.start));
         if night {
             lvl += 1;
         }
@@ -118,7 +118,8 @@ impl Game {
     }
 
     /// Places persistent elite enemies across the map: every kind of elite
-    /// at least once in a fitting biome, more if there is room.
+    /// at least once in a fitting biome, then more in turn — eight per
+    /// classic world of land.
     pub(crate) fn populate_overworld(&mut self, r: &mut Rng) {
         let elites: Vec<&MonsterDef> = db()
             .b
@@ -126,16 +127,22 @@ impl Game {
             .iter()
             .filter(|m| m.elite && !m.boss && m.depth[0] == 0)
             .collect();
-        let (w, h) = {
+        let (w, h, land) = {
             let l = &self.levels["overworld"];
-            (l.w, l.h)
+            let walk = gen::tile_table(|d| d.walkable);
+            let land = l.tiles.iter().filter(|&&t| walk[t as usize]).count();
+            (l.w, l.h, land)
         };
+        let want = gen::per_land(land, 8.0, 8);
         let mut placed = 0;
-        for _ in 0..2 {
-            if placed >= 8 {
+        for round in 0..want.div_ceil(elites.len().max(1)) + 1 {
+            if placed >= want && round >= 1 {
                 break;
             }
             for def in &elites {
+                if placed >= want && round >= 1 {
+                    break;
+                }
                 for _ in 0..1500 {
                     let p = Pos::new(r.int_n(w), r.int_n(h));
                     let l = &self.levels["overworld"];
@@ -196,7 +203,9 @@ impl Game {
     ) {
         let mut r = Rng::labeled(self.seed, &format!("pop-{level}"));
         let depth = self.levels[level].depth;
-        let lvl = depth + (ent.max_depth - 3).max(0);
+        // as dangerous as the land around the entrance, and more below
+        let lvl =
+            depth + (ent.max_depth - 3).max(0) + ring_level(ent.pos.manhattan(self.start)) - 1;
         for &p in monsters {
             if r.int_n(100) < 30 {
                 if let Some(sq) = pick_squad(&mut r, &ent.theme, depth, false) {
@@ -259,8 +268,8 @@ impl Game {
             return;
         }
         let night = self.is_night();
-        // despawn
-        for id in self.on_level("overworld") {
+        // despawn (sleeping monsters left behind too)
+        for id in self.all_on_level("overworld") {
             let e = &self.ents[&id];
             let Some(m) = &e.monster else { continue };
             if e.faction != Faction::Monster || m.persistent || m.target != 0 {
@@ -312,6 +321,18 @@ impl Game {
         }
         self.rng = rng;
         self.index_levels();
+    }
+}
+
+/// How strong the land is at a distance (in steps) from the start: a level
+/// per 70 steps across what was the whole classic world, then a level per
+/// 200 steps, so even the far ends of a big world stay within reach.
+pub(crate) fn ring_level(d: i32) -> i32 {
+    const NEAR: i32 = 350;
+    if d <= NEAR {
+        1 + d / 70
+    } else {
+        1 + NEAR / 70 + (d - NEAR) / 200
     }
 }
 

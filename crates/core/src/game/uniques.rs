@@ -86,6 +86,12 @@ impl Game {
         r.shuffle(&mut rest);
         first.extend(rest);
         let mut placed: Vec<Pos> = Vec::new();
+        // spread over the whole world: further apart on a bigger one
+        let k = {
+            let l = &self.levels["overworld"];
+            gen::MapScale::of(l.w, l.h).lin
+        };
+        let gaps = [25.0, 16.0, 10.0].map(|g: f64| (g * k) as i32);
         for i in first {
             if placed.len() >= MAX_UNIQUES {
                 break;
@@ -94,14 +100,14 @@ impl Game {
             // their own lands far from the others first; closer and anywhere
             // when the world is crowded
             let mut spot = None;
-            for gap in [25, 16, 10] {
+            for gap in gaps {
                 spot = self.unique_spot(r, &u.biomes, &placed, gap);
                 if spot.is_some() {
                     break;
                 }
             }
             if spot.is_none() {
-                spot = self.unique_spot(r, &[], &placed, 10);
+                spot = self.unique_spot(r, &[], &placed, gaps[2]);
             }
             let Some(p) = spot else { continue };
             placed.push(p);

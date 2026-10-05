@@ -3,6 +3,8 @@
 use super::*;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const SAVE_VERSION: i32 = 100;
@@ -20,7 +22,7 @@ pub struct SaveData {
     pub villages: Vec<VillageInfo>,
     pub entrances: Vec<Entrance>,
     pub regions: Vec<Region>,
-    pub region_map: Vec<u8>,
+    pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
     pub no_pvp: bool,
     pub champions: HashMap<String, Id>,
@@ -39,9 +41,26 @@ fn now_secs() -> u64 {
         .unwrap_or(0)
 }
 
+/// Orders the snapshots of worlds: a write never replaces a newer one.
+static SNAPSHOTS: AtomicU64 = AtomicU64::new(1);
+/// The newest snapshot written, under the lock that serialises writes.
+static WRITTEN: Mutex<u64> = Mutex::new(0);
+
+/// A copy of a world ready to be written (possibly on another thread).
+pub struct SaveSnapshot {
+    seq: u64,
+    data: SaveData,
+}
+
 impl Game {
     /// Writes the whole world (including every character ever seen) atomically.
     pub fn save(&self, path: &Path) -> Result<(), String> {
+        write_save(&self.snapshot_save(), path)
+    }
+
+    /// Copies the world for saving; the slow part (writing) can then run
+    /// apart from the game.
+    pub fn snapshot_save(&self) -> SaveSnapshot {
         let mut ids: Vec<&String> = self.levels.keys().collect();
         ids.sort();
         let sd = SaveData {
@@ -76,23 +95,47 @@ impl Game {
                 .collect(),
             saved_at: now_secs(),
         };
+        SaveSnapshot {
+            seq: SNAPSHOTS.fetch_add(1, Ordering::SeqCst),
+            data: sd,
+        }
+    }
+}
+
+/// Writes a snapshot of a world atomically (through a temporary file),
+/// unless a newer snapshot has been written already.
+pub fn write_save(snap: &SaveSnapshot, path: &Path) -> Result<(), String> {
+    let mut written = WRITTEN.lock().unwrap_or_else(|e| e.into_inner());
+    if snap.seq < *written {
+        return Ok(());
+    }
+    let sd = &snap.data;
+    {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
         let tmp = path.with_extension("sav.tmp");
         let f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-        let mut zw = flate2::write::GzEncoder::new(
+        let zw = flate2::write::GzEncoder::new(
             std::io::BufWriter::new(f),
             flate2::Compression::default(),
         );
-        serde_json::to_writer(&mut zw, &sd).map_err(|e| e.to_string())?;
-        zw.finish()
+        // JSON comes out in tiny pieces: buffer them before the compressor
+        let mut bw = std::io::BufWriter::with_capacity(1 << 20, zw);
+        serde_json::to_writer(&mut bw, sd).map_err(|e| e.to_string())?;
+        bw.into_inner()
+            .map_err(|e| e.to_string())?
+            .finish()
             .map_err(|e| e.to_string())?
             .flush()
             .map_err(|e| e.to_string())?;
-        std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+        std::fs::rename(&tmp, path).map_err(|e| e.to_string())?;
     }
+    *written = snap.seq;
+    Ok(())
+}
 
+impl Game {
     /// Restores a world. All characters start offline and come back on join.
     pub fn load(path: &Path, brain: Option<Brain>) -> Result<Game, String> {
         let sd = read_save(path)?;
@@ -131,6 +174,8 @@ impl Game {
             g.offline.insert(account, e);
         }
         g.next_id = g.next_id.max(sd.next_id);
+        g.anchor_regions();
+        g.index_villages();
         g.index_levels();
         Ok(g)
     }

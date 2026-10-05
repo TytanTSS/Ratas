@@ -52,6 +52,20 @@ fn round_to(v: i32, k: i32) -> i32 {
     ((v + k / 2) / k * k).max(k)
 }
 
+/// A distance in steps as people would say it: rougher the further it is.
+fn round_steps(d: i32) -> i32 {
+    if d <= 200 {
+        round_to(d, 10)
+    } else if d <= 1000 {
+        round_to(d, 50)
+    } else {
+        round_to(d, 100)
+    }
+}
+
+/// How far away the dangerous lands people warn about may lie.
+const NEAR_LANDS: i32 = 500;
+
 fn theme_word(theme: &str) -> &'static str {
     match theme {
         "cave" => "пещера",
@@ -431,23 +445,24 @@ impl Game {
                 ));
             }
         }
-        for o in self.on_level("overworld") {
-            let oe = &self.ents[&o];
+        // unique characters may live far away in a big world: the distance helps
+        for (o, oe) in &self.ents {
             let Some(on) = &oe.npc else { continue };
-            if on.unique.is_empty() || o == npc {
+            if on.unique.is_empty() || *o == npc || oe.level != "overworld" {
                 continue;
             }
             if let Some(u) = db().unique(&on.unique) {
                 lines.push(format!(
-                    "Ходят слухи, что {} живёт {} — {}. Говорят, награда у него за помощь такая, что и не снилась.",
+                    "Ходят слухи, что {}, шагах в {}, живёт {} — {}. Говорят, награда у него за помощь такая, что и не снилась.",
                     compass_ru(at, oe.cell()),
+                    round_steps(at.dist(oe.cell())),
                     u.name,
                     lower(&u.title)
                 ));
             }
         }
         for r in &self.regions {
-            if r.danger >= 2 {
+            if r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS {
                 lines.push(format!(
                     "Держись подальше от земель «{}». Оттуда мало кто возвращается.",
                     r.name
@@ -658,14 +673,18 @@ impl Game {
                 d
             ));
         }
-        for v in &self.villages {
-            if v.name != village {
-                facts.push(format!(
-                    "The village {} lies to the {}.",
-                    v.name,
-                    compass(at, v.center)
-                ));
-            }
+        // the nearest settlements (a big world has hundreds)
+        let mut vs: Vec<&VillageInfo> =
+            self.villages.iter().filter(|v| v.name != village).collect();
+        vs.sort_by_key(|v| v.center.dist_sq(at));
+        for v in vs.into_iter().take(8) {
+            facts.push(format!(
+                "The {} {} lies to the {}, about {} steps away.",
+                if v.city { "city" } else { "village" },
+                v.name,
+                compass(at, v.center),
+                round_steps(at.dist(v.center))
+            ));
         }
         for lm in &self.landmarks {
             if lm.pos.dist(at) < 100 {
@@ -677,16 +696,18 @@ impl Game {
                 ));
             }
         }
-        for o in self.on_level("overworld") {
-            let oe = &self.ents[&o];
+        for (o, oe) in &self.ents {
+            if oe.level != "overworld" {
+                continue;
+            }
             if let Some(u) = oe.npc.as_ref().and_then(|n| db().unique(&n.unique)) {
-                if o != npc {
-                    facts.push(format!("Rumour: {}, {}, lives to the {} and rewards those who help with something extraordinary.", u.name, u.title, compass(at, oe.cell())));
+                if *o != npc {
+                    facts.push(format!("Rumour: {}, {}, lives to the {}, about {} steps away, and rewards those who help with something extraordinary.", u.name, u.title, compass(at, oe.cell()), round_steps(at.dist(oe.cell()))));
                 }
             }
         }
         for r in &self.regions {
-            if r.danger >= 2 {
+            if r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS {
                 facts.push(format!(
                     "The lands called {} ({}) are deadly.",
                     r.name, r.kind

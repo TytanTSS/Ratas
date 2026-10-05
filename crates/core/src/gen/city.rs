@@ -7,50 +7,76 @@ use std::collections::{HashMap, HashSet};
 pub const CITY_W: i32 = 50;
 pub const CITY_H: i32 = 40;
 
-/// Puts up to `want` walled cities on the main landmass: any dry land will do
-/// (the city is paved over), with little water or mountains.
+/// Spreads walled cities over the main landmass, about one or two per
+/// classic world of land: any dry land will do (the city is paved over), with
+/// little water, mountains or wasteland.
 pub(super) fn place_cities(
     r: &mut Rng,
     l: &mut Level,
     main: &[bool],
-    want: i32,
+    land: usize,
     used: &mut HashSet<String>,
 ) -> Vec<Village> {
+    let want = per_land(land, 1.0 + r.f64(), 1);
+    let (w, h) = (l.w, l.h);
+    // how bad each cell is for a city
+    let bad_t = tile_table(|def| {
+        if matches!(def.biome.as_str(), "ash" | "cursed") {
+            3
+        } else if def.biome == "water"
+            || def.biome == "snow"
+            || def.key == "mountain"
+            || def.damage > 0.0
+        {
+            1
+        } else {
+            0
+        }
+    });
+    let walk_t = tile_table(|def| def.walkable);
+    let bad = Sat::new(l, |i| {
+        let tt = l.tiles[i] as usize;
+        if !main[i] && !walk_t[tt] {
+            2
+        } else {
+            bad_t[tt]
+        }
+    });
     let mut cs: Vec<Village> = Vec::new();
-    for max_bad in [6, 14, 25] {
-        for _ in 0..3000 {
-            if cs.len() as i32 >= want {
+    let mut near = Buckets::new(128);
+    let step = ((w as f64 * h as f64 / (want as f64 * 2.5)).sqrt() as i32).max(CITY_W + 30);
+    let cells = scatter_cells(r, w, h, step);
+    let tries = (3000 / cells.len().max(1)).max(8);
+    for max_bad in [6u32, 14, 25] {
+        for c in &cells {
+            if cs.len() >= want {
                 break;
             }
-            let cx = CITY_W / 2 + 6 + r.int_n(l.w - CITY_W - 12);
-            let cy = CITY_H / 2 + 6 + r.int_n(l.h - CITY_H - 12);
-            let area = Rect::new(cx - CITY_W / 2, cy - CITY_H / 2, CITY_W, CITY_H);
-            let (mut bad, mut total) = (0, 0);
-            for y in area.y - 2..=area.y + area.h + 1 {
-                for x in area.x - 2..=area.x + area.w + 1 {
-                    total += 1;
-                    let def = l.def(x, y);
-                    let in_main = l.inside(x, y) && main[(y * l.w + x) as usize];
-                    if !in_main && !def.walkable {
-                        bad += 2;
-                    } else if def.biome == "water"
-                        || def.biome == "snow"
-                        || def.key == "mountain"
-                        || def.damage > 0.0
-                    {
-                        bad += 1;
-                    }
+            for _ in 0..tries {
+                let p = in_cell(r, c, w, h, 0);
+                let cx = p.x.clamp(CITY_W / 2 + 6, w - CITY_W / 2 - 7);
+                let cy = p.y.clamp(CITY_H / 2 + 6, h - CITY_H / 2 - 7);
+                let area = Rect::new(cx - CITY_W / 2, cy - CITY_H / 2, CITY_W, CITY_H);
+                let (x0, y0) = (area.x - 2, area.y - 2);
+                let (x1, y1) = (area.x + area.w + 2, area.y + area.h + 2);
+                let total = ((x1 - x0) * (y1 - y0)) as u32;
+                if bad.sum(x0, y0, x1, y1) * 100 > max_bad * total {
+                    continue;
                 }
-            }
-            if bad * 100 / total > max_bad {
-                continue;
-            }
-            if cs.iter().all(|c| !c.area.overlaps(&area, 30)) {
-                let name = pick_unique(r, CITY_NAMES, used);
+                if near
+                    .near(area.center(), CITY_W + 40)
+                    .into_iter()
+                    .any(|i| cs[i].area.overlaps(&area, 30))
+                {
+                    continue;
+                }
+                let name = city_name(r, used);
+                near.insert(area.center(), cs.len());
                 cs.push(build_city(r, l, area, name));
+                break;
             }
         }
-        if !cs.is_empty() {
+        if !cs.is_empty() && cs.len() * 2 >= want {
             break;
         }
     }

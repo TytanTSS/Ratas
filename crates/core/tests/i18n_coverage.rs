@@ -12,6 +12,10 @@ const PROPER_NAMES: &[&str] = &[
     "MALE_NAMES",
     "FEMALE_NAMES",
     "LAYOUT_KEYS",
+    "TOWN_ADJ",
+    "TOWN_NOUNS",
+    "CITY_ROOTS",
+    "CITY_ENDS",
 ];
 
 fn root() -> PathBuf {

@@ -95,6 +95,10 @@ fn scaled(m: &crate::content::Stats, k: f64) -> crate::content::Stats {
 }
 
 /// Formats a number like Go's %g for the small values of stats.
+/// How far from the start villages are common knowledge (about the span of
+/// the classic world).
+const HOME_LANDS: i32 = 350;
+
 pub fn num(v: f64) -> String {
     if v == v.trunc() {
         format!("{}", v as i64)
@@ -451,6 +455,9 @@ impl Game {
     }
 
     /// What a player knows on the world map.
+    ///
+    /// Villages within HOME_LANDS steps of the start are known from the first
+    /// day, the rest once seen.
     pub(crate) fn places(&mut self, id: Id) -> Vec<Place> {
         let centers = self.region_centers();
         let e = &self.ents[&id];
@@ -463,7 +470,11 @@ impl Game {
             ow.map(|l| l.inside(q.x, q.y) && bs.get(l.idx(q)))
                 .unwrap_or(false)
         };
+        // cities are famous; villages are known around home and once seen
         for v in &self.villages {
+            if !v.city && v.center.manhattan(self.start) > HOME_LANDS && !seen(v.center) {
+                continue;
+            }
             out.push(Place {
                 name: v.name.clone(),
                 kind: if v.city { "city" } else { "village" }.into(),
@@ -515,15 +526,22 @@ impl Game {
     }
 
     /// A labelled point inside each region (its most central cell).
-    pub(crate) fn region_centers(&mut self) -> Vec<Pos> {
-        if self.region_at.len() == self.regions.len() && !self.regions.is_empty() {
-            return self.region_at.clone();
+    pub(crate) fn region_centers(&self) -> Vec<Pos> {
+        self.regions.iter().map(|r| r.at).collect()
+    }
+
+    /// Works out where region names go for saves made before regions kept
+    /// it: the region's own cell nearest to its centroid, in two passes over
+    /// the map.
+    pub(crate) fn anchor_regions(&mut self) {
+        if self.regions.iter().all(|r| !r.at.is_zero()) {
+            return;
         }
         let Some(l) = self.levels.get("overworld") else {
-            return Vec::new();
+            return;
         };
         if self.region_map.len() != (l.w * l.h) as usize {
-            return Vec::new();
+            return;
         }
         let n = self.regions.len();
         let (mut sx, mut sy, mut cnt) = (vec![0i64; n], vec![0i64; n], vec![0i64; n]);
@@ -536,32 +554,29 @@ impl Game {
             sy[k] += i as i64 / l.w as i64;
             cnt[k] += 1;
         }
-        let mut out = vec![Pos::default(); n];
-        for i in 0..n {
-            if cnt[i] == 0 {
+        let centre: Vec<Pos> = (0..n)
+            .map(|k| {
+                let c = cnt[k].max(1);
+                Pos::new((sx[k] / c) as i32, (sy[k] / c) as i32)
+            })
+            .collect();
+        let mut best = vec![(i32::MAX, Pos::default()); n];
+        for (i, &r) in self.region_map.iter().enumerate() {
+            if r == 0 || r as usize > n {
                 continue;
             }
-            let c = Pos::new((sx[i] / cnt[i]) as i32, (sy[i] / cnt[i]) as i32);
-            if self.region_map[l.idx(c)] as usize == i + 1 {
-                out[i] = c;
-                continue;
-            }
-            // pull the label into the region if the centroid falls outside
-            let mut best = i32::MAX;
-            for (j, &r) in self.region_map.iter().enumerate() {
-                if r as usize != i + 1 {
-                    continue;
-                }
-                let p = Pos::new(j as i32 % l.w, j as i32 / l.w);
-                let d = p.dist_sq(c);
-                if d < best {
-                    best = d;
-                    out[i] = p;
-                }
+            let k = r as usize - 1;
+            let p = Pos::new(i as i32 % l.w, i as i32 / l.w);
+            let d = p.dist_sq(centre[k]);
+            if d < best[k].0 {
+                best[k] = (d, p);
             }
         }
-        self.region_at = out.clone();
-        out
+        for (k, reg) in self.regions.iter_mut().enumerate() {
+            if reg.at.is_zero() {
+                reg.at = best[k].1;
+            }
+        }
     }
 
     /// The full character sheet.
@@ -648,7 +663,7 @@ impl Game {
                 .p()
                 .explored
                 .get(&l.id)
-                .map(|b| b.0.clone())
+                .map(|b| compress(&b.0))
                 .unwrap_or_default(),
             lit: l.lit,
             depth: l.depth,

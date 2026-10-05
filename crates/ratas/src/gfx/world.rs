@@ -169,6 +169,40 @@ fn not_base(key: &str) -> bool {
     )
 }
 
+/// The cells the hero sees: a window around them, so a big level is not
+/// copied cell by cell every frame.
+#[derive(Clone, Default)]
+pub struct Vis {
+    x0: i32,
+    y0: i32,
+    w: i32,
+    h: i32,
+    cells: Vec<bool>,
+}
+
+impl Vis {
+    fn set(&mut self, x: i32, y: i32) {
+        let (dx, dy) = (x - self.x0, y - self.y0);
+        if dx >= 0 && dy >= 0 && dx < self.w && dy < self.h {
+            self.cells[(dy * self.w + dx) as usize] = true;
+        }
+    }
+
+    pub fn get(&self, x: i32, y: i32) -> bool {
+        let (dx, dy) = (x - self.x0, y - self.y0);
+        dx >= 0 && dy >= 0 && dx < self.w && dy < self.h && self.cells[(dy * self.w + dx) as usize]
+    }
+
+    /// The visible cells.
+    pub fn cells(&self) -> impl Iterator<Item = (i32, i32)> + '_ {
+        self.cells
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| **v)
+            .map(|(i, _)| (self.x0 + i as i32 % self.w, self.y0 + i as i32 / self.w))
+    }
+}
+
 pub struct WorldRenderer {
     zoom_idx: usize,
     zoom_cur: f32,
@@ -184,7 +218,7 @@ pub struct WorldRenderer {
     beams: Vec<Beam>,
     ambient: Vec<Particle>,
     rng: Rng,
-    vis: Vec<bool>,
+    vis: Vis,
     vis_key: (u64, i32, i32, i32, bool, usize),
     dark_cur: Vec<f32>,
     dark_id: String,
@@ -220,7 +254,7 @@ impl WorldRenderer {
             beams: vec![],
             ambient: vec![],
             rng: Rng::new(1, 2),
-            vis: vec![],
+            vis: Vis::default(),
             vis_key: (u64::MAX, 0, 0, 0, false, 0),
             dark_cur: vec![],
             dark_id: String::new(),
@@ -252,7 +286,7 @@ impl WorldRenderer {
     }
 
     /// The visible cells (field of view from the hero), cached.
-    pub fn visible(&mut self, sc: &Scene) -> &[bool] {
+    pub fn visible(&mut self, sc: &Scene) -> &Vis {
         let l = sc.level;
         let me = &sc.snap.you;
         let (hx, hy) = (me.x.floor() as i32, me.y.floor() as i32);
@@ -264,15 +298,19 @@ impl WorldRenderer {
             me.dead,
             l as *const _ as usize,
         );
-        if self.vis_key != key || self.vis.len() != (l.w * l.h) as usize {
-            self.vis = vec![false; (l.w * l.h) as usize];
+        if self.vis_key != key {
+            let r = me.vision.max(0) + 1;
+            let mut vis = Vis {
+                x0: hx - r,
+                y0: hy - r,
+                w: 2 * r + 1,
+                h: 2 * r + 1,
+                cells: vec![false; ((2 * r + 1) * (2 * r + 1)) as usize],
+            };
             if !me.dead {
-                let w = l.w;
-                let vis = &mut self.vis;
-                fov(l, hx, hy, me.vision, &mut |x, y| {
-                    vis[(y * w + x) as usize] = true
-                });
+                fov(l, hx, hy, me.vision, &mut |x, y| vis.set(x, y));
             }
+            self.vis = vis;
             self.vis_key = key;
         }
         &self.vis
@@ -383,10 +421,7 @@ impl WorldRenderer {
         let you = sc.you;
         let speed = sc.snap.you.speed;
         let input = sc.input;
-        let visible: Vec<bool> = {
-            let v = self.visible(sc);
-            v.to_vec()
-        };
+        let visible = self.visible(sc).clone();
         let follow = 1.0 - (-dt * 16.0).exp();
         let mut dead = vec![];
         for (id, st) in self.ents.iter_mut() {
@@ -426,7 +461,7 @@ impl WorldRenderer {
             st.lunge = (st.lunge - dt * 5.0).max(0.0);
             st.flash = (st.flash - dt).max(0.0);
             let (cx, cy) = (st.x.floor() as i32, st.y.floor() as i32);
-            let seen = !st.gone && l.inside(cx, cy) && visible[(cy * l.w + cx) as usize];
+            let seen = !st.gone && l.inside(cx, cy) && visible.get(cx, cy);
             st.seen = seen;
             let target = if seen { 1.0 } else { 0.0 };
             st.alpha += (target - st.alpha) * (1.0 - (-dt * 8.0).exp());
@@ -745,7 +780,7 @@ impl WorldRenderer {
         g: &mut Gfx,
         l: &Level,
         v: &View,
-        vis: Option<&[bool]>,
+        vis: Option<&Vis>,
         explored: Option<&Bitset>,
         mut row_entities: impl FnMut(&mut Gfx, i32),
     ) {
@@ -754,7 +789,7 @@ impl WorldRenderer {
         let frame = (self.t * 3.0) as usize % 4;
         let memory = Color::new(0.86, 0.9, 1.0, 1.0);
         let seen = |i: usize| explored.is_none_or(|e| e.get(i));
-        let lit = |i: usize| vis.is_none_or(|vv| vv[i]);
+        let lit = |x: i32, y: i32| vis.is_none_or(|vv| vv.get(x, y));
         for y in v.ty0..=v.ty1 {
             for x in v.tx0..=v.tx1 {
                 let i = (y * l.w + x) as usize;
@@ -762,7 +797,7 @@ impl WorldRenderer {
                     continue;
                 }
                 let def = db.tile(l.tiles[i]);
-                let c = if lit(i) { WHITE } else { memory };
+                let c = if lit(x, y) { WHITE } else { memory };
                 let (px, py) = v.px(x as f32, y as f32);
                 let h = tile_hash(x, y);
                 let (has_ground, wall) = {
@@ -842,7 +877,7 @@ impl WorldRenderer {
                 if tt.object.is_empty() || !tt.tall {
                     continue;
                 }
-                let c = if lit(i) { WHITE } else { memory };
+                let c = if lit(x, y) { WHITE } else { memory };
                 let (px, py) = v.px(x as f32, y as f32);
                 let img = &tt.object[tile_hash(x, y) % tt.object.len()];
                 let h = img.height() / SPX as f32 * ts;
@@ -885,7 +920,7 @@ impl WorldRenderer {
         self.tops.clear();
         let v = self.make_view(l, self.cam, area, g.s);
         self.view = v;
-        let vis = self.visible(sc).to_vec();
+        let vis = self.visible(sc).clone();
         // creatures by row for depth sorting
         let mut rows: HashMap<i32, Vec<u32>> = HashMap::new();
         let mut projectiles = vec![];
@@ -983,7 +1018,7 @@ impl WorldRenderer {
     fn darkness(
         &self,
         l: &Level,
-        vis: &[bool],
+        vis: &Vis,
         explored: &Bitset,
         sc: &Scene,
         x: i32,
@@ -997,7 +1032,7 @@ impl WorldRenderer {
         if !explored.get(i) {
             return 1.0;
         }
-        if !vis[i] {
+        if !vis.get(x, y) {
             return 0.62;
         }
         let vision = (sc.snap.you.vision as f32).max(1.0);
@@ -1013,7 +1048,7 @@ impl WorldRenderer {
         (0.04 + 0.82 * d.powf(1.5)).min(0.86)
     }
 
-    fn draw_lighting(&mut self, g: &Gfx, v: &View, sc: &Scene, vis: &[bool]) {
+    fn draw_lighting(&mut self, g: &Gfx, v: &View, sc: &Scene, vis: &Vis) {
         let l = sc.level;
         let ts = v.ts;
         let (w, h) = (screen_width(), screen_height());
@@ -1022,14 +1057,33 @@ impl WorldRenderer {
         if l.lit {
             day = daylight(tod) as f32;
             if day > 0.2 {
-                // cloud shadows drifting over the land
+                // cloud shadows drifting over the land: nine to a field the
+                // size of the classic world, repeated over a bigger one
+                let (pw, ph) = (l.w.min(300) as f32, l.h.min(200) as f32);
+                let (fx, fy) = ((v.tx0 as f32 / pw).floor(), (v.ty0 as f32 / ph).floor());
                 let mut cr = Rng::new(l.id.len() as u64, 5);
                 for _ in 0..9 {
-                    let bx = (cr.f32() * l.w as f32 + self.t * 0.35).rem_euclid(l.w as f32);
-                    let by = (cr.f32() * l.h as f32 + self.t * 0.12).rem_euclid(l.h as f32);
-                    let (x, y) = v.px(bx, by);
+                    let bx = (cr.f32() * pw + self.t * 0.35).rem_euclid(pw);
+                    let by = (cr.f32() * ph + self.t * 0.12).rem_euclid(ph);
                     let s = (6.0 + cr.f32() * 6.0) * ts;
-                    g.shadow(x, y, s * 1.6, s, 0.13 * day);
+                    for (i, j) in [
+                        (-1.0, -1.0),
+                        (0.0, -1.0),
+                        (-1.0, 0.0),
+                        (0.0, 0.0),
+                        (1.0, 0.0),
+                        (0.0, 1.0),
+                        (1.0, 1.0),
+                        (1.0, -1.0),
+                        (-1.0, 1.0),
+                    ] {
+                        let (cx, cy) = (bx + (fx + i) * pw, by + (fy + j) * ph);
+                        if cx < 0.0 || cy < 0.0 || cx > l.w as f32 || cy > l.h as f32 {
+                            continue;
+                        }
+                        let (x, y) = v.px(cx, cy);
+                        g.shadow(x, y, s * 1.6, s, 0.13 * day);
+                    }
                 }
             }
             let night = 1.0 - day;
@@ -1132,11 +1186,10 @@ impl WorldRenderer {
         let mut sparks = vec![];
         for y in v.ty0..=v.ty1 {
             for x in v.tx0..=v.tx1 {
-                let i = (y * l.w + x) as usize;
-                if !vis[i] {
+                if !vis.get(x, y) {
                     continue;
                 }
-                let def = db.tile(l.tiles[i]);
+                let def = db.tile(l.at(x, y));
                 let (px, py) = v.px(x as f32 + 0.5, y as f32 + 0.5);
                 if def.damage > 0.0 && lava < 220 {
                     lava += 1;
