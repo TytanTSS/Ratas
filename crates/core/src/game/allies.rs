@@ -28,6 +28,9 @@ pub(crate) fn monster_state(def: &MonsterDef, lvl: i32, home: Vec2) -> (MonsterS
     )
 }
 
+/// How far a wanderer looks for the next place to go.
+const TRAVEL_RANGE: f32 = 220.0;
+
 impl Game {
     /// Creates a villager, guard or wanderer; NPCs with a combat profile
     /// fight monsters on the players' side.
@@ -74,11 +77,13 @@ impl Game {
 
     /// Places knights, hunters, pilgrims and others in the wild.
     pub(crate) fn populate_wanderers(&mut self, r: &mut Rng) {
+        // as many per settlement as in the classic world of five
+        let per = (self.villages.len() as f64 / 6.0).max(1.0);
         for role in &db().b.npcs {
             if !role.world {
                 continue;
             }
-            let n = r.range(role.count[0], role.count[1]);
+            let n = (r.range(role.count[0], role.count[1]) as f64 * per).round() as i32;
             for _ in 0..n {
                 let Some(p) = self.wild_spot(r, 12, 60) else {
                     continue;
@@ -141,12 +146,24 @@ impl Game {
             if n.travel.is_none() && now < n.travel_until {
                 return;
             }
+            // the next village or sight on the way, not across the world
+            let near = |p: Vec2| p.dist(pos) <= TRAVEL_RANGE;
             let mut goals: Vec<Vec2> = self
                 .villages
                 .iter()
                 .map(|v| Pos::new(v.center.x, v.center.y + 3).center())
+                .chain(self.landmarks.iter().map(|l| l.pos.center()))
+                .filter(|&g| near(g) && g.dist(pos) > 6.0)
                 .collect();
-            goals.extend(self.landmarks.iter().map(|l| l.pos.center()));
+            if goals.is_empty() {
+                // lost in the wild: the nearest place will do
+                goals.extend(
+                    self.villages
+                        .iter()
+                        .map(|v| Pos::new(v.center.x, v.center.y + 3).center())
+                        .min_by(|a, b| a.dist(pos).total_cmp(&b.dist(pos))),
+                );
+            }
             if goals.is_empty() {
                 return;
             }

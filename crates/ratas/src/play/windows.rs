@@ -721,7 +721,66 @@ pub fn world_map(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     let (Some(level), Some(snap)) = (&p.level, &p.snap) else {
         return;
     };
-    let tex = p.wr.atlas.texture(level, p.level_ver, &p.explored, p.t);
+    let s = g.s;
+    let area = Rect::new(0.0, 0.0, screen_width(), screen_height());
+    let vp = atlas::map_viewport(area, s);
+    let mut view = match &p.map_view {
+        Some((lid, v)) if *lid == level.id => *v,
+        _ => atlas::MapView::open(level, vp, s, (snap.you.x, snap.you.y)),
+    };
+    view.clamp(level, vp, s);
+    // the wheel zooms to the point under the mouse, a drag or the arrows move
+    if inp.wheel != 0.0 && inp.hover(vp) {
+        view.zoom_at(
+            1.25f32.powf(inp.wheel.signum()),
+            (inp.mouse.x, inp.mouse.y),
+            level,
+            vp,
+            s,
+        );
+    }
+    let centre = (vp.x + vp.w / 2.0, vp.y + vp.h / 2.0);
+    if inp.take(KeyCode::Equal) || inp.take(KeyCode::KpAdd) {
+        view.zoom_at(1.5, centre, level, vp, s);
+    }
+    if inp.take(KeyCode::Minus) || inp.take(KeyCode::KpSubtract) {
+        view.zoom_at(1.0 / 1.5, centre, level, vp, s);
+    }
+    if inp.take(KeyCode::Space) || inp.take(KeyCode::Home) {
+        view = atlas::MapView {
+            cx: snap.you.x,
+            cy: snap.you.y,
+            k: view.k,
+        };
+        view.clamp(level, vp, s);
+    }
+    let k = |c: KeyCode| is_key_down(c);
+    let step = 700.0 * s * inp.dt;
+    let (mut dx, mut dy) = (0.0, 0.0);
+    if k(KeyCode::A) || k(KeyCode::Left) {
+        dx -= step;
+    }
+    if k(KeyCode::D) || k(KeyCode::Right) {
+        dx += step;
+    }
+    if k(KeyCode::W) || k(KeyCode::Up) {
+        dy -= step;
+    }
+    if k(KeyCode::S) || k(KeyCode::Down) {
+        dy += step;
+    }
+    if inp.down {
+        if let Some(last) = p.map_drag {
+            dx += last.x - inp.mouse.x;
+            dy += last.y - inp.mouse.y;
+        }
+        p.map_drag = Some(inp.mouse);
+    } else {
+        p.map_drag = None;
+    }
+    if dx != 0.0 || dy != 0.0 {
+        view.pan(dx, dy, level, vp, s);
+    }
     let places = p
         .sheet
         .as_ref()
@@ -734,13 +793,24 @@ pub fn world_map(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         .find(|e| e.id == you)
         .map(|e| e.facing)
         .unwrap_or(0.0);
-    let area = Rect::new(0.0, 0.0, screen_width(), screen_height());
-    atlas::draw_world_map(g, &tex, level, snap, places, facing, area, p.t);
+    atlas::draw_world_map(
+        g,
+        &mut p.wr.atlas,
+        level,
+        &p.explored,
+        snap,
+        places,
+        facing,
+        area,
+        view,
+        p.t,
+    );
+    p.map_view = Some((level.id.clone(), view));
     g.text_center(
-        "M / Tab / Esc — закрыть карту",
+        "Колесо, +/− — масштаб • мышь, WASD — сдвиг • пробел — к герою • M / Tab / Esc — закрыть",
         screen_width() / 2.0,
-        screen_height() - 14.0 * g.s,
-        13.0 * g.s,
+        screen_height() - 14.0 * s,
+        13.0 * s,
         col("#c8b890"),
         false,
         true,

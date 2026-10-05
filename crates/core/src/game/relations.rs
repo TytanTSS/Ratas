@@ -5,6 +5,46 @@ use super::*;
 /// The largest party.
 pub const MAX_PARTY: usize = 6;
 
+/// Side of the squares of the settlement index, in tiles.
+const VILLAGE_SQUARE: i32 = 64;
+/// The widest margin around settlements the index answers for directly.
+const VILLAGE_REACH: i32 = 32;
+
+/// Settlements by squares of the overworld, so "is this in a village" does
+/// not walk through hundreds of settlements.
+#[derive(Default)]
+pub(crate) struct VillageGrid {
+    squares: HashMap<(i32, i32), Vec<u32>>,
+}
+
+impl VillageGrid {
+    pub(crate) fn new(vs: &[VillageInfo]) -> VillageGrid {
+        let mut squares: HashMap<(i32, i32), Vec<u32>> = HashMap::new();
+        for (i, v) in vs.iter().enumerate() {
+            let a = v.area;
+            let (x0, y0) = (a.x - VILLAGE_REACH, a.y - VILLAGE_REACH);
+            let (x1, y1) = (a.x + a.w + VILLAGE_REACH, a.y + a.h + VILLAGE_REACH);
+            for sy in y0.div_euclid(VILLAGE_SQUARE)..=y1.div_euclid(VILLAGE_SQUARE) {
+                for sx in x0.div_euclid(VILLAGE_SQUARE)..=x1.div_euclid(VILLAGE_SQUARE) {
+                    squares.entry((sx, sy)).or_default().push(i as u32);
+                }
+            }
+        }
+        VillageGrid { squares }
+    }
+
+    /// Settlements that may lie within VILLAGE_REACH of p.
+    fn near(&self, p: Pos) -> &[u32] {
+        self.squares
+            .get(&(
+                p.x.div_euclid(VILLAGE_SQUARE),
+                p.y.div_euclid(VILLAGE_SQUARE),
+            ))
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+}
+
 /// A group of players who do not hurt each other and see each other's state.
 #[derive(Clone, Debug, Default)]
 pub struct Party {
@@ -102,13 +142,25 @@ impl Game {
     }
 
     pub(crate) fn in_village(&self, p: Pos, margin: i32) -> bool {
-        self.villages.iter().any(|v| {
+        let inside = |v: &VillageInfo| {
             let a = v.area;
             p.x >= a.x - margin
                 && p.y >= a.y - margin
                 && p.x < a.x + a.w + margin
                 && p.y < a.y + a.h + margin
-        })
+        };
+        if margin > VILLAGE_REACH || self.village_grid.squares.is_empty() {
+            return self.villages.iter().any(inside);
+        }
+        self.village_grid
+            .near(p)
+            .iter()
+            .any(|&i| self.villages.get(i as usize).is_some_and(inside))
+    }
+
+    /// Indexes the settlements (after the world is made or loaded).
+    pub(crate) fn index_villages(&mut self) {
+        self.village_grid = VillageGrid::new(&self.villages);
     }
 
     // ---- parties ----

@@ -55,8 +55,10 @@ pub const TICK_MS: f64 = 1000.0 / TPS as f64;
 /// Ticks in half a second (regeneration, hazards, damage over time).
 pub const HALF_SEC: u64 = (TPS / 2) as u64;
 pub const DAY_MS: f64 = 12.0 * 60.0 * 1000.0;
-pub const OVERWORLD_W: i32 = 300;
-pub const OVERWORLD_H: i32 = 200;
+/// The size of the surface of a new world: ten times the classic 300×200
+/// along each side (content is spread over it at the classic density).
+pub const OVERWORLD_W: i32 = 3000;
+pub const OVERWORLD_H: i32 = 2000;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct VillageInfo {
@@ -93,7 +95,7 @@ pub struct Game {
     pub entrances: Vec<Entrance>,
     pub regions: Vec<Region>,
     /// overworld cell -> 1-based region index
-    pub region_map: Vec<u8>,
+    pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
     pub start: Pos,
     pub ents: BTreeMap<Id, Entity>,
@@ -122,9 +124,12 @@ pub struct Game {
     pub(crate) parties: HashMap<i32, Party>,
     pub(crate) party_seq: i32,
     pub(crate) squad_seq: i32,
+    /// entities to simulate and query per level (see index_levels)
     pub(crate) by_level: HashMap<String, Vec<Id>>,
+    /// every entity per level by area, for cell lookups
+    pub(crate) grids: HashMap<String, movement::Grid>,
+    pub(crate) village_grid: relations::VillageGrid,
     pub(crate) revivals: Vec<PendingNpc>,
-    pub(crate) region_at: Vec<Pos>,
 }
 
 impl Game {
@@ -163,16 +168,23 @@ impl Game {
             party_seq: 0,
             squad_seq: 0,
             by_level: HashMap::new(),
+            grids: HashMap::new(),
+            village_grid: Default::default(),
             revivals: Vec::new(),
-            region_at: Vec::new(),
         }
     }
 
     /// Generates a fresh world from a seed.
     pub fn new(seed: i64, brain: Option<Brain>) -> Game {
+        Game::with_size(seed, OVERWORLD_W, OVERWORLD_H, brain)
+    }
+
+    /// Generates a fresh world with a surface of the given size (tests use
+    /// small ones).
+    pub fn with_size(seed: i64, w: i32, h: i32, brain: Option<Brain>) -> Game {
         let mut g = Game::empty(brain);
         g.seed = seed;
-        let ow = gen::generate_overworld(seed, OVERWORLD_W, OVERWORLD_H);
+        let ow = gen::generate_overworld(seed, w, h);
         g.world_name = ow.name.clone();
         g.start = ow.start;
         g.entrances = ow.entrances;
@@ -189,6 +201,8 @@ impl Game {
                 city: v.city,
             });
         }
+        g.index_villages();
+        g.index_levels();
         for v in &ow.villages {
             for n in &v.npcs {
                 g.spawn_npc(n, &v.name, &mut r);
@@ -224,18 +238,8 @@ impl Game {
         self.now += TICK_MS;
         self.tick_n += 1;
         self.index_levels();
-        let active: std::collections::HashSet<String> = self
-            .online
-            .values()
-            .filter_map(|id| self.ents.get(id))
-            .map(|e| e.level.clone())
-            .collect();
-        let ids: Vec<Id> = self
-            .ents
-            .iter()
-            .filter(|(_, e)| active.contains(&e.level))
-            .map(|(id, _)| *id)
-            .collect();
+        // only what is near the players lives: the rest of the world sleeps
+        let ids = self.awake_ids();
         for &id in &ids {
             let Some(e) = self.ents.get(&id) else {
                 continue;
@@ -285,6 +289,9 @@ impl Game {
         e.recalc();
         let id = e.id;
         self.by_level.entry(e.level.clone()).or_default().push(id);
+        if let Some(g) = self.grids.get_mut(&e.level) {
+            g.add(e.cell(), id);
+        }
         self.ents.insert(id, e);
         id
     }

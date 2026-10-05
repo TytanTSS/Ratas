@@ -325,10 +325,18 @@ impl Loop {
         if self.game.online.is_empty() {
             return;
         }
-        match self.game.save(&path) {
-            Ok(()) => self.game.log_all("#707070", "Автосохранение.".into()),
-            Err(e) => self.log(&format!("автосохранение не удалось: {e}")),
-        }
+        // a big world takes a while to write: do it apart from the game
+        let snap = self.game.snapshot_save();
+        let tasks = self.game.task_sender();
+        let _ = std::thread::Builder::new()
+            .name("ratas-autosave".into())
+            .spawn(move || {
+                let res = crate::game::write_save(&snap, &path);
+                let _ = tasks.send(Box::new(move |g: &mut Game| match res {
+                    Ok(()) => g.log_all("#707070", "Автосохранение.".into()),
+                    Err(e) => eprintln!("автосохранение не удалось: {e}"),
+                }));
+            });
     }
 
     fn send(&mut self, sid: u64, m: ServerMsg) {
@@ -616,7 +624,7 @@ mod tests {
     #[test]
     fn local_and_network_play() {
         let srv = Server::start(
-            Game::new(5, None),
+            Game::with_size(5, 300, 200, None),
             Options {
                 admin_host: true,
                 ..Default::default()

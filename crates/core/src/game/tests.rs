@@ -4,8 +4,9 @@ use super::*;
 use crate::proto::{Command, Input};
 use crate::world::{Vec2, DIRS4};
 
+/// A world of the classic size: quick to make, and every kind of content in it.
 pub(crate) fn setup() -> Game {
-    Game::new(7, None)
+    Game::with_size(7, 300, 200, None)
 }
 
 pub(crate) fn run(g: &mut Game, ticks: usize) {
@@ -50,6 +51,7 @@ pub(crate) fn wild(g: &mut Game, p: Id) -> Pos {
             });
             if open && !g.in_village(q, 10) && q.dist(start) > 20 && !g.cell_taken("overworld", q) {
                 g.place_for_test(p, "overworld", q);
+                g.index_levels();
                 for e in g.on_level("overworld") {
                     if e != p
                         && g.ents[&e].monster.is_some()
@@ -1064,4 +1066,151 @@ fn npc_dialogue_with_claude() {
         g.ents[&elder].npc.as_ref().unwrap().memory["Герой"].len(),
         2
     );
+}
+
+/// Creatures far from every player sleep: they are not simulated and AI
+/// queries do not see them, yet cell lookups still do.
+#[test]
+fn far_creatures_sleep() {
+    let mut g = setup();
+    let p = g.join_for_test("Герой", "warrior");
+    g.tough_for_test(p);
+    let at = wild(&mut g, p);
+    let near = spawn_at(&mut g, "wolf", p, Vec2::new(6.0, 0.0));
+    // the farthest open land from the hero, beyond the awake range
+    let l = &g.levels["overworld"];
+    let mut far_cell = None;
+    'search: for d in [140, 120, 100] {
+        for (dx, dy) in [
+            (d, 0),
+            (-d, 0),
+            (0, d),
+            (0, -d),
+            (d, d),
+            (-d, -d),
+            (d, -d),
+            (-d, d),
+        ] {
+            let q = Pos::new(at.x + dx, at.y + dy);
+            if l.walkable(q.x, q.y) && l.def_at(q).interact.is_empty() && !g.in_village(q, 6) {
+                far_cell = Some(q);
+                break 'search;
+            }
+        }
+    }
+    let far_cell = far_cell.expect("far land");
+    let far = g.spawn_for_test("wolf", "overworld", far_cell, 1).unwrap();
+    // (the spawner would clear away an ordinary wolf left far behind)
+    g.ents
+        .get_mut(&far)
+        .unwrap()
+        .monster
+        .as_mut()
+        .unwrap()
+        .persistent = true;
+    let far_pos = g.ents[&far].pos;
+    run(&mut g, 60);
+    let awake = g.awake_ids();
+    assert!(awake.contains(&p) && awake.contains(&near));
+    assert!(!awake.contains(&far), "a far wolf is simulated");
+    assert!(!g.on_level("overworld").contains(&far));
+    assert_eq!(g.ents[&far].pos, far_pos, "a sleeping wolf moved");
+    assert!(
+        g.cell_taken("overworld", far_pos.cell()),
+        "cell lookups see sleepers"
+    );
+    // walking up wakes it
+    g.place_for_test(p, "overworld", far_cell.add(Pos::new(0, 8)));
+    run(&mut g, 2);
+    assert!(g.awake_ids().contains(&far));
+}
+
+#[test]
+fn danger_grows_slower_far_away() {
+    use super::spawn::ring_level;
+    // the classic world as before: a level per 70 steps
+    assert_eq!(ring_level(0), 1);
+    assert_eq!(ring_level(69), 1);
+    assert_eq!(ring_level(70), 2);
+    assert_eq!(ring_level(350), 6);
+    // beyond it a level per 200 steps, so the far ends of a big world stay
+    // within reach
+    assert_eq!(ring_level(550), 7);
+    assert!(ring_level(2500) < 20);
+    let mut last = 0;
+    for d in (0..4000).step_by(10) {
+        assert!(ring_level(d) >= last);
+        last = ring_level(d);
+    }
+}
+
+/// The full-size world: how long it takes to make, save and load, and how
+/// long a tick takes next to a player in a busy city
+/// (`cargo test --release -p ratas-core big_world -- --ignored --nocapture`).
+#[test]
+#[ignore]
+fn big_world() {
+    use std::time::Instant;
+    let t0 = Instant::now();
+    let mut g = Game::new(7, None);
+    let made = t0.elapsed();
+    let mut kinds = std::collections::BTreeMap::new();
+    for e in g.ents.values() {
+        *kinds.entry(format!("{:?}", e.kind)).or_insert(0) += 1;
+    }
+    let ow = &g.levels["overworld"];
+    println!(
+        "made {made:?}: {}×{}, {} settlements ({} cities), {} dungeons, {} sights, {} regions, entities {kinds:?}",
+        ow.w,
+        ow.h,
+        g.villages.len(),
+        g.villages.iter().filter(|v| v.city).count(),
+        g.entrances.len(),
+        g.landmarks.len(),
+        g.regions.len()
+    );
+    let p = g.join_for_test("Герой", "warrior");
+    g.tough_for_test(p);
+    let city = g.villages.iter().find(|v| v.city).unwrap().center;
+    g.place_for_test(p, "overworld", Pos::new(city.x, city.y + 2));
+    run(&mut g, 30);
+    let t1 = Instant::now();
+    run(&mut g, 300);
+    let per = t1.elapsed() / 300;
+    println!(
+        "tick in a city: {per:?}, awake {} of {}",
+        g.awake_ids().len(),
+        g.ents.len()
+    );
+    let w = wild(&mut g, p);
+    run(&mut g, 30);
+    let t1 = Instant::now();
+    run(&mut g, 300);
+    println!("tick in the wild at {w:?}: {:?}", t1.elapsed() / 300);
+    let t1 = Instant::now();
+    let ld = g.level_data(p);
+    println!(
+        "level data {:?}: tiles {} KB, explored {} KB",
+        t1.elapsed(),
+        ld.tiles.len() / 1024,
+        ld.explored.len() / 1024
+    );
+    let t1 = Instant::now();
+    let sh = g.sheet(p);
+    println!("sheet {:?}: {} places", t1.elapsed(), sh.places.len());
+    let dir = std::env::temp_dir().join(format!("ratas-big-{}", std::process::id()));
+    let path = dir.join("big.sav");
+    let t1 = Instant::now();
+    g.save(&path).unwrap();
+    let saved = t1.elapsed();
+    let size = std::fs::metadata(&path).unwrap().len();
+    let t1 = Instant::now();
+    let g2 = Game::load(&path, None).unwrap();
+    println!(
+        "save {saved:?} ({} KB), load {:?}, {} entities",
+        size / 1024,
+        t1.elapsed(),
+        g2.ents.len()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }

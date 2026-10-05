@@ -4,6 +4,7 @@
 //! companions marked on top. The same picture serves the minimap.
 
 use macroquad::prelude::*;
+use std::collections::HashMap;
 
 use ratas_core::content::{self, TileDef};
 use ratas_core::proto::{Place, Snapshot};
@@ -66,31 +67,49 @@ fn is_water(def: &TileDef) -> bool {
     def.key == "water" || def.key == "deep_water"
 }
 
-/// Paints the explored land of a level on parchment.
-pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
-    let (w, h) = (l.w * MAP_PX, l.h * MAP_PX);
-    let mut img = vec![0u8; (w * h * 4) as usize];
+/// Paints the explored land of the tiles [x0, x0+w) × [y0, y0+h) of a level
+/// on parchment, `px` pixels per tile: at 1 a plain colour per tile (the
+/// zoomed-out world map), at MAP_PX with coasts, trees and peaks drawn in.
+/// Neighbours outside the area are looked at (and drawn where they spill
+/// over), so the pieces of a map join seamlessly.
+pub fn paint_area(
+    l: &Level,
+    explored: Option<&Bitset>,
+    x0: i32,
+    y0: i32,
+    w: i32,
+    h: i32,
+    px: i32,
+) -> Vec<u8> {
+    let (iw, ih) = (w * px, h * px);
+    let mut img = vec![0u8; (iw * ih * 4) as usize];
+    let (ax, ay) = (x0 * px, y0 * px);
+    // pixel coordinates are absolute: the parchment grain runs on across pieces
     let set = |img: &mut Vec<u8>, x: i32, y: i32, c: Rgba| {
-        if x >= 0 && y >= 0 && x < w && y < h {
-            let o = ((y * w + x) * 4) as usize;
+        let (x, y) = (x - ax, y - ay);
+        if x >= 0 && y >= 0 && x < iw && y < ih {
+            let o = ((y * iw + x) * 4) as usize;
             img[o..o + 4].copy_from_slice(&[c.r, c.g, c.b, 255]);
         }
     };
     let seen =
         |x: i32, y: i32| l.inside(x, y) && explored.is_none_or(|e| e.get((y * l.w + x) as usize));
-    for y in 0..h {
-        for x in 0..w {
+    for y in ay..ay + ih {
+        for x in ax..ax + iw {
             let n = (tile_hash(x * 7, y * 13) % 100) as f64 / 100.0 - 0.5;
             set(&mut img, x, y, mul(PARCHMENT, 1.0 + n * 0.05));
         }
     }
     let db = content::db();
     let at = |x: i32, y: i32| db.tile(l.at(x, y));
-    for ty in 0..l.h {
-        for tx in 0..l.w {
+    // one tile around the area: decorations of neighbours spill over
+    let m = if px > 1 { 1 } else { 0 };
+    for ty in y0 - m..y0 + h + m {
+        for tx in x0 - m..x0 + w + m {
             if !seen(tx, ty) {
                 continue;
             }
+            let inner = tx >= x0 && ty >= y0 && tx < x0 + w && ty < y0 + h;
             let def = at(tx, ty);
             let mut base = map_color(def);
             let (mut edge, mut coast) = (false, false);
@@ -108,18 +127,30 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
             if is_water(def) && coast {
                 base = mix(base, hex("#a8cce0"), 0.45);
             }
-            for py in 0..MAP_PX {
-                for px in 0..MAP_PX {
-                    let (x, y) = (tx * MAP_PX + px, ty * MAP_PX + py);
-                    let n = (tile_hash(x * 3, y * 5) % 100) as f64 / 100.0 - 0.5;
-                    let mut c = mix(mul(base, 1.0 + n * 0.06), PARCHMENT, 0.14);
-                    if edge {
-                        c = mix(c, PARCHMENT, 0.5);
+            if px == 1 {
+                let mut c = mix(base, PARCHMENT, 0.14);
+                if edge {
+                    c = mix(c, PARCHMENT, 0.5);
+                } else if coast && !is_water(def) {
+                    c = mix(INK, base, 0.55);
+                }
+                set(&mut img, tx, ty, c);
+                continue;
+            }
+            if inner {
+                for py in 0..px {
+                    for pxx in 0..px {
+                        let (x, y) = (tx * px + pxx, ty * px + py);
+                        let n = (tile_hash(x * 3, y * 5) % 100) as f64 / 100.0 - 0.5;
+                        let mut c = mix(mul(base, 1.0 + n * 0.06), PARCHMENT, 0.14);
+                        if edge {
+                            c = mix(c, PARCHMENT, 0.5);
+                        }
+                        set(&mut img, x, y, c);
                     }
-                    set(&mut img, x, y, c);
                 }
             }
-            let (ox, oy) = (tx * MAP_PX, ty * MAP_PX);
+            let (ox, oy) = (tx * px, ty * px);
             let hh = tile_hash(tx, ty) & 0xffff;
             match def.key.as_str() {
                 "water" | "deep_water" if hh.is_multiple_of(7) && !coast => {
@@ -167,17 +198,17 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
                 }
                 _ => {}
             }
-            if coast && !is_water(def) {
+            if coast && !is_water(def) && inner {
                 for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
                     let (nx, ny) = (tx + dx, ty + dy);
                     if !l.inside(nx, ny) || !seen(nx, ny) || !is_water(at(nx, ny)) {
                         continue;
                     }
-                    for i in 0..MAP_PX {
+                    for i in 0..px {
                         let (x, y) = match (dx, dy) {
-                            (1, _) => (ox + MAP_PX - 1, oy + i),
+                            (1, _) => (ox + px - 1, oy + i),
                             (-1, _) => (ox, oy + i),
-                            (_, 1) => (ox + i, oy + MAP_PX - 1),
+                            (_, 1) => (ox + i, oy + px - 1),
                             _ => (ox + i, oy),
                         };
                         set(&mut img, x, y, mix(INK, base, 0.35));
@@ -186,37 +217,208 @@ pub fn paint_map(l: &Level, explored: Option<&Bitset>) -> (i32, i32, Vec<u8>) {
             }
         }
     }
-    (w, h, img)
+    img
 }
 
-/// The painted map of the current level, repainted when the land or the
-/// explored area changes.
+/// Tiles per side of a detailed piece of the atlas (MAP_PX pixels per tile).
+const PIECE: i32 = 64;
+/// Tiles per side of an overview piece (one pixel per tile).
+const PIECE_LO: i32 = 256;
+/// Below this many screen pixels per tile the overview pieces are drawn.
+const LO_BELOW: f32 = 2.0;
+/// Detailed pieces kept on the GPU (the least recently drawn go first).
+const KEEP: usize = 320;
+/// Pieces painted per frame: the rest show up over the next frames.
+const BUDGET: usize = 6;
+/// A changed piece is repainted at most this often (seconds).
+const REPAINT: f32 = 0.5;
+
+struct Piece {
+    /// None: nothing explored there yet
+    tex: Option<Texture2D>,
+    stale: bool,
+    painted: f32,
+    used: u64,
+}
+
+/// The painted map of the current level, in pieces painted when first
+/// needed and repainted when the land or the explored area under them
+/// changes: a world of millions of tiles costs only what is looked at.
 #[derive(Default)]
 pub struct Atlas {
-    tex: Option<Texture2D>,
     level: String,
-    ver: u64,
-    seen: usize,
-    at: f32,
+    hi: HashMap<(i32, i32), Piece>,
+    lo: HashMap<(i32, i32), Piece>,
+    clock: u64,
+    frame_t: f32,
+    budget: usize,
 }
 
 impl Atlas {
-    pub fn texture(&mut self, l: &Level, ver: u64, explored: &Bitset, now: f32) -> Texture2D {
-        let seen: usize = explored.0.iter().map(|b| b.count_ones() as usize).sum();
-        if let Some(t) = &self.tex {
-            if self.level == l.id && self.ver == ver && (self.seen == seen || now - self.at < 1.0) {
-                return t.clone();
+    /// Forgets the pieces of the previous level.
+    fn sync(&mut self, l: &Level, now: f32) {
+        if self.level != l.id {
+            self.level = l.id.clone();
+            self.hi.clear();
+            self.lo.clear();
+        }
+        if self.frame_t != now {
+            self.frame_t = now;
+            self.budget = BUDGET;
+        }
+    }
+
+    /// The land or the explored state of a cell changed.
+    pub fn touch(&mut self, x: i32, y: i32) {
+        // the borders of neighbouring pieces show coasts and fog edges too
+        for (dx, dy) in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let (cx, cy) = (x + dx, y + dy);
+            if let Some(p) = self
+                .hi
+                .get_mut(&(cx.div_euclid(PIECE), cy.div_euclid(PIECE)))
+            {
+                p.stale = true;
+            }
+            if let Some(p) = self
+                .lo
+                .get_mut(&(cx.div_euclid(PIECE_LO), cy.div_euclid(PIECE_LO)))
+            {
+                p.stale = true;
             }
         }
-        let (w, h, img) = paint_map(l, Some(explored));
-        let t = Texture2D::from_rgba8(w as u16, h as u16, &img);
-        t.set_filter(FilterMode::Linear);
-        self.tex = Some(t.clone());
-        self.level = l.id.clone();
-        self.ver = ver;
-        self.seen = seen;
-        self.at = now;
-        t
+    }
+
+    /// Everything changed (a new map of the level arrived).
+    pub fn reset(&mut self) {
+        self.level.clear();
+    }
+
+    fn piece(
+        &mut self,
+        l: &Level,
+        explored: &Bitset,
+        key: (i32, i32),
+        lo: bool,
+    ) -> Option<Texture2D> {
+        self.clock += 1;
+        let clock = self.clock;
+        let now = self.frame_t;
+        let map = if lo { &mut self.lo } else { &mut self.hi };
+        let mut old = None;
+        if let Some(p) = map.get_mut(&key) {
+            p.used = clock;
+            if !p.stale || now - p.painted < REPAINT || self.budget == 0 {
+                return p.tex.clone();
+            }
+            old = p.tex.clone();
+        } else if self.budget == 0 {
+            return None;
+        }
+        self.budget -= 1;
+        let (size, px) = if lo { (PIECE_LO, 1) } else { (PIECE, MAP_PX) };
+        let (x0, y0) = (key.0 * size, key.1 * size);
+        let (w, h) = (size.min(l.w - x0), size.min(l.h - y0));
+        let any = (y0..y0 + h).any(|y| (x0..x0 + w).any(|x| explored.get((y * l.w + x) as usize)));
+        let tex = if any {
+            let img = paint_area(l, Some(explored), x0, y0, w, h, px);
+            let (iw, ih) = ((w * px) as u16, (h * px) as u16);
+            Some(match old {
+                Some(t) if t.width() as u16 == iw && t.height() as u16 == ih => {
+                    t.update_from_bytes(iw as u32, ih as u32, &img);
+                    t
+                }
+                _ => {
+                    let t = Texture2D::from_rgba8(iw, ih, &img);
+                    t.set_filter(if lo {
+                        FilterMode::Nearest
+                    } else {
+                        FilterMode::Linear
+                    });
+                    t
+                }
+            })
+        } else {
+            None
+        };
+        let map = if lo { &mut self.lo } else { &mut self.hi };
+        map.insert(
+            key,
+            Piece {
+                tex: tex.clone(),
+                stale: false,
+                painted: now,
+                used: clock,
+            },
+        );
+        if !lo && map.len() > KEEP {
+            if let Some(k) = map
+                .iter()
+                .filter(|(k, _)| **k != key)
+                .min_by_key(|(_, p)| p.used)
+                .map(|(k, _)| *k)
+            {
+                map.remove(&k);
+            }
+        }
+        tex
+    }
+
+    /// Draws the tiles [x0, x1) × [y0, y1) of a level (fractions allowed) with
+    /// the top left corner of the level at (ox, oy) on the screen, k pixels
+    /// per tile. Unexplored land stays blank (draw parchment under it).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(
+        &mut self,
+        l: &Level,
+        explored: &Bitset,
+        (x0, y0, x1, y1): (f32, f32, f32, f32),
+        ox: f32,
+        oy: f32,
+        k: f32,
+        now: f32,
+    ) {
+        self.sync(l, now);
+        let (x0, y0) = (x0.max(0.0), y0.max(0.0));
+        let (x1, y1) = (x1.min(l.w as f32), y1.min(l.h as f32));
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let lo = k < LO_BELOW;
+        let (size, px) = if lo {
+            (PIECE_LO, 1.0)
+        } else {
+            (PIECE, MAP_PX as f32)
+        };
+        let fs = size as f32;
+        for cy in (y0 / fs).floor() as i32..=((y1 - 1e-3) / fs).floor() as i32 {
+            for cx in (x0 / fs).floor() as i32..=((x1 - 1e-3) / fs).floor() as i32 {
+                let Some(tex) = self.piece(l, explored, (cx, cy), lo) else {
+                    continue;
+                };
+                let (bx, by) = (cx as f32 * fs, cy as f32 * fs);
+                let (tx0, ty0) = (x0.max(bx), y0.max(by));
+                let (tx1, ty1) = (x1.min(bx + fs), y1.min(by + fs));
+                if tx1 <= tx0 || ty1 <= ty0 {
+                    continue;
+                }
+                draw_texture_ex(
+                    &tex,
+                    ox + tx0 * k,
+                    oy + ty0 * k,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2((tx1 - tx0) * k, (ty1 - ty0) * k)),
+                        source: Some(Rect::new(
+                            (tx0 - bx) * px,
+                            (ty0 - by) * px,
+                            (tx1 - tx0) * px,
+                            (ty1 - ty0) * px,
+                        )),
+                        ..Default::default()
+                    },
+                );
+            }
+        }
     }
 }
 
@@ -392,31 +594,128 @@ impl Labels {
     }
 }
 
-/// Draws the atlas of the current level over an area.
+/// The part of the screen the world map shows the land in.
+pub fn map_viewport(area: Rect, s: f32) -> Rect {
+    let pad = 22.0 * s;
+    let title_h = 40.0 * s;
+    Rect::new(
+        area.x + 2.0 * pad,
+        area.y + title_h + pad,
+        area.w - 4.0 * pad,
+        area.h - title_h - 3.0 * pad,
+    )
+}
+
+/// Where the world map looks: its centre (in tiles) and zoom (screen pixels
+/// per tile).
+#[derive(Clone, Copy, Debug)]
+pub struct MapView {
+    pub cx: f32,
+    pub cy: f32,
+    pub k: f32,
+}
+
+impl MapView {
+    /// The zoom limits and the zoom the map opens with: the whole level at
+    /// the widest, 16 pixels a tile at the closest; it opens showing about as
+    /// much land as the whole classic world (all of a smaller level).
+    pub fn limits(l: &Level, vp: Rect, s: f32) -> (f32, f32, f32) {
+        let fit = (vp.w / l.w as f32).min(vp.h / l.h as f32);
+        let max = (16.0 * s).max(fit);
+        let open = (vp.w / 360.0).max(fit).min(max);
+        (fit.min(open), open, max)
+    }
+
+    /// The map as it opens, centred on a point.
+    pub fn open(l: &Level, vp: Rect, s: f32, at: (f32, f32)) -> MapView {
+        let (_, k, _) = MapView::limits(l, vp, s);
+        let mut v = MapView {
+            cx: at.0,
+            cy: at.1,
+            k,
+        };
+        v.clamp(l, vp, s);
+        v
+    }
+
+    /// Keeps the zoom within limits and the land filling the view (centred
+    /// when all of it fits).
+    pub fn clamp(&mut self, l: &Level, vp: Rect, s: f32) {
+        let (lo, _, hi) = MapView::limits(l, vp, s);
+        self.k = self.k.clamp(lo, hi);
+        let (hw, hh) = (vp.w / 2.0 / self.k, vp.h / 2.0 / self.k);
+        let (w, h) = (l.w as f32, l.h as f32);
+        self.cx = if w <= 2.0 * hw {
+            w / 2.0
+        } else {
+            self.cx.clamp(hw, w - hw)
+        };
+        self.cy = if h <= 2.0 * hh {
+            h / 2.0
+        } else {
+            self.cy.clamp(hh, h - hh)
+        };
+    }
+
+    /// Where the top left corner of the level is on the screen.
+    pub fn origin(&self, vp: Rect) -> (f32, f32) {
+        (
+            vp.x + vp.w / 2.0 - self.cx * self.k,
+            vp.y + vp.h / 2.0 - self.cy * self.k,
+        )
+    }
+
+    /// Zooms keeping the land under a screen point in place.
+    pub fn zoom_at(&mut self, factor: f32, m: (f32, f32), l: &Level, vp: Rect, s: f32) {
+        let (ox, oy) = self.origin(vp);
+        let (tx, ty) = ((m.0 - ox) / self.k, (m.1 - oy) / self.k);
+        let (lo, _, hi) = MapView::limits(l, vp, s);
+        let k = (self.k * factor).clamp(lo, hi);
+        self.cx = tx - (m.0 - vp.x - vp.w / 2.0) / k;
+        self.cy = ty - (m.1 - vp.y - vp.h / 2.0) / k;
+        self.k = k;
+        self.clamp(l, vp, s);
+    }
+
+    /// Moves the view by a distance in screen pixels.
+    pub fn pan(&mut self, dx: f32, dy: f32, l: &Level, vp: Rect, s: f32) {
+        self.cx += dx / self.k;
+        self.cy += dy / self.k;
+        self.clamp(l, vp, s);
+    }
+}
+
+/// Draws the atlas of the current level over an area, as a view moves over
+/// it.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_world_map(
     g: &Gfx,
-    tex: &Texture2D,
+    atlas: &mut Atlas,
     l: &Level,
+    explored: &Bitset,
     snap: &Snapshot,
     places: &[Place],
     you_facing: f32,
     area: Rect,
+    view: MapView,
     t: f32,
 ) {
     let s = g.s;
     draw_rectangle(area.x, area.y, area.w, area.h, col("#2a1e14"));
     let pad = 22.0 * s;
     let title_h = 40.0 * s;
-    let k = ((area.w - 4.0 * pad) / l.w as f32)
-        .min((area.h - title_h - 3.0 * pad) / l.h as f32)
-        .clamp(0.5, 16.0 * s);
-    let (mw, mh) = (l.w as f32 * k, l.h as f32 * k);
-    let ox = area.x + (area.w - mw) / 2.0;
-    let oy = area.y + title_h + pad + (area.h - title_h - 3.0 * pad - mh) / 2.0;
+    let vp = map_viewport(area, s);
+    let k = view.k;
+    let (ox, oy) = view.origin(vp);
     let at = |x: f32, y: f32| (ox + x * k, oy + y * k);
+    // the land on the screen: the level clipped to the view
+    let mx = ox.max(vp.x);
+    let my = oy.max(vp.y);
+    let mw = (ox + l.w as f32 * k).min(vp.x + vp.w) - mx;
+    let mh = (oy + l.h as f32 * k).min(vp.y + vp.h) - my;
     let sheet = Rect::new(
-        ox - pad * 1.2,
-        oy - title_h - pad * 0.4,
+        mx - pad * 1.2,
+        my - title_h - pad * 0.4,
         mw + pad * 2.4,
         mh + title_h + pad * 1.6,
     );
@@ -429,18 +728,23 @@ pub fn draw_world_map(
         Color::new(0.0, 0.0, 0.0, 0.47),
     );
     round_rect(sheet.x, sheet.y, sheet.w, sheet.h, 6.0 * s, rgba(PARCHMENT));
-    draw_texture_ex(
-        tex,
+    atlas.draw(
+        l,
+        explored,
+        (
+            (mx - ox) / k,
+            (my - oy) / k,
+            (mx + mw - ox) / k,
+            (my + mh - oy) / k,
+        ),
         ox,
         oy,
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some(vec2(mw, mh)),
-            ..Default::default()
-        },
+        k,
+        t,
     );
+    let shown = |x: f32, y: f32| x >= mx && y >= my && x <= mx + mw && y <= my + mh;
     // a double frame with corner ornaments
-    let (fx0, fy0, fw, fh) = (ox - 6.0 * s, oy - 6.0 * s, mw + 12.0 * s, mh + 12.0 * s);
+    let (fx0, fy0, fw, fh) = (mx - 6.0 * s, my - 6.0 * s, mw + 12.0 * s, mh + 12.0 * s);
     draw_rectangle_lines(fx0, fy0, fw, fh, 2.0 * s, ink());
     draw_rectangle_lines(
         fx0 + 4.0 * s,
@@ -512,17 +816,26 @@ pub fn draw_world_map(
 
     let small = 11.0 * s;
     let label = 13.0 * s;
-    let ms = (k * 3.0).clamp(12.0 * s, 20.0 * s);
+    // far out the marks shrink, and only settlements, goals and people stay
+    let ms = (k * 3.0).clamp(if k < 1.0 { 7.0 * s } else { 12.0 * s }, 20.0 * s);
+    let minor = k >= 1.0;
     let halo = with_a(rgba(PARCHMENT), 0.9);
     let mut labels = Labels {
-        bounds: Rect::new(ox, oy, mw, mh),
+        bounds: Rect::new(mx, my, mw, mh),
         taken: vec![],
     };
     let me = &snap.you;
     let (sx, sy) = at(me.x, me.y);
     let pulse = 0.5 + 0.5 * (t * 4.0).sin();
+    // only what is in view (a big world knows hundreds of places)
     let places: Vec<&Place> = if l.id == "overworld" {
-        places.iter().collect()
+        places
+            .iter()
+            .filter(|p| {
+                let (x, y) = at(p.x as f32 + 0.5, p.y as f32 + 0.5);
+                shown(x, y) && (minor || matches!(kind_of(p), "village" | "quest" | "region"))
+            })
+            .collect()
     } else {
         vec![]
     };
@@ -557,6 +870,10 @@ pub fn draw_world_map(
             });
         }
     }
+    people.retain(|p| {
+        let (x, y) = at(p.x, p.y);
+        shown(x, y)
+    });
     let boxr = |x: f32, y: f32, s: f32| Rect::new(x - s * 0.6, y - s * 0.7, s * 1.2, s * 1.2);
     labels.taken.push(boxr(sx, sy, ms * 1.4));
     for p in &places {
@@ -570,9 +887,9 @@ pub fn draw_world_map(
         labels.taken.push(boxr(x, y, ms * 0.8));
     }
     let overworld = l.id == "overworld";
-    let legend = legend_rect(g, ox + 12.0 * s, oy + mh - 12.0 * s, small, ms, overworld);
+    let legend = legend_rect(g, mx + 12.0 * s, my + mh - 12.0 * s, small, ms, overworld);
     labels.taken.push(legend);
-    let (ccx, ccy) = (ox + mw - 30.0 * s, oy + mh - 34.0 * s);
+    let (ccx, ccy) = (mx + mw - 30.0 * s, my + mh - 34.0 * s);
     labels.taken.push(Rect::new(
         ccx - 26.0 * s,
         ccy - 34.0 * s,
@@ -715,14 +1032,16 @@ pub fn draw_world_map(
         ink_text(g, s2, *x, *y, *size, *c, halo, *bold);
     }
     // you are here
-    draw_circle_lines(
-        sx,
-        sy,
-        ms * (0.8 + 0.6 * pulse),
-        (ms * 0.14).max(2.0),
-        with_a(col("#e03020"), 1.0 - 0.6 * pulse),
-    );
-    mark_hero(sx, sy, ms * 0.95, col("#ffd24a"), you_facing);
+    if shown(sx, sy) {
+        draw_circle_lines(
+            sx,
+            sy,
+            ms * (0.8 + 0.6 * pulse),
+            (ms * 0.14).max(2.0),
+            with_a(col("#e03020"), 1.0 - 0.6 * pulse),
+        );
+        mark_hero(sx, sy, ms * 0.95, col("#ffd24a"), you_facing);
+    }
     compass(g, ccx, ccy, 18.0 * s, small);
     map_legend(g, legend, small, ms, overworld);
 }
@@ -809,14 +1128,14 @@ fn map_legend(g: &Gfx, r: Rect, size: f32, ms: f32, overworld: bool) {
 /// A minimap of the land around the hero, cut from the atlas.
 pub fn draw_minimap(
     g: &Gfx,
-    tex: &Texture2D,
+    atlas: &mut Atlas,
     l: &Level,
+    explored: &Bitset,
     snap: &Snapshot,
     places: &[Place],
-    cx: f32,
-    cy: f32,
-    half: f32,
+    (cx, cy, half): (f32, f32, f32),
     facing: f32,
+    t: f32,
 ) {
     let s = g.s;
     let me = &snap.you;
@@ -838,32 +1157,16 @@ pub fn draw_minimap(
         rgba(PARCHMENT),
     );
     let tiles = half / k;
-    // the part of the map around the hero, clipped at the level's edges
-    let (x0, y0) = ((me.x - tiles).max(0.0), (me.y - tiles).max(0.0));
-    let (x1, y1) = (
-        (me.x + tiles).min(l.w as f32),
-        (me.y + tiles).min(l.h as f32),
+    // the part of the map around the hero (the atlas clips at the level's edges)
+    atlas.draw(
+        l,
+        explored,
+        (me.x - tiles, me.y - tiles, me.x + tiles, me.y + tiles),
+        cx - me.x * k,
+        cy - me.y * k,
+        k,
+        t,
     );
-    if x1 > x0 && y1 > y0 {
-        let src = Rect::new(
-            x0 * MAP_PX as f32,
-            y0 * MAP_PX as f32,
-            (x1 - x0) * MAP_PX as f32,
-            (y1 - y0) * MAP_PX as f32,
-        );
-        let (dx, dy) = (cx + (x0 - me.x) * k, cy + (y0 - me.y) * k);
-        draw_texture_ex(
-            tex,
-            dx,
-            dy,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2((x1 - x0) * k, (y1 - y0) * k)),
-                source: Some(src),
-                ..Default::default()
-            },
-        );
-    }
     let at = |x: f32, y: f32| (cx + (x - me.x) * k, cy + (y - me.y) * k);
     let inside =
         |x: f32, y: f32| (x - cx).abs() < half - 3.0 * s && (y - cy).abs() < half - 3.0 * s;
@@ -912,4 +1215,45 @@ pub fn draw_minimap(
         2.0 * s,
         col("#8a6a3a"),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn level(w: i32, h: i32) -> Level {
+        Level::new("overworld", "t", w, h, 0)
+    }
+
+    #[test]
+    fn map_view_zooms_and_stays_on_the_land() {
+        let l = level(3000, 2000);
+        let vp = Rect::new(0.0, 0.0, 1200.0, 700.0);
+        let (lo, open, hi) = MapView::limits(&l, vp, 1.0);
+        assert!(lo < open && open < hi);
+        // it opens on the hero, showing about the classic world's span
+        let mut v = MapView::open(&l, vp, 1.0, (1500.0, 1000.0));
+        assert_eq!((v.cx, v.cy), (1500.0, 1000.0));
+        assert!((vp.w / v.k - 360.0).abs() < 1.0);
+        // zooming keeps the land under the mouse in place
+        let m = (900.0, 200.0);
+        let (ox, oy) = v.origin(vp);
+        let before = ((m.0 - ox) / v.k, (m.1 - oy) / v.k);
+        v.zoom_at(1.25, m, &l, vp, 1.0);
+        let (ox, oy) = v.origin(vp);
+        let after = ((m.0 - ox) / v.k, (m.1 - oy) / v.k);
+        assert!((before.0 - after.0).abs() < 1e-2 && (before.1 - after.1).abs() < 1e-2);
+        // the view never leaves the level
+        v.pan(-1e6, -1e6, &l, vp, 1.0);
+        let (ox, oy) = v.origin(vp);
+        assert!(ox <= vp.x + 1e-3 && oy <= vp.y + 1e-3);
+        // zoomed all the way out the whole level fits, centred
+        v.zoom_at(1e-6, m, &l, vp, 1.0);
+        assert_eq!(v.k, lo);
+        assert_eq!((v.cx, v.cy), (1500.0, 1000.0));
+        // a small dungeon floor is shown whole
+        let d = level(80, 50);
+        let v = MapView::open(&d, vp, 1.0, (10.0, 10.0));
+        assert!(v.k * 80.0 <= vp.w + 1e-3 && (v.cx, v.cy) == (40.0, 25.0));
+    }
 }

@@ -151,7 +151,7 @@
 "• выдал:" = "• given by:"
 "Награда:" = "Reward:"
 "Где:" = "Where:"
-"M / Tab / Esc — закрыть карту" = "M / Tab / Esc — close the map"
+"Колесо, +/− — масштаб • мышь, WASD — сдвиг • пробел — к герою • M / Tab / Esc — закрыть" = "Wheel, +/− — zoom • mouse, WASD — move • Space — to the hero • M / Tab / Esc — close"
 "Карта:" = "Map:"
 "масштаб 1:%d • > подземелья • ! цели заданий • зелёные — группа • любая клавиша — закрыть" = "scale 1:%d • > dungeons • ! quest goals • green — party • any key — close"
 

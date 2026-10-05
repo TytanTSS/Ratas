@@ -1,5 +1,4 @@
 use super::*;
-use crate::content::db;
 use crate::world::{Level, Pos, DIRS4};
 use std::collections::HashSet;
 
@@ -11,6 +10,10 @@ pub struct Region {
     pub kind: String,
     /// 0..3, raises monster levels
     pub danger: i32,
+    /// where its name is written on the map: the cell of the region nearest
+    /// to its centre (zero in old saves: worked out on load)
+    #[serde(default)]
+    pub at: Pos,
 }
 
 /// A notable place on the overworld.
@@ -48,17 +51,24 @@ pub fn near_village(vs: &[Village], x: i32, y: i32, margin: i32) -> bool {
 
 // ---- volcanic and cursed lands ----
 
-/// Turns two areas far from people into a volcanic waste and a cursed land.
-pub(super) fn scar_land(r: &mut Rng, l: &mut Level, main: &[bool], vs: &[Village], start: Pos) {
-    let rx = (l.w / 12).max(10);
+/// Scars the land far from the heart of the world (where people live) with
+/// volcanic wastes and cursed lands, as many per area as the classic world's
+/// two, larger on big maps.
+pub(super) fn scar_land(r: &mut Rng, l: &mut Level, main: &[bool], heart: Pos, sc: MapScale) {
+    let rx = (((l.w.min(300) / 12) as f64 * sc.lin.sqrt()) as i32).max(10);
     let ry = rx;
+    let count = ((2.0 * sc.area / sc.lin).round() as usize).max(2);
+    let min_start = ((l.w + l.h) as f64 / 4.0).min(125.0 * sc.lin.sqrt()) as i32;
+    let ground_t = tile_table(is_ground_def);
+    let ground = Sat::new(l, |i| ground_t[l.tiles[i] as usize] as u32);
     let mut centers: Vec<Pos> = Vec::new();
-    for kind in ["ash", "cursed"] {
-        let Some(c) = scar_center(r, l, main, vs, start, &centers, rx, ry) else {
+    for k in 0..count {
+        let kind = if k % 2 == 0 { "ash" } else { "cursed" };
+        let Some(c) = scar_center(r, l, main, &ground, heart, &centers, rx, ry, min_start) else {
             continue;
         };
         centers.push(c);
-        stamp_scar(r, l, c, rx, ry, vs, kind);
+        stamp_scar(r, l, c, rx, ry, kind);
     }
 }
 
@@ -67,45 +77,28 @@ fn scar_center(
     r: &mut Rng,
     l: &Level,
     main: &[bool],
-    vs: &[Village],
-    start: Pos,
+    ground: &Sat,
+    heart: Pos,
     others: &[Pos],
     rx: i32,
     ry: i32,
+    min_start: i32,
 ) -> Option<Pos> {
-    let min_start = (l.w + l.h) / 4;
     for _ in 0..3000 {
         let x = rx + r.int_n((l.w - 2 * rx).max(1));
         let y = ry + r.int_n((l.h - 2 * ry).max(1));
-        if !main[(y * l.w + x) as usize] || (x - start.x).abs() + (y - start.y).abs() < min_start {
+        if !main[(y * l.w + x) as usize] || (x - heart.x).abs() + (y - heart.y).abs() < min_start {
             continue;
         }
-        let mut ok = true;
-        for v in vs {
-            let (dx, dy) = (v.center.x - x, v.center.y - y);
-            if dx * dx + dy * dy < (rx + 18) * (rx + 18) {
-                ok = false;
-            }
-        }
-        for o in others {
+        if others.iter().any(|o| {
             let (dx, dy) = (o.x - x, o.y - y);
-            if dx * dx + dy * dy < (3 * rx) * (3 * rx) {
-                ok = false;
-            }
-        }
-        if !ok {
+            dx * dx + dy * dy < (3 * rx) * (3 * rx)
+        }) {
             continue;
         }
-        let (mut land, mut total) = (0, 0);
-        for dy in -ry..=ry {
-            for dx in -rx..=rx {
-                total += 1;
-                if is_ground(l.at(x + dx, y + dy)) {
-                    land += 1;
-                }
-            }
-        }
-        if land * 100 / total >= 55 {
+        let land = ground.sum(x - rx, y - ry, x + rx + 1, y + ry + 1);
+        let total = ((2 * rx + 1) * (2 * ry + 1)) as u32;
+        if land * 100 >= total * 55 {
             return Some(Pos::new(x, y));
         }
     }
@@ -127,12 +120,12 @@ fn settlement_tile(key: &str) -> bool {
     )
 }
 
-fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, vs: &[Village], kind: &str) {
+fn stamp_scar(r: &mut Rng, l: &mut Level, c: Pos, rx: i32, ry: i32, kind: &str) {
     let edge_n = Perlin::new(r);
     let det_n = Perlin::new(r);
     for y in c.y - ry * 3 / 2..=c.y + ry * 3 / 2 {
         for x in c.x - rx * 3 / 2..=c.x + rx * 3 / 2 {
-            if !l.inside(x, y) || near_village(vs, x, y, 3) {
+            if !l.inside(x, y) {
                 continue;
             }
             let def = l.def(x, y);
@@ -281,8 +274,13 @@ fn region_names(kind: &str) -> &'static [&'static str] {
     }
 }
 
-fn region_kind(tile: u8) -> &'static str {
-    match db().tile(tile).biome.as_str() {
+/// The kinds of regions; a region kind code is its index + 1 (0 = none).
+const REGION_KINDS: &[&str] = &[
+    "plains", "forest", "swamp", "hills", "desert", "tundra", "ash", "cursed",
+];
+
+fn region_kind(def: &crate::content::TileDef) -> u8 {
+    let k = match def.biome.as_str() {
         "plains" | "sand" => "plains",
         "hills" | "snow" => "hills",
         "forest" => "forest",
@@ -291,24 +289,34 @@ fn region_kind(tile: u8) -> &'static str {
         "tundra" => "tundra",
         "ash" => "ash",
         "cursed" => "cursed",
-        _ => "",
-    }
+        _ => return 0,
+    };
+    REGION_KINDS.iter().position(|x| *x == k).unwrap() as u8 + 1
 }
 
 /// Labels large connected areas of one kind of land and spreads the labels
-/// over roads, rivers and small patches.
-pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
+/// over roads, rivers and small patches. Regions grow with the scale of the
+/// map like its biomes do; when the names of a kind run out, the nearest
+/// settlement tells namesakes apart.
+pub(super) fn name_regions(
+    r: &mut Rng,
+    l: &Level,
+    vs: &[Village],
+    sc: MapScale,
+) -> (Vec<Region>, Vec<u16>) {
     let n = (l.w * l.h) as usize;
     let mut labels = vec![0i32; n]; // 0 = unvisited, -1 = too small, >0 region
-    let min_size = (n / 300).max(120);
+    let min_size = (200.0 * sc.lin) as usize;
     let mut regions: Vec<Region> = Vec::new();
     let mut used = HashSet::new();
+    let vi = VillageIndex::new(vs);
     let mut stack = Vec::with_capacity(1024);
     let mut cells = Vec::new();
-    let kinds: Vec<&str> = l.tiles.iter().map(|&t| region_kind(t)).collect();
+    let kind_t = tile_table(region_kind);
+    let kinds: Vec<u8> = l.tiles.iter().map(|&t| kind_t[t as usize]).collect();
     for i in 0..n {
         let kind = kinds[i];
-        if labels[i] != 0 || kind.is_empty() {
+        if labels[i] != 0 || kind == 0 {
             continue;
         }
         cells.clear();
@@ -330,7 +338,7 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
                 }
             }
         }
-        if cells.len() < min_size || regions.len() >= 250 {
+        if cells.len() < min_size || regions.len() >= u16::MAX as usize - 1 {
             continue;
         }
         let (mut sx, mut sy) = (0i64, 0i64);
@@ -339,22 +347,31 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
             sx += (c as i32 % l.w) as i64;
             sy += (c as i32 / l.w) as i64;
         }
-        let center = Pos::new(
+        let centre = Pos::new(
             (sx / cells.len() as i64) as i32,
             (sy / cells.len() as i64) as i32,
         );
-        let name = region_name(r, kind, center, l, &mut used);
+        // the label goes on the region's own cell nearest to its centre
+        let at = cells
+            .iter()
+            .map(|&c| Pos::new(c as i32 % l.w, c as i32 / l.w))
+            .min_by_key(|p| p.dist_sq(centre))
+            .unwrap_or(centre);
+        let kind = REGION_KINDS[kind as usize - 1];
+        let name = place_name(r, region_names(kind), vi.nearest_name(at), &mut used);
         regions.push(Region {
             name,
             kind: kind.into(),
             danger: region_danger(kind),
+            at,
         });
     }
+    drop(kinds);
     // spread labels to everything else (breadth first from labelled cells)
-    let mut queue: Vec<usize> = (0..n).filter(|&i| labels[i] > 0).collect();
+    let mut queue: Vec<u32> = (0..n as u32).filter(|&i| labels[i as usize] > 0).collect();
     let mut q = 0;
     while q < queue.len() {
-        let c = queue[q];
+        let c = queue[q] as usize;
         q += 1;
         let (cx, cy) = (c as i32 % l.w, c as i32 / l.w);
         for d in DIRS4 {
@@ -365,7 +382,7 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
             let ni = (ny * l.w + nx) as usize;
             if labels[ni] <= 0 {
                 labels[ni] = labels[c];
-                queue.push(ni);
+                queue.push(ni as u32);
             }
         }
     }
@@ -373,36 +390,9 @@ pub(super) fn name_regions(r: &mut Rng, l: &Level) -> (Vec<Region>, Vec<u8>) {
         regions,
         labels
             .iter()
-            .map(|&lb| if lb > 0 { lb as u8 } else { 0 })
+            .map(|&lb| if lb > 0 { lb as u16 } else { 0 })
             .collect(),
     )
-}
-
-fn region_name(r: &mut Rng, kind: &str, c: Pos, l: &Level, used: &mut HashSet<String>) -> String {
-    let list = region_names(kind);
-    let free: Vec<&str> = list
-        .iter()
-        .copied()
-        .filter(|s| !used.contains(*s))
-        .collect();
-    if !free.is_empty() {
-        let s = *r.pick(&free);
-        used.insert(s.to_string());
-        return s.to_string();
-    }
-    let (dx, dy) = (c.x as f64 / l.w as f64 - 0.5, c.y as f64 / l.h as f64 - 0.5);
-    let dir = if dx.abs() < 0.12 && dy.abs() < 0.12 {
-        "центр"
-    } else if dx.abs() > dy.abs() && dx > 0.0 {
-        "восток"
-    } else if dx.abs() > dy.abs() {
-        "запад"
-    } else if dy > 0.0 {
-        "юг"
-    } else {
-        "север"
-    };
-    format!("{} ({})", r.pick(list), dir)
 }
 
 // ---- landmarks ----
@@ -518,13 +508,18 @@ pub(super) fn place_landmarks(
     main: &[bool],
     vs: &[Village],
     start: Pos,
+    land: usize,
 ) -> Vec<Landmark> {
     let mut out: Vec<Landmark> = Vec::new();
     let mut used = HashSet::new();
+    let vi = VillageIndex::new(vs);
+    let mut near = Buckets::new(64);
     for sp in LANDMARK_SPECS {
+        // as many per area of land as in the classic world
+        let want = per_land(land, sp.count as f64, 1);
         let mut placed = 0;
-        for _ in 0..3000 {
-            if placed >= sp.count {
+        for _ in 0..3000 + 1500 * want {
+            if placed >= want {
                 break;
             }
             let x = sp.w + r.int_n((l.w - 2 * sp.w).max(1));
@@ -532,35 +527,31 @@ pub(super) fn place_landmarks(
             if !main[(y * l.w + x) as usize] {
                 continue;
             }
-            let biome = l.def(x, y).biome.clone();
-            if !sp.biomes.contains(&biome.as_str())
-                || near_village(vs, x, y, sp.w)
+            let biome = l.def(x, y).biome.as_str();
+            if !sp.biomes.contains(&biome)
+                || vi.near(x, y, sp.w)
                 || (x - start.x).abs() + (y - start.y).abs() < 20
             {
                 continue;
             }
-            if out
-                .iter()
-                .any(|o| (o.pos.x - x).abs() < 18 && (o.pos.y - y).abs() < 14)
+            let p = Pos::new(x, y);
+            if near
+                .near(p, 18)
+                .into_iter()
+                .any(|i| (out[i].pos.x - x).abs() < 18 && (out[i].pos.y - y).abs() < 14)
             {
                 continue;
             }
             if !free_area(l, x - sp.w / 2, y - sp.h / 2, sp.w, sp.h) {
                 continue;
             }
-            stamp_landmark(
-                r,
-                l,
-                sp.kind,
-                Pos::new(x, y),
-                sp.w,
-                sp.h,
-                ground_for(&biome),
-            );
+            let ground = ground_for(biome);
+            stamp_landmark(r, l, sp.kind, p, sp.w, sp.h, ground);
+            near.insert(p, out.len());
             out.push(Landmark {
-                name: pick_unique(r, landmark_names(sp.kind), &mut used),
+                name: place_name(r, landmark_names(sp.kind), vi.nearest_name(p), &mut used),
                 kind: sp.kind.into(),
-                pos: Pos::new(x, y),
+                pos: p,
             });
             placed += 1;
         }

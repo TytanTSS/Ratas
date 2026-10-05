@@ -28,14 +28,23 @@ pub fn draw(
     if p.mode != Mode::Map {
         let level = p.level.as_ref().unwrap();
         let snap = p.snap.as_ref().unwrap();
-        let tex = p.wr.atlas.texture(level, p.level_ver, &p.explored, p.t);
         let places = p
             .sheet
             .as_ref()
             .map(|sh| sh.places.as_slice())
             .unwrap_or(&[]);
         let facing = me_facing(p);
-        atlas::draw_minimap(g, &tex, level, snap, places, mx, my, mm, facing);
+        atlas::draw_minimap(
+            g,
+            &mut p.wr.atlas,
+            level,
+            &p.explored,
+            snap,
+            places,
+            (mx, my, mm),
+            facing,
+            p.t,
+        );
         let r = Rect::new(mx - mm, my - mm, mm * 2.0, mm * 2.0);
         if inp.hover(r) {
             over = true;

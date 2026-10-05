@@ -86,6 +86,9 @@ pub struct Session {
     /// the direction held this frame
     held: [i8; 2],
     hello_sent: bool,
+    /// where the world map looks (per level) and the last mouse point of a drag
+    map_view: Option<(String, crate::gfx::atlas::MapView)>,
+    map_drag: Option<Vec2>,
     debug_move: Option<[i8; 2]>,
     debug_cmds: bool,
     debug_interact: bool,
@@ -132,6 +135,8 @@ impl Session {
             sent_at: -1.0,
             held: [0, 0],
             hello_sent: false,
+            map_view: None,
+            map_drag: None,
             debug_move: None,
             debug_cmds: false,
             debug_interact: false,
@@ -215,6 +220,20 @@ impl Session {
                 "char" => Mode::Char,
                 "journal" => Mode::Journal,
                 "map" => Mode::Map,
+                "mapall" => {
+                    // the whole world at once
+                    if let Some(l) = &self.level {
+                        self.map_view = Some((
+                            l.id.clone(),
+                            crate::gfx::atlas::MapView {
+                                cx: l.w as f32 / 2.0,
+                                cy: l.h as f32 / 2.0,
+                                k: 0.0,
+                            },
+                        ));
+                    }
+                    Mode::Map
+                }
                 "help" => Mode::Help,
                 "pause" => Mode::Pause,
                 "party" => Mode::Party,
@@ -286,6 +305,7 @@ impl Session {
             if !m.tiles.is_empty() {
                 for t in &m.tiles {
                     l.set(t.x, t.y, t.t);
+                    self.wr.atlas.touch(t.x, t.y);
                 }
                 self.level_ver += 1;
             }
@@ -350,13 +370,15 @@ impl Session {
         l.depth = ld.depth;
         l.theme = ld.theme.clone();
         self.explored = Bitset::new((ld.w * ld.h) as usize);
-        for (i, b) in ld.explored.iter().enumerate() {
+        let explored = decompress(&ld.explored).unwrap_or_default();
+        for (i, b) in explored.iter().enumerate() {
             if i < self.explored.0.len() {
                 self.explored.0[i] = *b;
             }
         }
         self.level = Some(l);
         self.level_ver += 1;
+        self.wr.atlas.reset();
     }
 
     /// Marks what the hero sees as explored.
@@ -373,10 +395,13 @@ impl Session {
             paused: false,
             input: [0, 0],
         };
-        let vis = self.wr.visible(&scene).to_vec();
-        for (i, v) in vis.iter().enumerate() {
-            if *v {
+        let w = l.w;
+        let vis: Vec<(i32, i32)> = self.wr.visible(&scene).cells().collect();
+        for (x, y) in vis {
+            let i = (y * w + x) as usize;
+            if !self.explored.get(i) {
                 self.explored.set(i);
+                self.wr.atlas.touch(x, y);
             }
         }
     }
@@ -589,6 +614,10 @@ impl Session {
             self.mode = m;
             self.sel = 0;
             self.scroll = 0;
+            if m == Mode::Map {
+                // the map opens on the hero
+                self.map_view = None;
+            }
             if m == Mode::Skills || m == Mode::Char {
                 self.tab = 0;
             }

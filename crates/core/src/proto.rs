@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
-pub const VERSION: i32 = 100;
+pub const VERSION: i32 = 101;
 
 // ---- client -> server ----
 
@@ -93,7 +93,7 @@ pub struct LevelData {
     pub h: i32,
     /// gzip-compressed tile ids
     pub tiles: Vec<u8>,
-    /// bitset of explored cells
+    /// gzip-compressed bitset of explored cells
     pub explored: Vec<u8>,
     pub lit: bool,
     pub depth: i32,
