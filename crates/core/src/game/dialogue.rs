@@ -1,6 +1,7 @@
 //! Conversations: options, greetings, rumours, quests, trade and the AI voice.
 
 use super::*;
+use crate::content::UniqueDef;
 use crate::llm::{NpcReply, NpcRequest, Option_, Turn as LTurn};
 use crate::proto::Dialogue;
 
@@ -65,6 +66,15 @@ fn round_steps(d: i32) -> i32 {
 
 /// How far away the dangerous lands people warn about may lie.
 const NEAR_LANDS: i32 = 500;
+
+/// What a villager tells the model about the world: only the nearest of
+/// each kind. A big world has hundreds of places, and every line of the
+/// prompt costs a local model time before it says a word.
+const FACT_VILLAGES: usize = 6;
+const FACT_LANDMARKS: usize = 5;
+const FACT_UNIQUES: usize = 3;
+const FACT_LANDS: usize = 3;
+const FACT_NEWS: usize = 5;
 
 fn theme_word(theme: &str) -> &'static str {
     match theme {
@@ -676,7 +686,7 @@ impl Game {
         let mut vs: Vec<&VillageInfo> =
             self.villages.iter().filter(|v| v.name != village).collect();
         vs.sort_by_key(|v| v.center.dist_sq(at));
-        for v in vs.into_iter().take(8) {
+        for v in vs.into_iter().take(FACT_VILLAGES) {
             facts.push(format!(
                 "The {} {} lies to the {}, about {} steps away.",
                 if v.city { "city" } else { "village" },
@@ -685,45 +695,67 @@ impl Game {
                 round_steps(at.dist(v.center))
             ));
         }
-        for lm in &self.landmarks {
-            if lm.pos.dist(at) < 100 {
-                facts.push(format!(
-                    "Landmark: {} ({}) to the {}.",
-                    lm.name,
-                    lm.kind,
-                    compass(at, lm.pos)
-                ));
-            }
+        let mut ls: Vec<&Landmark> = self
+            .landmarks
+            .iter()
+            .filter(|lm| lm.pos.dist(at) < 100)
+            .collect();
+        ls.sort_by_key(|lm| lm.pos.dist_sq(at));
+        for lm in ls.into_iter().take(FACT_LANDMARKS) {
+            facts.push(format!(
+                "Landmark: {} ({}) to the {}.",
+                lm.name,
+                lm.kind,
+                compass(at, lm.pos)
+            ));
         }
-        for (o, oe) in &self.ents {
-            if oe.level != "overworld" {
-                continue;
-            }
-            if let Some(u) = oe.npc.as_ref().and_then(|n| db().unique(&n.unique)) {
-                if *o != npc {
-                    facts.push(format!("Rumour: {}, {}, lives to the {}, about {} steps away, and rewards those who help with something extraordinary.", u.name, u.title, compass(at, oe.cell()), round_steps(at.dist(oe.cell()))));
-                }
-            }
+        let mut us: Vec<(i32, Pos, &UniqueDef)> = self
+            .ents
+            .iter()
+            .filter(|(o, oe)| **o != npc && oe.level == "overworld")
+            .filter_map(|(_, oe)| {
+                let u = db().unique(&oe.npc.as_ref()?.unique)?;
+                Some((at.dist(oe.cell()), oe.cell(), u))
+            })
+            .collect();
+        us.sort_by(|a, b| (a.0, &a.2.key).cmp(&(b.0, &b.2.key)));
+        for (d, p, u) in us.into_iter().take(FACT_UNIQUES) {
+            facts.push(format!(
+                "Rumour: {}, {}, lives to the {}, about {} steps away, and rewards those who help with something extraordinary.",
+                u.name,
+                u.title,
+                compass(at, p),
+                round_steps(d)
+            ));
         }
-        for r in &self.regions {
-            if r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS {
-                facts.push(format!(
-                    "The lands called {} ({}) are deadly.",
-                    r.name, r.kind
-                ));
-            }
+        let mut rs: Vec<&Region> = self
+            .regions
+            .iter()
+            .filter(|r| r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS)
+            .collect();
+        rs.sort_by_key(|r| r.at.dist_sq(at));
+        for r in rs.into_iter().take(FACT_LANDS) {
+            facts.push(format!(
+                "The lands called {} ({}) are deadly.",
+                r.name, r.kind
+            ));
         }
-        for m in &db().b.monsters {
-            if m.boss {
-                facts.push(format!(
-                    "Rumour: {} rules the deepest level of a {}.",
-                    m.name,
-                    m.themes.join("/")
-                ));
-            }
+        let lords: Vec<String> = db()
+            .b
+            .monsters
+            .iter()
+            .filter(|m| m.boss)
+            .map(|m| format!("{} ({})", m.name, m.themes.join("/")))
+            .collect();
+        if !lords.is_empty() {
+            facts.push(format!(
+                "Rumour: the deepest level of each kind of dungeon has its lord: {}.",
+                lords.join(", ")
+            ));
         }
         facts.extend(self.lore_facts());
-        for c in &self.chronicle {
+        let news = self.chronicle.len().saturating_sub(FACT_NEWS);
+        for c in &self.chronicle[news..] {
             facts.push(format!("Recent news people talk about: {c}."));
         }
         facts
@@ -866,14 +898,39 @@ impl Game {
         self.send_dialogue(p, npc, "", false, true);
         let account = self.ents[&p].name.clone();
         let tx = self.task_sender();
+        let heard_tx = tx.clone();
+        let listener = account.clone();
         self.brain.as_ref().unwrap().npc_talk(
             req,
+            Box::new(move |words: String| {
+                let listener = listener.clone();
+                let _ = heard_tx.send(Box::new(move |g: &mut Game| {
+                    g.npc_heard(&listener, npc, &words)
+                }));
+            }),
             Box::new(move |r: Result<NpcReply, String>| {
                 let _ = tx.send(Box::new(move |g: &mut Game| {
                     g.apply_npc_reply(&account, npc, &text, r)
                 }));
             }),
         );
+    }
+
+    /// Shows the words of a reply the model is still writing (the box
+    /// stays waiting until the reply is done).
+    pub(crate) fn npc_heard(&mut self, account: &str, npc: Id, words: &str) {
+        let Some(&p) = self.online.get(account) else {
+            return;
+        };
+        let busy = self
+            .ents
+            .get(&npc)
+            .and_then(|e| e.npc.as_ref())
+            .is_some_and(|n| n.busy);
+        if busy && self.ents[&p].p().talking == npc {
+            let words: String = words.chars().take(400).collect();
+            self.send_dialogue(p, npc, &words, false, true);
+        }
     }
 
     pub(crate) fn gift_keys(&self, npc: Id) -> Vec<String> {

@@ -1184,6 +1184,51 @@ fn npc_dialogue_with_claude() {
     );
 }
 
+/// While a local model writes a reply, the dialogue shows its words.
+#[test]
+fn npc_reply_shows_while_written() {
+    let mut g = setup();
+    let p = g.join_for_test("Герой", "warrior");
+    let elder = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.role == "elder"))
+        .map(|e| e.id)
+        .expect("an elder");
+    g.move_next_to(p, elder);
+    g.open_dialogue(p, elder);
+    g.take_outbox(p);
+    // a reply nobody waits for any more is not shown
+    g.npc_heard("Герой", elder, "Волки совсем");
+    assert!(g.take_outbox(p).and_then(|o| o.dialogue).is_none());
+    g.ents.get_mut(&elder).unwrap().npc.as_mut().unwrap().busy = true;
+    g.npc_heard("Герой", elder, "Волки совсем");
+    let d = g.take_outbox(p).and_then(|o| o.dialogue).expect("words");
+    assert!(d.waiting && d.text == "Волки совсем");
+}
+
+/// A villager tells the model only the nearest of the world: a big world
+/// would fill the prompt with hundreds of places.
+#[test]
+fn npc_knows_the_nearest() {
+    let g = setup();
+    let elder = g
+        .ents
+        .values()
+        .find(|e| e.npc.as_ref().is_some_and(|n| n.role == "elder"))
+        .map(|e| e.id)
+        .expect("an elder");
+    let facts = g.world_facts(elder);
+    let people = facts
+        .iter()
+        .filter(|f| f.contains(" lives to the "))
+        .count();
+    assert!((1..=3).contains(&people), "{facts:#?}");
+    let lords = facts.iter().filter(|f| f.contains("has its lord")).count();
+    assert_eq!(lords, 1, "{facts:#?}");
+    assert!(facts.len() <= 25, "{facts:#?}");
+}
+
 /// A fake Ollama server: the model is missing at first and gets pulled;
 /// chats answer by the schema they ask for (an NPC or the game master).
 /// Returns the address and the paths requested.
@@ -1234,11 +1279,16 @@ fn fake_ollama(
                     ];
                     (200, lines.join("\n") + "\n")
                 }
-                "/api/generate" => (200, r#"{"done":true,"done_reason":"load"}"#.into()),
+                "/api/generate" => {
+                    // warmed up with the context of the requests: no reload
+                    assert_eq!(req["options"]["num_ctx"], 8192);
+                    (200, r#"{"done":true,"done_reason":"load"}"#.into())
+                }
                 "/api/chat" => {
                     // constrained decoding: the schema goes as "format"
                     assert_eq!(req["format"]["type"], "object");
-                    assert_eq!(req["stream"], false);
+                    assert_eq!(req["options"]["num_ctx"], 8192);
+                    assert_eq!(req["stream"], true);
                     let content = req["messages"][0]["content"].as_str().unwrap_or("");
                     let props = &req["format"]["properties"];
                     let reply = if props["commands"].is_object() {
@@ -1252,11 +1302,27 @@ fn fake_ollama(
                     } else {
                         &npc
                     };
-                    let v = serde_json::json!({
-                        "model": "mistral-test", "done": true, "done_reason": "stop",
-                        "message": {"role": "assistant", "content": reply.to_string()}
-                    });
-                    (200, v.to_string())
+                    // the reply streams in pieces, a JSON object per line
+                    let text: Vec<char> = reply.to_string().chars().collect();
+                    let mut lines: Vec<String> = text
+                        .chunks(7)
+                        .map(|c| {
+                            let piece: String = c.iter().collect();
+                            serde_json::json!({
+                                "model": "mistral-test", "done": false,
+                                "message": {"role": "assistant", "content": piece}
+                            })
+                            .to_string()
+                        })
+                        .collect();
+                    lines.push(
+                        serde_json::json!({
+                            "model": "mistral-test", "done": true, "done_reason": "stop",
+                            "message": {"role": "assistant", "content": ""}
+                        })
+                        .to_string(),
+                    );
+                    (200, lines.join("\n") + "\n")
                 }
                 _ => (404, "{}".into()),
             };
