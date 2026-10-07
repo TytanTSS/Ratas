@@ -179,6 +179,15 @@ impl Db {
             ) {
                 p.push(format!("monster {:?}: unknown role {:?}", m.key, m.role));
             }
+            // creatures for a party keep out of the lands of newcomers
+            if m.party > 1 && !m.ally && m.min_level < crate::gen::TIERS[2].levels[0] {
+                p.push(format!(
+                    "monster {:?}: party {} needs min_level >= {}",
+                    m.key,
+                    m.party,
+                    crate::gen::TIERS[2].levels[0]
+                ));
+            }
         }
         for it in &b.items {
             for m in &it.drop_from {

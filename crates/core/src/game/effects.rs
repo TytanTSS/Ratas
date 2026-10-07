@@ -4,16 +4,8 @@ use super::*;
 use crate::content::{BuffDef, ItemDef, TileDef};
 use crate::world::los;
 
-const DANGER_NAMES: &[&str] = &[
-    "спокойный край",
-    "здесь бывает опасно",
-    "опасные земли",
-    "смертельно опасные земли",
-];
-
-pub(crate) fn biome_danger(biome: &str) -> i32 {
-    crate::gen::region_danger(biome)
-}
+/// How long a hero stays in a new belt of danger before being told.
+const ZONE_SETTLE_MS: f64 = 1500.0;
 
 fn blessing(i: usize) -> BuffDef {
     let (key, name, color, stats): (&str, &str, &str, &[(&str, f64)]) = match i {
@@ -204,15 +196,12 @@ impl Game {
             return;
         }
         let cell = e.cell();
+        self.check_zone(id, cell);
+        let e = &self.ents[&id];
         let r = self.region_index(cell);
         if r != 0 && r != e.p().region {
             self.ents.get_mut(&id).unwrap().pm().region = r;
-            let reg = &self.regions[r - 1];
-            let text = format!(
-                "Регион: {} — {}.",
-                reg.name,
-                DANGER_NAMES[(reg.danger as usize).min(DANGER_NAMES.len() - 1)]
-            );
+            let text = format!("Регион: {}.", self.regions[r - 1].name);
             self.log(id, "#e0d0a0", text);
         }
         let l = &self.levels["overworld"];
@@ -235,6 +224,53 @@ impl Game {
             self.log(id, "#ffe08a", format!("Открытие: {name} (+{xp} опыта)."));
             self.fx(&level, pos, "Открытие!", '\0', "#ffe08a", 1200);
             self.give_xp(id, xp);
+        }
+    }
+
+    /// Tells a hero who has come into another belt of danger (and stayed
+    /// a moment) what lives there.
+    fn check_zone(&mut self, id: Id, cell: Pos) {
+        let now = self.now;
+        let t = self.zone_tier_at(cell) + 1;
+        let p = self.ents.get_mut(&id).unwrap().pm();
+        if t == p.zone {
+            p.zone_next = (0, 0.0);
+            return;
+        }
+        if p.zone != 0 && p.zone_next.0 != t {
+            p.zone_next = (t, now);
+            return;
+        }
+        if p.zone != 0 && now - p.zone_next.1 < ZONE_SETTLE_MS {
+            return;
+        }
+        let (from, hero) = (p.zone, p.level);
+        p.zone = t;
+        p.zone_next = (0, 0.0);
+        let tier = &gen::TIERS[t - 1];
+        let [lo, hi] = tier.levels;
+        if from > t {
+            self.log(
+                id,
+                tier.color,
+                format!("Вы возвращаетесь в земли: {} (ур. {lo}–{hi}).", tier.name),
+            );
+            return;
+        }
+        self.log(
+            id,
+            tier.color,
+            format!("Вы вступаете в земли: {} (ур. {lo}–{hi}).", tier.name),
+        );
+        self.log(id, "#d8d0b0", tier.hint.into());
+        if hero + 3 < lo {
+            self.log(
+                id,
+                "#ff6a6a",
+                format!(
+                    "Ваш уровень ({hero}) слишком мал для этих земель: здешние чудища сильнее."
+                ),
+            );
         }
     }
 

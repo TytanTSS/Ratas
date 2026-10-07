@@ -9,6 +9,7 @@ mod noise;
 mod overworld;
 mod regions;
 mod spatial;
+mod zones;
 
 pub use city::*;
 pub use dungeon::*;
@@ -17,6 +18,7 @@ pub use noise::*;
 pub use overworld::*;
 pub use regions::*;
 pub use spatial::*;
+pub use zones::*;
 
 pub(crate) use crate::rng::Rng;
 pub(crate) use serde::{Deserialize, Serialize};

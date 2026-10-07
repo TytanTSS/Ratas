@@ -534,14 +534,18 @@ impl Game {
         }
         let mut rs: Vec<&Region> = self.regions.iter().collect();
         rs.sort_by_key(|r| r.at.dist_sq(at));
-        let deadly = rs.iter().skip(6).filter(|r| r.danger >= 3).take(3);
+        let deadly = rs
+            .iter()
+            .skip(6)
+            .filter(|r| self.zone_tier_at(r.at) == gen::TIERS.len() - 1)
+            .take(3);
         for r in rs.iter().take(6).chain(deadly) {
             req.places.push(place(
                 format!(
-                    "the lands of {} ({}, danger {} of 3)",
+                    "the lands of {} ({}, {})",
                     named(&r.name),
                     r.kind,
-                    r.danger
+                    self.zone_brief(r.at)
                 ),
                 r.at,
             ));

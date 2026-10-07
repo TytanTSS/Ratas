@@ -101,11 +101,87 @@ pub fn is_debuff(b: &BuffDef) -> bool {
     b.stun || b.dot_per_sec > 0.0 || b.stats.values().any(|v| *v < 0.0)
 }
 
-pub fn monster_scale(lvl: i32) -> f64 {
+/// The level from which creatures grow faster: heroes' gear, attributes
+/// and skills multiply, so a creature of a hero's level keeps pace with
+/// them and one of a few levels more stays a danger.
+pub const VETERAN_LEVEL: i32 = 10;
+
+/// The steady growth of a creature with its level (gold it carries).
+pub fn level_scale(lvl: i32) -> f64 {
     1.0 + 0.18 * (lvl - 1) as f64
 }
 
+/// The faster growth above VETERAN_LEVEL: (lvl / 10)^k.
+fn veteran(lvl: i32, k: f64) -> f64 {
+    if lvl <= VETERAN_LEVEL {
+        1.0
+    } else {
+        (lvl as f64 / VETERAN_LEVEL as f64).powf(k)
+    }
+}
+
+/// How much harder a creature of a level hits than one of the first.
+pub fn monster_scale(lvl: i32) -> f64 {
+    level_scale(lvl) * veteran(lvl, VETERAN_DMG)
+}
+
+/// How much more health a creature of a level has than one of the first.
+pub fn monster_hp_scale(lvl: i32) -> f64 {
+    (1.0 + 0.25 * (lvl - 1) as f64) * veteran(lvl, VETERAN_HP)
+}
+
+/// How much more experience a creature of a level gives than one of the
+/// first.
+pub fn monster_xp_scale(lvl: i32) -> f64 {
+    (1.0 + 0.3 * (lvl - 1) as f64) * veteran(lvl, VETERAN_HP / 2.0)
+}
+
+const VETERAN_HP: f64 = 0.8;
+const VETERAN_DMG: f64 = 1.2;
+
+/// A creature for a party of n heroes has the health of PARTY_HP·n
+/// creatures and its blows are stronger by PARTY_DMG per hero.
+pub const PARTY_HP: f64 = 2.5;
+pub const PARTY_DMG: f64 = 0.15;
+
+pub fn party_hp(n: i32) -> f64 {
+    if n <= 1 {
+        1.0
+    } else {
+        PARTY_HP * n as f64
+    }
+}
+
+pub fn party_dmg(n: i32) -> f64 {
+    if n <= 1 {
+        1.0
+    } else {
+        1.0 + PARTY_DMG * n as f64
+    }
+}
+
+/// Every hero near gets the whole experience: a creature for a party gives
+/// a little more than one of its kind alone.
+pub fn party_xp(n: i32) -> f64 {
+    if n <= 1 {
+        1.0
+    } else {
+        0.5 + 0.5 * n as f64
+    }
+}
+
 impl Game {
+    /// How much harder than one of the first level a creature hits with its
+    /// abilities and poisons (1 for anyone else). A creature for a party
+    /// hits its foe harder (see monster_state), its spells are as any of
+    /// its level: they reach the whole party.
+    pub(crate) fn monster_power(&self, id: Id) -> f64 {
+        match self.ents.get(&id).and_then(|e| e.monster.as_ref()) {
+            Some(m) => monster_scale(m.lvl),
+            None => 1.0,
+        }
+    }
+
     /// Applies the attacker's per-type damage bonuses.
     pub(crate) fn type_bonus(&self, src: Id, d: &mut Damage) {
         let s = &self.ents[&src].stats;
@@ -181,8 +257,8 @@ impl Game {
             };
             return (v + attr * a.scale_k) * (1.0 + pct / 100.0).max(0.0);
         }
-        if let Some(m) = &e.monster {
-            return v * monster_scale(m.lvl);
+        if e.monster.is_some() {
+            return v * self.monster_power(c);
         }
         v
     }

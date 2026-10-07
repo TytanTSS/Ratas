@@ -69,9 +69,12 @@ impl Game {
         let killer = killer.and_then(|k| self.controller(k));
         let is_boss = def.is_some_and(|d| d.boss);
         let is_elite = def.is_some_and(|d| d.elite);
-        if let Some(def) = def {
+        // servants a lord called carry nothing and teach nothing
+        let summoned = m.owner != 0;
+        let xp = if summoned { 0 } else { ms.xp };
+        if let Some(def) = def.filter(|_| !summoned) {
             let mut gold =
-                self.roll(def.gold[0] as f64, (def.gold[1] + 1) as f64) * monster_scale(ms.lvl);
+                self.roll(def.gold[0] as f64, (def.gold[1] + 1) as f64) * level_scale(ms.lvl);
             if let Some(k) = killer.and_then(|k| self.ents.get(&k)) {
                 if k.player.is_some() {
                     gold *= 1.0 + k.stats.gold_find / 100.0;
@@ -131,20 +134,20 @@ impl Game {
                 continue;
             }
             heroes.push(pe.name.clone());
-            self.give_xp(p, ms.xp);
+            self.give_xp(p, xp);
             self.ents.get_mut(&p).unwrap().pm().kills += 1;
             self.kill_deeds(p, &m, def, Some(p) == kc);
             if Some(p) == kc {
                 self.log(
                     p,
                     "#e0e0e0",
-                    format!("Вы убили: {} (+{} опыта).", m.name, ms.xp),
+                    format!("Вы убили: {} (+{} опыта).", m.name, xp),
                 );
             } else {
                 self.log(
                     p,
                     "#c0c0c0",
-                    format!("{} повержен (+{} опыта).", m.name, ms.xp),
+                    format!("{} повержен (+{} опыта).", m.name, xp),
                 );
             }
             self.quest_progress(p, &ms.def);
@@ -769,6 +772,8 @@ impl Game {
             if tick_dot && b.def.dot_per_sec != 0.0 {
                 let mut amt = b.def.dot_per_sec / 2.0;
                 if amt > 0.0 {
+                    // a creature's poison grows with it
+                    amt *= self.monster_power(b.source);
                     let t = if b.def.dmg_type.is_empty() {
                         "poison"
                     } else {

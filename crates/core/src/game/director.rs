@@ -146,11 +146,9 @@ impl Game {
             let r = self.region_index(cell);
             if r != 0 {
                 let reg = &self.regions[r - 1];
-                s += &format!(
-                    ", in the lands of {} ({}, danger {} of 3)",
-                    reg.name, reg.kind, reg.danger
-                );
+                s += &format!(", in the lands of {} ({})", reg.name, reg.kind);
             }
+            s += &format!(", in {}", self.zone_brief(cell));
             if self.in_village(cell, 2) {
                 s += ", resting in a village";
             } else if let Some(v) = self.villages.iter().min_by_key(|v| v.center.dist_sq(cell)) {
@@ -180,13 +178,13 @@ impl Game {
         s
     }
 
-    /// Monsters the master may send (bosses and allies never; elites only
-    /// when an admin asks).
+    /// Monsters the master may send (bosses and allies never; elites and
+    /// creatures for a party only when an admin asks).
     fn master_monsters(admin: bool) -> Vec<&'static crate::content::MonsterDef> {
         db().b
             .monsters
             .iter()
-            .filter(|m| !m.boss && !m.ally && (admin || (m.weight > 0 && !m.elite)))
+            .filter(|m| !m.boss && !m.ally && (admin || (m.weight > 0 && !m.elite && m.party <= 1)))
             .collect()
     }
 

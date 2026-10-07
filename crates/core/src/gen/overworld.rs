@@ -67,6 +67,8 @@ pub struct Overworld {
     /// 1-based index into regions per cell, 0 = none
     pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
+    /// the level of the land around
+    pub zones: ZoneMap,
 }
 
 pub fn t(key: &str) -> u8 {
@@ -94,8 +96,8 @@ pub fn t(key: &str) -> u8 {
 /// 6. Settlements are joined by roads along a minimum spanning tree, each
 ///    found with weighted A* (bridges over water).
 /// 7. Connected areas of one biome become named regions; landmarks are
-///    stamped on free land; dungeon entrances are scattered, the deeper ones
-///    further from the start.
+///    stamped on free land; dungeon entrances are scattered, deeper in the
+///    more dangerous belts of land (see zones).
 pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
     let sc = MapScale::of(w, h);
     let mut r = Rng::labeled(seed, "overworld");
@@ -289,14 +291,16 @@ pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
     main = largest_region(&l);
     let landmarks = place_landmarks(&mut r, &mut l, &main, &villages, start, land);
     main = largest_region(&l);
-    let entrances = place_entrances(&mut r, &mut l, &main, &villages, start, land, sc);
-
-    let start = if let Some(v) = villages.first() {
+    // the journey starts by the well of the first village
+    let hero = if let Some(v) = villages.first() {
         find_free(&l, Pos::new(v.center.x, v.center.y + 2))
     } else {
         let i = main.iter().position(|&b| b).unwrap_or(0) as i32;
         Pos::new(i % w, i / w)
     };
+    let zones = ZoneMap::new(seed, &l, hero);
+    let entrances = place_entrances(&mut r, &mut l, &main, &villages, start, land, sc, &zones);
+    let start = hero;
     Overworld {
         name,
         level: l,
@@ -306,6 +310,7 @@ pub fn generate_overworld(seed: i64, w: i32, h: i32) -> Overworld {
         regions,
         region_map,
         landmarks,
+        zones,
     }
 }
 
@@ -800,6 +805,10 @@ fn build_roads(l: &mut Level, vs: &[Village]) {
     }
 }
 
+/// How many floors the dungeons of each belt of danger have.
+pub const DUNGEON_DEPTH: [i32; 5] = [2, 3, 4, 5, 6];
+
+#[allow(clippy::too_many_arguments)]
 fn place_entrances(
     r: &mut Rng,
     l: &mut Level,
@@ -808,6 +817,7 @@ fn place_entrances(
     start: Pos,
     land: usize,
     sc: MapScale,
+    zones: &ZoneMap,
 ) -> Vec<Entrance> {
     let mut es: Vec<Entrance> = Vec::new();
     let mut used = HashSet::new();
@@ -857,13 +867,12 @@ fn place_entrances(
             max_depth: 0,
         });
     }
-    // deeper dungeons further from the start: the same mix of depths as in
-    // the classic world, by rank of distance
+    // deeper dungeons in more dangerous lands: the strongholds of the
+    // deadly lands go down six floors
     es.sort_by_key(|e| e.pos.dist_sq(start));
-    let n = es.len().max(1);
     near = Buckets::new(64);
     for (i, e) in es.iter_mut().enumerate() {
-        e.max_depth = [2, 3, 4, 4, 5, 5][i * 6 / n];
+        e.max_depth = DUNGEON_DEPTH[tier_of(zones.entrance_level(l, e.pos))];
         near.insert(e.pos, i);
     }
     // every special land hides its own dungeons deep inside: one per area of
@@ -926,7 +935,7 @@ fn place_entrances(
                 pos: p,
                 theme: theme.to_string(),
                 name,
-                max_depth: 4,
+                max_depth: DUNGEON_DEPTH[tier_of(zones.entrance_level(l, p))].max(4),
             });
             placed += 1;
         }

@@ -47,15 +47,56 @@ impl Game {
         }
     }
 
+    /// The level of the creatures of the land at p: its belt of danger and
+    /// its biome, one more at night.
     pub(crate) fn overworld_level_at(&self, p: Pos, night: bool) -> i32 {
-        let mut lvl = ring_level(p.manhattan(self.start));
-        if night {
-            lvl += 1;
+        let lvl = match self.levels.get("overworld") {
+            Some(l) => self.zones.level_at(l, p),
+            None => self.zones.base_at(p),
+        };
+        lvl + night as i32
+    }
+
+    /// The belt of danger at p.
+    pub(crate) fn zone_tier_at(&self, p: Pos) -> usize {
+        gen::tier_of(self.overworld_level_at(p, false))
+    }
+
+    /// The belt of danger at p for the language models (in English, with
+    /// the Russian name heroes see).
+    pub(crate) fn zone_brief(&self, p: Pos) -> String {
+        let t = &gen::TIERS[self.zone_tier_at(p)];
+        let en = crate::i18n::tr_in(crate::i18n::EN, t.name);
+        let party = if t.party > 1 {
+            format!(
+                ", only a party of {}+ seasoned heroes survives there",
+                t.party
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            "the belt of {} ({en}): creatures of level {}-{}{party}",
+            t.name, t.levels[0], t.levels[1]
+        )
+    }
+
+    /// The levels of a dungeon's floors: the land at the entrance on the
+    /// first one, a level more every second floor below.
+    pub fn dungeon_levels(&self, idx: usize) -> [i32; 2] {
+        let Some(e) = self.entrances.get(idx) else {
+            return [1, 1];
+        };
+        let top = self.entrance_level(e.pos);
+        [top, floor_level(top, e.max_depth)]
+    }
+
+    /// The level of the land around a dungeon entrance.
+    pub(crate) fn entrance_level(&self, p: Pos) -> i32 {
+        match self.levels.get("overworld") {
+            Some(l) => self.zones.entrance_level(l, p),
+            None => self.zones.base_at(p),
         }
-        if let Some(l) = self.levels.get("overworld") {
-            lvl += effects::biome_danger(&l.def_at(p).biome);
-        }
-        lvl
     }
 
     /// Places a mixed squad around p: the frontline in front, the archers and
@@ -117,29 +158,50 @@ impl Game {
         out
     }
 
-    /// Places persistent elite enemies across the map: every kind of elite
-    /// at least once in a fitting biome, then more in turn — eight per
-    /// classic world of land.
+    /// Places persistent elite enemies across the map, none in the lands of
+    /// newcomers: every kind of elite at least once in a fitting biome, then
+    /// more in turn — eight per classic world of land. The lairs of the
+    /// creatures for a party lie in the dangerous and deadly lands, one and
+    /// a half per classic world of such land.
     pub(crate) fn populate_overworld(&mut self, r: &mut Rng) {
-        let elites: Vec<&MonsterDef> = db()
-            .b
-            .monsters
-            .iter()
-            .filter(|m| m.elite && !m.boss && m.depth[0] == 0)
-            .collect();
-        let (w, h, land) = {
+        let elites = |party: bool| -> Vec<&'static MonsterDef> {
+            db().b
+                .monsters
+                .iter()
+                .filter(|m| m.elite && !m.boss && m.depth[0] == 0 && (m.party > 1) == party)
+                .collect()
+        };
+        let (land, wild) = {
             let l = &self.levels["overworld"];
             let walk = gen::tile_table(|d| d.walkable);
             let land = l.tiles.iter().filter(|&&t| walk[t as usize]).count();
-            (l.w, l.h, land)
+            // the dangerous lands, counted on every fourth cell both ways
+            let mut wild = 0;
+            for y in (0..l.h).step_by(4) {
+                for x in (0..l.w).step_by(4) {
+                    let p = Pos::new(x, y);
+                    if l.walkable(x, y) && self.zone_tier_at(p) >= gen::PARTY_TIER {
+                        wild += 16;
+                    }
+                }
+            }
+            (land, wild)
         };
-        let want = gen::per_land(land, 8.0, 8);
+        self.place_elites(r, &elites(false), gen::per_land(land, 8.0, 8));
+        self.place_elites(r, &elites(true), gen::per_land(wild, 1.5, 2));
+    }
+
+    fn place_elites(&mut self, r: &mut Rng, elites: &[&'static MonsterDef], want: usize) {
+        let (w, h) = {
+            let l = &self.levels["overworld"];
+            (l.w, l.h)
+        };
         let mut placed = 0;
         for round in 0..want.div_ceil(elites.len().max(1)) + 1 {
             if placed >= want && round >= 1 {
                 break;
             }
-            for def in &elites {
+            for def in elites {
                 if placed >= want && round >= 1 {
                     break;
                 }
@@ -150,15 +212,17 @@ impl Game {
                     if !l.walkable(p.x, p.y)
                         || !def.themes.contains(&biome)
                         || self.in_village(p, 25)
-                        || p.manhattan(self.start) < 60
                         || self.cell_taken("overworld", p)
                     {
                         continue;
                     }
                     let lvl = self.overworld_level_at(p, false);
+                    if gen::tier_of(lvl) == 0 || lvl < def.min_level {
+                        continue;
+                    }
                     self.new_monster(def, "overworld", p, lvl + 1);
                     // guards
-                    if let Some(minion) = pick_monster(r, &biome, 0, false, false) {
+                    if let Some(minion) = pick_monster(r, &biome, 0, false, false, lvl) {
                         self.spawn_group(r, minion, "overworld", p, lvl);
                     }
                     placed += 1;
@@ -179,6 +243,10 @@ impl Game {
             let lvl = self.overworld_level_at(lm.pos, false);
             for k in keys {
                 let Some(def) = db().monster(k) else { continue };
+                // no elites in the lands of newcomers
+                if def.elite && gen::tier_of(lvl) == 0 {
+                    continue;
+                }
                 let at = lm.pos.add(Pos::new(r.int_n(5) - 2, 1));
                 for m in self.spawn_group(r, def, "overworld", at, lvl) {
                     self.ents
@@ -204,27 +272,30 @@ impl Game {
         let mut r = Rng::labeled(self.seed, &format!("pop-{level}"));
         let depth = self.levels[level].depth;
         // as dangerous as the land around the entrance, and more below
-        let lvl =
-            depth + (ent.max_depth - 3).max(0) + ring_level(ent.pos.manhattan(self.start)) - 1;
+        let lvl = floor_level(self.entrance_level(ent.pos), depth);
         for &p in monsters {
             if r.int_n(100) < 30 {
-                if let Some(sq) = pick_squad(&mut r, &ent.theme, depth, false) {
+                if let Some(sq) = pick_squad(&mut r, &ent.theme, depth, false, lvl) {
                     self.spawn_squad(&mut r, sq, level, p, lvl);
                     continue;
                 }
             }
-            let Some(def) = pick_monster(&mut r, &ent.theme, depth, false, true) else {
+            let Some(def) = pick_monster(&mut r, &ent.theme, depth, false, true, lvl) else {
                 continue;
             };
             self.spawn_group(&mut r, def, level, p, lvl);
         }
         if let Some(bp) = boss {
-            let bosses: Vec<&MonsterDef> = db()
+            // the mightiest lord the floor is deep enough for
+            let fits: Vec<&MonsterDef> = db()
                 .b
                 .monsters
                 .iter()
-                .filter(|m| m.boss && m.themes.contains(&ent.theme))
+                .filter(|m| m.boss && m.themes.contains(&ent.theme) && m.min_level <= lvl + 1)
                 .collect();
+            let top = fits.iter().map(|m| m.min_level).max().unwrap_or(0);
+            let bosses: Vec<&MonsterDef> =
+                fits.into_iter().filter(|m| m.min_level == top).collect();
             if !bosses.is_empty() {
                 let def = bosses[r.usize_n(bosses.len())];
                 let l = &self.levels[level];
@@ -234,7 +305,7 @@ impl Game {
                     self.free_spot(level, bp)
                 };
                 self.new_monster(def, level, bp, lvl + 1);
-                if let Some(minion) = pick_monster(&mut r, &ent.theme, depth, false, false) {
+                if let Some(minion) = pick_monster(&mut r, &ent.theme, depth, false, false, lvl) {
                     self.spawn_group(&mut r, minion, level, bp.add(Pos::new(0, 2)), lvl);
                 }
             }
@@ -307,12 +378,12 @@ impl Game {
                 let biome = ow.def_at(q).biome.clone();
                 let lvl = self.overworld_level_at(q, night);
                 if rng.chance(30.0) {
-                    if let Some(sq) = pick_squad(&mut rng, &biome, 0, night) {
+                    if let Some(sq) = pick_squad(&mut rng, &biome, 0, night, lvl) {
                         self.spawn_squad(&mut rng, sq, "overworld", q, lvl);
                         break;
                     }
                 }
-                let Some(def) = pick_monster(&mut rng, &biome, 0, night, false) else {
+                let Some(def) = pick_monster(&mut rng, &biome, 0, night, false, lvl) else {
                     continue;
                 };
                 self.spawn_group(&mut rng, def, "overworld", q, lvl);
@@ -324,25 +395,22 @@ impl Game {
     }
 }
 
-/// How strong the land is at a distance (in steps) from the start: a level
-/// per 70 steps across what was the whole classic world, then a level per
-/// 200 steps, so even the far ends of a big world stay within reach.
-pub(crate) fn ring_level(d: i32) -> i32 {
-    const NEAR: i32 = 350;
-    if d <= NEAR {
-        1 + d / 70
-    } else {
-        1 + NEAR / 70 + (d - NEAR) / 200
-    }
+/// The level of the creatures on a dungeon floor under land of a level: a
+/// level more every second floor (the lord of the last one is a level
+/// above its floor).
+pub(crate) fn floor_level(land: i32, depth: i32) -> i32 {
+    land + depth.max(1) / 2
 }
 
-/// A weighted random non-boss monster matching theme and depth.
+/// A weighted random non-boss monster matching theme and depth that lives
+/// on land (or a floor) of level lvl.
 pub(crate) fn pick_monster(
     r: &mut Rng,
     theme: &str,
     depth: i32,
     night: bool,
     allow_elite: bool,
+    lvl: i32,
 ) -> Option<&'static MonsterDef> {
     let mut pool = Vec::new();
     let mut total = 0;
@@ -351,6 +419,7 @@ pub(crate) fn pick_monster(
             || m.ally
             || m.weight <= 0
             || (m.elite && !allow_elite)
+            || m.min_level > lvl
             || !m.themes.iter().any(|t| t == theme)
         {
             continue;
@@ -379,17 +448,19 @@ pub(crate) fn pick_monster(
     pool.last().copied()
 }
 
-/// A weighted random squad for a theme and depth.
+/// A weighted random squad for a theme and depth that roams land (or a
+/// floor) of level lvl.
 pub(crate) fn pick_squad(
     r: &mut Rng,
     theme: &str,
     depth: i32,
     night: bool,
+    lvl: i32,
 ) -> Option<&'static SquadDef> {
     let mut pool = Vec::new();
     let mut total = 0;
     for sq in &db().b.squads {
-        if sq.weight <= 0 || !sq.themes.iter().any(|t| t == theme) {
+        if sq.weight <= 0 || sq.min_level > lvl || !sq.themes.iter().any(|t| t == theme) {
             continue;
         }
         if depth == 0 {

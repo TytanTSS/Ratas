@@ -112,6 +112,118 @@ impl Game {
         e.hp = e.max_hp;
     }
 
+    /// Makes a hero a seasoned one of a level, as a player would: two
+    /// attribute points of three into the class's main attribute and one
+    /// into vitality, skill points into the class (with its first
+    /// subclass), and gear fit for the class, every piece rare and found
+    /// at that level.
+    pub fn veteran_for_test(&mut self, id: Id, lvl: i32) {
+        let d = db();
+        let class = self.ents[&id].p().class.clone();
+        let main = d
+            .class(&class)
+            .map(|c| {
+                ["str", "dex", "int"]
+                    .into_iter()
+                    .max_by(|a, b| c.attrs.get(*a).partial_cmp(&c.attrs.get(*b)).unwrap())
+                    .unwrap()
+            })
+            .unwrap_or("str");
+        {
+            let p = self.ents.get_mut(&id).unwrap().pm();
+            let gained = (lvl - p.level).max(0);
+            p.level = lvl;
+            p.attr_points += 3 * gained;
+            p.skill_points += gained;
+            if let Some(sc) =
+                d.b.subclasses
+                    .iter()
+                    .find(|s| s.class == class && !s.secret)
+            {
+                p.subclasses.insert(class.clone(), sc.key.clone());
+            }
+        }
+        let mut k = 0;
+        while self.ents[&id].p().attr_points > 0 {
+            self.alloc_attr(id, if k % 3 == 2 { "vit" } else { main });
+            k += 1;
+        }
+        loop {
+            let mut learned = false;
+            for sd in &d.b.skills {
+                if self.ents[&id].p().skill_points <= 0 {
+                    break;
+                }
+                if can_learn(self.ents[&id].p(), Some(sd)).is_empty() {
+                    self.learn_skill(id, &sd.key);
+                    learned = true;
+                }
+            }
+            if !learned || self.ents[&id].p().skill_points <= 0 {
+                break;
+            }
+        }
+        let kit: &[&str] = match main {
+            "int" => &[
+                "rune_staff",
+                "archmage_robe",
+                "circlet_focus",
+                "enchanted_trousers",
+                "sash_wisdom",
+                "mantle_light",
+                "ring_mind",
+                "ring_vigor",
+            ],
+            "dex" => &[
+                "longbow",
+                "shadow_leather",
+                "rogue_hood",
+                "silent_leggings",
+                "amulet_fury",
+                "ranger_cloak",
+                "ring_agility",
+                "ring_precision",
+            ],
+            _ => &[
+                "long_sword",
+                "kite_shield",
+                "plate_armor",
+                "knight_helm",
+                "plate_greaves",
+                "titan_girdle",
+                "champion_cape",
+                "ring_strength",
+                "ring_vigor",
+            ],
+        };
+        let melee_dex = main == "dex" && class != "ranger";
+        {
+            let p = self.ents.get_mut(&id).unwrap().pm();
+            p.equip.clear();
+            p.inventory.clear();
+        }
+        for key in kit {
+            let key = match *key {
+                "longbow" if melee_dex => "elven_blade",
+                k => k,
+            };
+            let st = self.roll_rarity(ItemStack::new(key), RARE, lvl);
+            self.add_item(id, st);
+            let i = self.ents[&id].p().inventory.len() - 1;
+            self.equip(id, i, key == "kite_shield");
+        }
+        if melee_dex {
+            let st = self.roll_rarity(ItemStack::new("venom_dagger"), RARE, lvl);
+            self.add_item(id, st);
+            let i = self.ents[&id].p().inventory.len() - 1;
+            self.equip(id, i, true);
+        }
+        let e = self.ents.get_mut(&id).unwrap();
+        e.recalc();
+        e.hp = e.max_hp;
+        e.mp = e.max_mp;
+    }
+
     /// Teleports an entity to a point without collision checks.
     pub fn put_for_test(&mut self, id: Id, p: Vec2) {
         self.place(id, p);

@@ -769,7 +769,12 @@ fn archer_keeps_distance_and_healer_heals() {
 #[test]
 fn squads_guards_and_wanderers() {
     let mut g = setup();
-    let sq = &db().b.squads[0];
+    let sq = db()
+        .b
+        .squads
+        .iter()
+        .find(|s| s.key == "bandit_gang")
+        .unwrap();
     let start = g.start.add(Pos::new(60, 0));
     let mut r = Rng::new(1, 1);
     let ms = g.spawn_squad(&mut r, sq, "overworld", start, 2);
@@ -1648,21 +1653,33 @@ fn far_creatures_sleep() {
 }
 
 #[test]
-fn danger_grows_slower_far_away() {
-    use super::spawn::ring_level;
-    // the classic world as before: a level per 70 steps
-    assert_eq!(ring_level(0), 1);
-    assert_eq!(ring_level(69), 1);
-    assert_eq!(ring_level(70), 2);
-    assert_eq!(ring_level(350), 6);
-    // beyond it a level per 200 steps, so the far ends of a big world stay
-    // within reach
-    assert_eq!(ring_level(550), 7);
-    assert!(ring_level(2500) < 20);
-    let mut last = 0;
-    for d in (0..4000).step_by(10) {
-        assert!(ring_level(d) >= last);
-        last = ring_level(d);
+fn danger_grows_in_belts_from_the_start() {
+    let g = setup();
+    let ow = &g.levels["overworld"];
+    assert_eq!(g.overworld_level_at(g.start, false), 1);
+    assert_eq!(g.overworld_level_at(g.start, true), 2, "nights are worse");
+    // every belt of danger is on the land, the cradle around the start
+    let mut seen = [0usize; 5];
+    for y in (0..ow.h).step_by(2) {
+        for x in (0..ow.w).step_by(2) {
+            let p = Pos::new(x, y);
+            if !ow.walkable(x, y) {
+                continue;
+            }
+            seen[g.zone_tier_at(p)] += 1;
+            if p.manhattan(g.start) < 12 {
+                assert_eq!(g.zone_tier_at(p), 0, "{p:?} near the start");
+            }
+        }
+    }
+    assert!(seen.iter().all(|&n| n > 0), "belts on land: {seen:?}");
+    // dungeons are as deep and strong as their land
+    for (i, e) in g.entrances.iter().enumerate() {
+        let [lo, hi] = g.dungeon_levels(i);
+        let tier = gen::tier_of(lo);
+        assert!(e.max_depth >= gen::DUNGEON_DEPTH[tier], "{}", e.name);
+        assert!(lo >= g.overworld_level_at(e.pos, false), "{}", e.name);
+        assert_eq!(hi, lo + e.max_depth / 2);
     }
 }
 
