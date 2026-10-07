@@ -385,10 +385,73 @@ fn proxy_for(base: &str) -> Option<String> {
 }
 
 pub type Done<T> = Box<dyn FnOnce(Result<T, String>) + Send>;
+/// Hears a reply while the model is still writing it.
+pub type Heard = Box<dyn FnMut(String) + Send>;
 
 /// The reply of a model as the structure its schema asked for.
 fn parse<T: serde::de::DeserializeOwned>(r: Result<Value, String>) -> Result<T, String> {
     r.and_then(|v| serde_json::from_value(v).map_err(|e| format!("неверный JSON от ИИ: {e}")))
+}
+
+/// The string field `key` of a JSON object that is still being written:
+/// as much of its value as has arrived. None until the value begins.
+fn partial_field(json: &str, key: &str) -> Option<String> {
+    let mut chars = json.chars();
+    let mut depth = 0;
+    // the next string of the object is a key; the key before the value
+    let (mut at_key, mut wanted) = (false, false);
+    while let Some(c) = chars.next() {
+        match c {
+            '{' | '[' => {
+                depth += 1;
+                at_key = c == '{' && depth == 1;
+            }
+            '}' | ']' => depth -= 1,
+            ',' if depth == 1 => at_key = true,
+            '"' => {
+                let (s, closed) = json_string(&mut chars);
+                if depth == 1 && at_key {
+                    at_key = false;
+                    wanted = s == key;
+                } else if depth == 1 && wanted {
+                    return Some(s);
+                }
+                if !closed {
+                    return None;
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Reads a JSON string after its opening quote; true once it is closed.
+fn json_string(chars: &mut std::str::Chars) -> (String, bool) {
+    let mut s = String::new();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => return (s, true),
+            '\\' => match chars.next() {
+                Some('n') => s.push('\n'),
+                Some('t') => s.push('\t'),
+                Some('r' | 'b' | 'f') => {}
+                Some('u') => {
+                    let hex: String = chars.by_ref().take(4).collect();
+                    if hex.len() < 4 {
+                        break;
+                    }
+                    if let Some(ch) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                        s.push(ch);
+                    }
+                }
+                Some(c) => s.push(c),
+                None => break,
+            },
+            c => s.push(c),
+        }
+    }
+    (s, false)
 }
 
 impl Brain {
@@ -546,8 +609,10 @@ impl Brain {
         true
     }
 
-    /// Asks Claude for an NPC's reply. done is called from another thread.
-    pub fn npc_talk(&self, req: NpcRequest, done: Done<NpcReply>) {
+    /// Asks the model for an NPC's reply. heard and done are called from
+    /// another thread: heard with the whole words of the reply so far while
+    /// a local model is still writing it, done with the reply.
+    pub fn npc_talk(&self, req: NpcRequest, mut heard: Heard, done: Done<NpcReply>) {
         let b = self.clone();
         std::thread::spawn(move || {
             if !b.allow() {
@@ -559,7 +624,30 @@ impl Brain {
                 b.0.talking.fetch_sub(1, Ordering::SeqCst);
                 std::thread::sleep(Duration::from_millis(100));
             }
-            let r = b.call(NPC_SYSTEM, &npc_prompt(&req), npc_schema(), 4096);
+            let mut told = 0;
+            let mut hear = |text: &str| {
+                let Some(say) = partial_field(text, "say") else {
+                    return;
+                };
+                // a word may be cut in the middle: up to the last space
+                let Some(end) = say.rfind(char::is_whitespace) else {
+                    return;
+                };
+                let words = say[..end].trim();
+                if words.len() > told {
+                    told = words.len();
+                    heard(words.to_string());
+                }
+            };
+            let r = b.call_with(
+                &b.0.agent,
+                NPC_SYSTEM,
+                &npc_prompt(&req),
+                npc_schema(),
+                4096,
+                local::MAX_PREDICT,
+                &mut hear,
+            );
             b.0.talking.fetch_sub(1, Ordering::SeqCst);
             done(parse(r));
         });
@@ -568,6 +656,11 @@ impl Brain {
     /// Asks Claude to pick a combat tactic. Returns false if the request was
     /// dropped (busy or rate-limited); then done is never called.
     pub fn tactic(&self, req: TacticRequest, done: Done<TacticReply>) -> bool {
+        // a local model has little to spare: a hero waiting for a villager's
+        // reply comes before a monster's tactics (the built-in AI fights)
+        if self.provider() == Provider::Local && self.0.talking.load(Ordering::SeqCst) > 0 {
+            return false;
+        }
         if self.0.tactics.fetch_add(1, Ordering::SeqCst) >= self.0.max_tactics {
             self.0.tactics.fetch_sub(1, Ordering::SeqCst);
             return false;
@@ -622,6 +715,7 @@ impl Brain {
                 lore_schema(&req, local),
                 16000,
                 local::MAX_STORY,
+                &mut |_| {},
             );
             done(parse(r));
         });
@@ -665,10 +759,13 @@ impl Brain {
             schema,
             max_tokens,
             local::MAX_PREDICT,
+            &mut |_| {},
         )
     }
 
-    /// One request; a local model generates at most local_tokens.
+    /// One request; a local model generates at most local_tokens, and
+    /// `heard` gets the text of its reply so far while it streams in.
+    #[allow(clippy::too_many_arguments)]
     fn call_with(
         &self,
         agent: &ureq::Agent,
@@ -677,13 +774,15 @@ impl Brain {
         schema: Value,
         max_tokens: u32,
         local_tokens: u32,
+        heard: &mut dyn FnMut(&str),
     ) -> Result<Value, String> {
         match &self.0.backend {
             Backend::Anthropic { auth, base } => {
                 self.call_claude(agent, auth, base, system, user, schema, max_tokens)
             }
             Backend::Local(rt) => {
-                let r = rt.chat(agent, system, user, &schema, max_tokens.min(local_tokens));
+                let n = max_tokens.min(local_tokens);
+                let r = rt.chat(agent, system, user, &schema, n, heard);
                 if let Err(e) = &r {
                     self.fail(e, 0);
                     rt.lost();
@@ -837,6 +936,33 @@ mod tests {
         let b = Brain::new("k", "").unwrap();
         assert_eq!(b.provider(), Provider::Anthropic);
         assert!(b.enabled() && b.local_state().is_none());
+    }
+
+    /// The words of a reply are read while its JSON is still being written,
+    /// whatever order the server writes the fields in.
+    #[test]
+    fn partial_reply_fields() {
+        let full =
+            r#"{"action": "none", "gold": 0, "item": "", "say": "Здрав\"ствуй, герой!\nНу"}"#;
+        for n in 0..full.len() {
+            if let Some(cut) = full.get(..n) {
+                let say = partial_field(cut, "say");
+                if let Some(s) = say {
+                    assert!("Здрав\"ствуй, герой!\nНу".starts_with(&s), "{cut} -> {s}");
+                } else {
+                    assert!(!cut.contains("\"say\": \""), "{cut}");
+                }
+            }
+        }
+        assert_eq!(
+            partial_field(full, "say").as_deref(),
+            Some("Здрав\"ствуй, герой!\nНу")
+        );
+        // a key's name inside a value is not the key
+        let tricky = r#"{"item": "say", "say": "да", "x": {"say": "нет"}}"#;
+        assert_eq!(partial_field(tricky, "say").as_deref(), Some("да"));
+        assert_eq!(partial_field(r#"{"say"#, "say"), None);
+        assert_eq!(partial_field(r#"{"say": ""#, "say").as_deref(), Some(""));
     }
 
     #[test]

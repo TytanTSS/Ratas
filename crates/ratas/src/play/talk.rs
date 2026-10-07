@@ -18,8 +18,12 @@ pub fn dialogue(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     };
     let w = (820.0 * s).min(screen_width() - 20.0);
     let text_w = w - 150.0 * s;
-    let lines = if d.waiting {
+    // a reply that is still being written shows its words as they come
+    let thinking = d.waiting && d.text.is_empty();
+    let lines = if thinking {
         vec![tr(&format!("{} обдумывает ответ...", d.name))]
+    } else if d.waiting {
+        g.wrap(&format!("{}…", d.text), text_w, 15.0 * s, false)
     } else {
         g.wrap(&d.text, text_w, 15.0 * s, false)
     };
@@ -85,7 +89,7 @@ pub fn dialogue(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
             tx,
             y,
             15.0 * s,
-            if d.waiting { c_dim() } else { c_text() },
+            if thinking { c_dim() } else { c_text() },
             false,
         );
         y += 20.0 * s;

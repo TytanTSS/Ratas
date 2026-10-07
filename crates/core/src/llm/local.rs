@@ -30,6 +30,10 @@ const KEEP_ALIVE: &str = "30m";
 pub(crate) const MAX_PREDICT: u32 = 700;
 /// The story of a world is the one long answer.
 pub(crate) const MAX_STORY: u32 = 4096;
+/// Requests a server started by the game answers at once, each with a
+/// context of its own: a villager's reply does not wait for a monster's
+/// tactics, and each keeps its prompt cached for the next request.
+const PARALLEL: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Engine {
@@ -387,6 +391,9 @@ impl Runtime {
             Engine::Ollama => {
                 args.push("serve".into());
                 envs.push(("OLLAMA_HOST".into(), format!("{host}:{port}")));
+                if std::env::var_os("OLLAMA_NUM_PARALLEL").is_none() {
+                    envs.push(("OLLAMA_NUM_PARALLEL".into(), PARALLEL.to_string()));
+                }
             }
             Engine::LlamaCpp => {
                 let model = &s.model;
@@ -398,8 +405,11 @@ impl Runtime {
                     host,
                     "--port".into(),
                     port.to_string(),
+                    // the context is shared by the parallel requests
                     "-c".into(),
-                    s.ctx.to_string(),
+                    (s.ctx * PARALLEL).to_string(),
+                    "-np".into(),
+                    PARALLEL.to_string(),
                     "-ngl".into(),
                     "99".into(),
                 ]);
@@ -498,11 +508,17 @@ impl Runtime {
         Err("скачивание модели прервалось".into())
     }
 
-    /// Loads the model into memory so the first answer is quick.
+    /// Loads the model into memory so the first answer is quick. Ollama
+    /// loads the model again for a request with another context size, so
+    /// the warm-up asks for the one of the game's requests.
     fn warm_up(&self) -> Result<(), String> {
         self.slow
             .post(&format!("{}/api/generate", self.settings.url))
-            .send_json(json!({ "model": self.settings.model, "keep_alive": KEEP_ALIVE }))
+            .send_json(json!({
+                "model": self.settings.model,
+                "keep_alive": KEEP_ALIVE,
+                "options": {"num_ctx": self.settings.ctx},
+            }))
             .map(|_| ())
             .map_err(http_error)
     }
@@ -528,7 +544,9 @@ impl Runtime {
         Err("модель не загрузилась вовремя".into())
     }
 
-    /// Asks the model for a JSON reply that follows the schema.
+    /// Asks the model for a JSON reply that follows the schema. The reply
+    /// streams in, and `heard` gets all of its text so far after every
+    /// piece, so the game can show words before the model has finished.
     pub(crate) fn chat(
         &self,
         agent: &ureq::Agent,
@@ -536,6 +554,7 @@ impl Runtime {
         user: &str,
         schema: &Value,
         max_tokens: u32,
+        heard: &mut dyn FnMut(&str),
     ) -> Result<Value, String> {
         let s = &self.settings;
         // Mistral's chat template has no system role of its own: the
@@ -548,7 +567,7 @@ impl Runtime {
                 json!({
                     "model": s.model,
                     "messages": messages,
-                    "stream": false,
+                    "stream": true,
                     "format": schema,
                     "keep_alive": KEEP_ALIVE,
                     "options": {"temperature": 0.7, "num_predict": n, "num_ctx": s.ctx},
@@ -561,6 +580,7 @@ impl Runtime {
                     "messages": messages,
                     "max_tokens": n,
                     "temperature": 0.7,
+                    "stream": true,
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {"name": "reply", "strict": true, "schema": schema},
@@ -568,27 +588,53 @@ impl Runtime {
                 }),
             ),
         };
-        let v: Value = agent
+        let resp = agent
             .post(&format!("{}{path}", s.url))
             .send_json(body)
-            .map_err(http_error)?
-            .into_json()
-            .map_err(|e| format!("сеть: {e}"))?;
-        let (text, cut) = match s.engine {
-            Engine::Ollama => (
-                v["message"]["content"].as_str(),
-                v["done_reason"] == "length",
-            ),
-            Engine::LlamaCpp => (
-                v["choices"][0]["message"]["content"].as_str(),
-                v["choices"][0]["finish_reason"] == "length",
-            ),
-        };
+            .map_err(http_error)?;
+        let mut text = String::new();
+        let mut cut = false;
+        // Ollama sends a JSON object per line, llama-server "data: {...}"
+        // events that end with "data: [DONE]"
+        for line in BufReader::new(resp.into_reader()).lines() {
+            let line = line.map_err(|e| format!("сеть: {e}"))?;
+            let line = match s.engine {
+                Engine::Ollama => line.as_str(),
+                Engine::LlamaCpp => match line.strip_prefix("data:") {
+                    Some(d) if d.trim() == "[DONE]" => break,
+                    Some(d) => d,
+                    None => continue,
+                },
+            };
+            let Ok(v) = serde_json::from_str::<Value>(line) else {
+                continue;
+            };
+            if let Some(e) = v["error"].as_str().or(v["error"]["message"].as_str()) {
+                return Err(format!("нейросеть: {e}"));
+            }
+            let (piece, end) = match s.engine {
+                Engine::Ollama => (
+                    &v["message"]["content"],
+                    (v["done"] == true).then(|| v["done_reason"].clone()),
+                ),
+                Engine::LlamaCpp => (
+                    &v["choices"][0]["delta"]["content"],
+                    v["choices"][0]["finish_reason"].as_str().map(|r| json!(r)),
+                ),
+            };
+            if let Some(p) = piece.as_str().filter(|p| !p.is_empty()) {
+                text += p;
+                heard(&text);
+            }
+            if let Some(reason) = end {
+                cut = reason == "length";
+                break;
+            }
+        }
         if cut {
             return Err("ответ ИИ обрезан".into());
         }
-        serde_json::from_str(text.unwrap_or_default())
-            .map_err(|e| format!("неверный JSON от ИИ: {e}"))
+        serde_json::from_str(&text).map_err(|e| format!("неверный JSON от ИИ: {e}"))
     }
 }
 
