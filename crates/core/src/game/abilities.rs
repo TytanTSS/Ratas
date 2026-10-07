@@ -44,7 +44,7 @@ impl Game {
 pub(crate) fn copyable(a: &AbilityDef) -> bool {
     !matches!(
         a.kind.as_str(),
-        "mimic" | "copied" | "echo" | "revive" | "death_sentence"
+        "mimic" | "copied" | "echo" | "revive" | "death_sentence" | "fusion"
     )
 }
 

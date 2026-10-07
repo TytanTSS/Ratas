@@ -7,13 +7,14 @@
 //! existing key replaces the built-in one, a new key is appended. This is how
 //! the skill tree and everything else can be extended without touching code.
 
+pub mod fusion;
 mod validate;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::sync::atomic::{AtomicPtr, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 pub use validate::*;
 
@@ -172,6 +173,18 @@ pub struct AbilityDef {
     pub summon: String,
     #[serde(rename = "duration_ms")]
     pub duration: i64,
+    /// kind "fusion": the abilities cast together (see fusion.rs)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<AbilityDef>,
+    /// percent chance that a cast fails: the mana and the cooldown are spent
+    #[serde(skip_serializing_if = "is_zero")]
+    pub fizzle: f64,
+    /// percent of the caster's health every cast takes
+    #[serde(skip_serializing_if = "is_zero")]
+    pub backlash: f64,
+    /// an effect laid on the caster after every cast
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drawback: Option<BuffDef>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -467,6 +480,11 @@ pub struct Db {
     uniques: HashMap<String, usize>,
     /// the bundle as JSON for network clients, made when the first one joins
     json: OnceLock<Vec<u8>>,
+    /// fused abilities made so far (fusion.rs); they are leaked like the Db
+    /// itself, a few per hero at most
+    fused: Mutex<HashMap<String, Option<&'static AbilityDef>>>,
+    /// ability → the class that teaches it
+    ability_classes: OnceLock<HashMap<String, String>>,
 }
 
 static ACTIVE: AtomicPtr<Db> = AtomicPtr::new(std::ptr::null_mut());
@@ -621,6 +639,8 @@ pub fn index(mut b: Bundle) -> Result<Db, String> {
         squads: idx(&b.squads),
         uniques: idx(&b.uniques),
         json: OnceLock::new(),
+        fused: Mutex::new(HashMap::new()),
+        ability_classes: OnceLock::new(),
         b,
     };
     let problems = d.validate();
@@ -659,8 +679,45 @@ impl Db {
     pub fn item(&self, key: &str) -> Option<&ItemDef> {
         self.items.get(key).map(|&i| &self.b.items[i])
     }
+    /// An ability of the content or a fusion of two ("fuse:<a>+<b>").
     pub fn ability(&self, key: &str) -> Option<&AbilityDef> {
-        self.abilities.get(key).map(|&i| &self.b.abilities[i])
+        match self.abilities.get(key) {
+            Some(&i) => Some(&self.b.abilities[i]),
+            None if fusion::is_fusion(key) => self.fused(key),
+            None => None,
+        }
+    }
+    fn fused(&self, key: &str) -> Option<&AbilityDef> {
+        if let Some(&made) = self.fused.lock().unwrap().get(key) {
+            return made;
+        }
+        let made: Option<&'static AbilityDef> =
+            fusion::fuse_key(self, key).map(|f| &*Box::leak(Box::new(f.def)));
+        self.fused.lock().unwrap().insert(key.to_string(), made);
+        made
+    }
+    /// The class that teaches an ability: it starts the class or a skill of
+    /// one of its branches grants it. Abilities of no class have none.
+    pub fn ability_class(&self, key: &str) -> Option<&str> {
+        self.ability_classes
+            .get_or_init(|| {
+                let mut m = HashMap::new();
+                for c in &self.b.classes {
+                    for a in &c.abilities {
+                        m.entry(a.clone()).or_insert_with(|| c.key.clone());
+                    }
+                }
+                for s in &self.b.skills {
+                    let class = self.branch(&s.branch).map_or("", |b| b.class.as_str());
+                    if !s.grants.is_empty() && !class.is_empty() {
+                        m.entry(s.grants.clone())
+                            .or_insert_with(|| class.to_string());
+                    }
+                }
+                m
+            })
+            .get(key)
+            .map(String::as_str)
     }
     pub fn skill(&self, key: &str) -> Option<&SkillDef> {
         self.skills.get(key).map(|&i| &self.b.skills[i])

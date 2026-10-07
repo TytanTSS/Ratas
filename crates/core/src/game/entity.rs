@@ -1,6 +1,7 @@
 //! Entities and their derived stats.
 
 use super::*;
+pub use crate::content::gear_need_name;
 use crate::content::{db, BuffDef, ItemDef, Stats as StatMap};
 use crate::world::Vec2;
 use std::collections::{BTreeMap, HashMap};
@@ -330,19 +331,6 @@ impl Gear {
             _ => false,
         }
     }
-}
-
-/// Describes a gear requirement for messages.
-pub fn gear_need_name(need: &str) -> String {
-    match need {
-        "weapon" => "оружие в руке",
-        "melee" => "оружие ближнего боя",
-        "shield" => "щит",
-        "twohand_dual" => "двуручное оружие или два оружия",
-        "bow" => "лук или арбалет",
-        _ => need,
-    }
-    .to_string()
 }
 
 /// Derived from attributes, equipment, skills and buffs.

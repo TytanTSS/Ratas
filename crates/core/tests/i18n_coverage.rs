@@ -228,3 +228,48 @@ fn catalog_complete() {
         texts.len()
     );
 }
+
+/// Fused abilities are made at run time from two names: their names, what
+/// they give and what they cost read in English too.
+#[test]
+fn fusion_texts_translate() {
+    use ratas_core::content::{db, fusion};
+    use ratas_core::game::buff_desc;
+    let d = db();
+    let all: Vec<_> =
+        d.b.abilities
+            .iter()
+            .filter(|a| fusion::fusable_kind(&a.kind) && d.ability_class(&a.key).is_some())
+            .collect();
+    let mut bad = Vec::new();
+    for (i, a) in all.iter().enumerate() {
+        // every ability with a few partners: all kinds of strengths and flaws
+        for b in all.iter().skip(i + 1).step_by(23) {
+            if d.ability_class(&a.key) == d.ability_class(&b.key) {
+                continue;
+            }
+            let f = fusion::fuse(d, a, b);
+            let mut texts = vec![f.def.name.clone(), f.def.desc.clone()];
+            texts.extend(f.pros.iter().cloned());
+            texts.extend(f.cons.iter().cloned());
+            for p in &f.def.parts {
+                texts.extend([&p.on_hit, &p.buff].into_iter().flatten().map(buff_desc));
+            }
+            texts.extend(f.def.drawback.iter().map(buff_desc));
+            for t in texts {
+                let en = i18n::tr_in(i18n::EN, &t);
+                if i18n::has_cyrillic(&en) {
+                    bad.push(en);
+                }
+            }
+        }
+    }
+    bad.sort();
+    bad.dedup();
+    assert!(
+        bad.is_empty(),
+        "{} untranslated: {:#?}",
+        bad.len(),
+        &bad[..bad.len().min(20)]
+    );
+}

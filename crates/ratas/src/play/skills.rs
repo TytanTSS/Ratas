@@ -347,27 +347,15 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                 c_dim(),
             );
         }
-        for (i, k) in [
-            KeyCode::Key1,
-            KeyCode::Key2,
-            KeyCode::Key3,
-            KeyCode::Key4,
-            KeyCode::Key5,
-            KeyCode::Key6,
-        ]
-        .iter()
-        .enumerate()
-        {
-            if inp.take(*k) {
-                if let Some(a) = sheet.abilities.get(p.sel) {
-                    p.cmd("hotbar", a, i as i32);
-                }
+        for cell in p.keys.pressed(inp, false, false) {
+            if let (true, Some(a)) = (cell < sheet.hotbar.len(), sheet.abilities.get(p.sel)) {
+                p.cmd("hotbar", a, cell as i32);
             }
         }
         footer(
             g,
             r,
-            "←→ / щелчок — вкладка • ↑↓ выбор • 1-6 назначить на панель • Esc",
+            "←→ / щелчок — вкладка • ↑↓ выбор • клавиша ячейки — поставить на панель • U — слияние умений • Esc",
         );
         return;
     }
@@ -548,29 +536,17 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
             false,
         );
     }
-    for (i, k) in [
-        KeyCode::Key1,
-        KeyCode::Key2,
-        KeyCode::Key3,
-        KeyCode::Key4,
-        KeyCode::Key5,
-        KeyCode::Key6,
-    ]
-    .iter()
-    .enumerate()
-    {
-        if inp.take(*k) {
-            if let Some(Row::Skill(sd)) = rows.get(p.sel) {
-                if sheet.skills.get(&sd.key).copied().unwrap_or(0) > 0 && !sd.grants.is_empty() {
-                    p.cmd("hotbar", &sd.grants, i as i32);
-                }
+    for cell in p.keys.pressed(inp, false, false) {
+        if let (true, Some(Row::Skill(sd))) = (cell < sheet.hotbar.len(), rows.get(p.sel)) {
+            if sheet.skills.get(&sd.key).copied().unwrap_or(0) > 0 && !sd.grants.is_empty() {
+                p.cmd("hotbar", &sd.grants, cell as i32);
             }
         }
     }
     footer(
         g,
         r,
-        "←→ вкладка • ↑↓ выбор • Enter / двойной щелчок — изучить, выбрать • 1-6 на панель • Esc",
+        "←→ вкладка • ↑↓ выбор • Enter / двойной щелчок — изучить, выбрать • клавиша ячейки — на панель • Esc",
     );
 }
 
@@ -800,6 +776,10 @@ fn skill_details(
 
 /// What an ability does; returns the y below it.
 pub fn ability_details(g: &Gfx, a: &AbilityDef, x: f32, y: f32, w: f32) -> f32 {
+    if !a.parts.is_empty() {
+        let y = super::fusion::details(g, a, x, y, w);
+        return paragraph(g, &a.desc, x, y + 2.0 * g.s, w, 13.0 * g.s, c_text());
+    }
     let s = g.s;
     let mut y = y;
     g.text(&a.name, x, y, 15.0 * s, col(&a.color), true);

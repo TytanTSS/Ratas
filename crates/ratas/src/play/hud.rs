@@ -64,7 +64,7 @@ pub fn draw(
     y = target_frame(p, g, w - 240.0 * s - 14.0 * s, y, 240.0 * s, s);
     party_frames(p, g, w - 240.0 * s - 14.0 * s, y, 240.0 * s, s);
     over |= hotbar(p, g, inp, w, h, s);
-    log_box(p, g, h, s);
+    log_box(p, g, s);
     banners(p, g, w, h, s);
     let _ = cfg;
     over
@@ -525,46 +525,196 @@ fn party_frames(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) {
     }
 }
 
-/// The ability bar: six slots with cooldowns, and the two potions.
+/// Where the quick-access bar lies: its ability cells fill blocks of one
+/// row each, as wide as the screen allows; a block that does not fit makes
+/// a new one above. The potions and the controls button end the bottom
+/// block.
+pub struct BarLayout {
+    cell: f32,
+    gap: f32,
+    pad: f32,
+    sep: f32,
+    gear: f32,
+    n: usize,
+    per_row: usize,
+    /// from one block to the next
+    step: f32,
+    grid_w: f32,
+    /// the left edge of the cells and the top of the bottom block's cells
+    x0: f32,
+    y0: f32,
+    /// around all the blocks
+    pub frame: Rect,
+}
+
+impl BarLayout {
+    pub fn new(n: usize, w: f32, h: f32, s: f32) -> BarLayout {
+        let (cell, gap, pad, sep, gear) = (60.0 * s, 6.0 * s, 10.0 * s, 14.0 * s, 28.0 * s);
+        // the potions and the button after the cells
+        let extra = sep + 2.0 * cell + 2.0 * gap + gear;
+        let margin = 16.0 * s + pad;
+        let fit = ((w - 2.0 * margin - extra + gap) / (cell + gap))
+            .floor()
+            .max(1.0) as usize;
+        let n = n.max(1);
+        let per_row = fit.min(n);
+        let rows = n.div_ceil(per_row);
+        let grid_w = per_row as f32 * (cell + gap) - gap;
+        let total = grid_w + extra;
+        let x0 = ((w - total) / 2.0).max(margin);
+        let y0 = h - cell - 18.0 * s;
+        let step = cell + 2.0 * pad + 6.0 * s;
+        let top = y0 - (rows - 1) as f32 * step;
+        BarLayout {
+            cell,
+            gap,
+            pad,
+            sep,
+            gear,
+            n,
+            per_row,
+            step,
+            grid_w,
+            x0,
+            y0,
+            frame: Rect::new(
+                x0 - pad,
+                top - pad,
+                total + 2.0 * pad,
+                y0 + cell - top + 2.0 * pad,
+            ),
+        }
+    }
+
+    /// The bar of the hero of a session.
+    pub fn of(p: &Session, w: f32, h: f32, s: f32) -> BarLayout {
+        let n = p.sheet.as_ref().map_or(1, |sh| sh.hotbar.len());
+        BarLayout::new(n, w, h, s)
+    }
+
+    /// Ability cell i: block by block from the bottom.
+    pub fn cell_rect(&self, i: usize) -> Rect {
+        let (row, c) = (i / self.per_row, i % self.per_row);
+        Rect::new(
+            self.x0 + c as f32 * (self.cell + self.gap),
+            self.y0 - row as f32 * self.step,
+            self.cell,
+            self.cell,
+        )
+    }
+
+    /// The frames of the blocks; the bottom one holds the potions too.
+    fn blocks(&self) -> Vec<Rect> {
+        let rows = self.n.div_ceil(self.per_row);
+        (0..rows)
+            .map(|row| {
+                let cells = (self.n - row * self.per_row).min(self.per_row);
+                let w = if row == 0 {
+                    self.frame.w - 2.0 * self.pad
+                } else {
+                    cells as f32 * (self.cell + self.gap) - self.gap
+                };
+                Rect::new(
+                    self.x0 - self.pad,
+                    self.y0 - row as f32 * self.step - self.pad,
+                    w + 2.0 * self.pad,
+                    self.cell + 2.0 * self.pad,
+                )
+            })
+            .collect()
+    }
+
+    /// Potion j (health, mana) at the end of the bottom row.
+    fn potion_rect(&self, j: usize) -> Rect {
+        let x = self.x0 + self.grid_w + self.sep + j as f32 * (self.cell + self.gap);
+        Rect::new(x, self.y0, self.cell, self.cell)
+    }
+
+    fn gear_rect(&self) -> Rect {
+        let p = self.potion_rect(1);
+        Rect::new(
+            p.x + p.w + self.gap,
+            self.y0 + (self.cell - self.gear) / 2.0,
+            self.gear,
+            self.gear,
+        )
+    }
+}
+
+/// Where the message log and the chat line go: left of the bar while there
+/// is room, above it otherwise. Returns (x, width, bottom).
+pub fn log_area(p: &Session, s: f32) -> (f32, f32, f32) {
+    let (w, h) = (screen_width(), screen_height());
+    let bar = BarLayout::of(p, w, h, s);
+    let x = 12.0 * s;
+    let room = bar.frame.x - x - 10.0 * s;
+    if room >= 300.0 * s {
+        (x, room.min(520.0 * s), h - 14.0 * s)
+    } else {
+        (x, (520.0 * s).min(w - 2.0 * x), bar.frame.y - 8.0 * s)
+    }
+}
+
+/// A key or a count in the corner of a cell, cut to fit.
+fn corner_text(g: &Gfx, text: &str, r: Rect, s: f32, top: bool, c: Color) {
+    if text.is_empty() {
+        return;
+    }
+    let mut fs = 13.0 * s;
+    while fs > 8.0 * s && g.measure(text, fs, true) > r.w - 8.0 * s {
+        fs -= 1.0 * s;
+    }
+    let tw = g.measure(text, fs, true);
+    let (x, y) = if top {
+        (r.x + 4.0 * s, r.y + 2.0 * s)
+    } else {
+        (r.x + r.w - tw - 4.0 * s, r.y + r.h - fs - 4.0 * s)
+    };
+    // a dark backing keeps the key readable over bright icons
+    round_rect(
+        x - 2.0 * s,
+        y,
+        tw + 4.0 * s,
+        fs + 3.0 * s,
+        3.0 * s,
+        Color::new(0.0, 0.0, 0.0, 0.55),
+    );
+    g.text_raw(text, x, y, fs, c, true);
+}
+
+/// The quick-access bar: the ability cells (as many as the hero chose, in
+/// rows), the two potions and the controls button.
 fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f32) -> bool {
     let Some(sheet) = p.sheet.clone() else {
         return false;
     };
     let me = p.snap.as_ref().unwrap().you.clone();
     let db = content::db();
-    let slot = 52.0 * s;
-    let gap = 6.0 * s;
-    let n = 6.0;
-    let potions = 2.0;
-    let total = (n + potions) * (slot + gap) + 14.0 * s;
-    let x0 = (w - total) / 2.0;
-    let y0 = h - slot - 18.0 * s;
-    round_rect(
-        x0 - 10.0 * s,
-        y0 - 10.0 * s,
-        total + 20.0 * s,
-        slot + 20.0 * s,
-        10.0 * s,
-        Color::new(0.04, 0.04, 0.07, 0.78),
-    );
-    round_rect_lines(
-        x0 - 10.0 * s,
-        y0 - 10.0 * s,
-        total + 20.0 * s,
-        slot + 20.0 * s,
-        10.0 * s,
-        1.0 * s,
-        with_a(c_border(), 0.8),
-    );
-    let mut over = inp.hover(Rect::new(
-        x0 - 10.0 * s,
-        y0 - 10.0 * s,
-        total + 20.0 * s,
-        slot + 20.0 * s,
-    ));
+    let l = BarLayout::new(sheet.hotbar.len(), w, h, s);
+    let mut over = false;
+    for f in l.blocks() {
+        round_rect(
+            f.x,
+            f.y,
+            f.w,
+            f.h,
+            10.0 * s,
+            Color::new(0.04, 0.04, 0.07, 0.78),
+        );
+        round_rect_lines(
+            f.x,
+            f.y,
+            f.w,
+            f.h,
+            10.0 * s,
+            1.0 * s,
+            with_a(c_border(), 0.8),
+        );
+        over |= inp.hover(f);
+    }
     let mut tip: Option<(String, Rect)> = None;
-    for i in 0..6 {
-        let r = Rect::new(x0 + i as f32 * (slot + gap), y0, slot, slot);
+    for (i, key) in sheet.hotbar.iter().enumerate() {
+        let r = l.cell_rect(i);
         round_rect(
             r.x,
             r.y,
@@ -573,56 +723,85 @@ fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f3
             6.0 * s,
             Color::from_rgba(24, 22, 34, 255),
         );
-        let key = &sheet.hotbar[i];
-        if let Some(a) = db.ability(key) {
-            let icon = g.ability_icon(key);
-            let no_mana = a.mana > me.mp;
-            let c = if no_mana {
-                Color::new(0.45, 0.45, 0.6, 1.0)
+        let keys_line = {
+            let k = p.keys.labels(i);
+            if k.is_empty() {
+                tr("Клавиша не назначена (Esc → Управление).")
             } else {
-                WHITE
-            };
-            draw_texture_ex(
-                &icon,
-                r.x + 3.0 * s,
-                r.y + 3.0 * s,
-                c,
-                DrawTextureParams {
-                    dest_size: Some(vec2(r.w - 6.0 * s, r.h - 6.0 * s)),
-                    ..Default::default()
-                },
-            );
-            let cd = me.cooldown[i];
-            if cd > 0.0 {
-                let ch = (r.h - 4.0 * s) * cd.clamp(0.0, 1.0);
-                draw_rectangle(
-                    r.x + 2.0 * s,
-                    r.y + 2.0 * s,
-                    r.w - 4.0 * s,
-                    ch,
-                    Color::new(0.0, 0.0, 0.0, 0.62),
+                format!("{} {k}", tr("Клавиши:"))
+            }
+        };
+        match db.ability(key) {
+            Some(a) => {
+                let icon = g.ability_icon(key);
+                let no_mana = a.mana > me.mp;
+                let c = if no_mana {
+                    Color::new(0.45, 0.45, 0.6, 1.0)
+                } else {
+                    WHITE
+                };
+                draw_texture_ex(
+                    &icon,
+                    r.x + 3.0 * s,
+                    r.y + 3.0 * s,
+                    c,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(r.w - 6.0 * s, r.h - 6.0 * s)),
+                        ..Default::default()
+                    },
                 );
+                let cd = me.cooldown.get(i).copied().unwrap_or(0.0);
+                if cd > 0.0 {
+                    let ch = (r.h - 4.0 * s) * cd.clamp(0.0, 1.0);
+                    draw_rectangle(
+                        r.x + 2.0 * s,
+                        r.y + 2.0 * s,
+                        r.w - 4.0 * s,
+                        ch,
+                        Color::new(0.0, 0.0, 0.0, 0.62),
+                    );
+                    let left = cd as f64 * a.cooldown_ms as f64 / 1000.0;
+                    let text = if left >= 1.0 {
+                        format!("{}", left.ceil() as i64)
+                    } else {
+                        format!("{left:.1}")
+                    };
+                    g.text_center(
+                        &text,
+                        r.x + r.w / 2.0,
+                        r.y + r.h / 2.0,
+                        20.0 * s,
+                        WHITE,
+                        true,
+                        true,
+                    );
+                }
+                if inp.hover(r) {
+                    tip = Some((format!("{}\n{keys_line}", ability_tip(p, key)), r));
+                }
+                if inp.click(r) {
+                    p.conn.send(ClientMsg::Input(Input {
+                        ability: (i + 1).min(i8::MAX as usize) as i8,
+                        aim: p.sent.aim,
+                        ..Default::default()
+                    }));
+                }
             }
-            if inp.hover(r) {
-                tip = Some((ability_tip(p, key), r));
-            }
-            if inp.click(r) {
-                p.conn.send(ClientMsg::Input(Input {
-                    ability: i as i8 + 1,
-                    aim: p.sent.aim,
-                    ..Default::default()
-                }));
+            None => {
+                if inp.hover(r) {
+                    tip = Some((
+                        format!(
+                            "{}\n{}\n{keys_line}",
+                            crate::play::keys::cell_name(i),
+                            tr("Пусто: в окне навыков (K) выберите умение и нажмите клавишу этой ячейки.")
+                        ),
+                        r,
+                    ));
+                }
             }
         }
         round_rect_lines(r.x, r.y, r.w, r.h, 6.0 * s, 1.0 * s, c_border());
-        g.text_raw(
-            &(i + 1).to_string(),
-            r.x + 4.0 * s,
-            r.y + 2.0 * s,
-            12.0 * s,
-            c_accent(),
-            true,
-        );
+        corner_text(g, &p.keys.label(i), r, s, true, c_accent());
     }
     // potions
     let (mut hp, mut mp) = (0, 0);
@@ -636,17 +815,14 @@ fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f3
             }
         }
     }
-    for (j, (label, count, color, kind)) in
-        [("Q", hp, "#e04040", "health"), ("R", mp, "#4060e0", "mana")]
-            .iter()
-            .enumerate()
+    for (j, (cell, count, color, kind)) in [
+        (super::keys::POTION_HEALTH, hp, "#e04040", "health"),
+        (super::keys::POTION_MANA, mp, "#4060e0", "mana"),
+    ]
+    .into_iter()
+    .enumerate()
     {
-        let r = Rect::new(
-            x0 + (6 + j) as f32 * (slot + gap) + 14.0 * s,
-            y0,
-            slot,
-            slot,
-        );
+        let r = l.potion_rect(j);
         round_rect(
             r.x,
             r.y,
@@ -658,7 +834,7 @@ fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f3
         if let Some(icon) = g.icon("", '!', color) {
             let k = (r.w * 0.7 / icon.width()).floor().max(1.0);
             let (iw, ih) = (icon.width() * k, icon.height() * k);
-            let c = if *count > 0 {
+            let c = if count > 0 {
                 WHITE
             } else {
                 Color::new(0.4, 0.4, 0.4, 0.8)
@@ -675,27 +851,53 @@ fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f3
             );
         }
         round_rect_lines(r.x, r.y, r.w, r.h, 6.0 * s, 1.0 * s, c_border());
-        g.text_raw(
-            label,
-            r.x + 4.0 * s,
-            r.y + 2.0 * s,
-            12.0 * s,
-            c_accent(),
-            true,
-        );
-        let cs = format!("×{count}");
-        let cw = g.measure(&cs, 12.0 * s, true);
-        g.text_raw(
-            &cs,
-            r.x + r.w - cw - 4.0 * s,
-            r.y + r.h - 16.0 * s,
-            12.0 * s,
-            WHITE,
-            true,
-        );
+        corner_text(g, &p.keys.label(cell), r, s, true, c_accent());
+        corner_text(g, &format!("×{count}"), r, s, false, WHITE);
+        if inp.hover(r) {
+            let keys = p.keys.labels(cell);
+            tip = Some((
+                format!(
+                    "{}\n{}",
+                    crate::play::keys::cell_name(cell),
+                    if keys.is_empty() {
+                        tr("Клавиша не назначена (Esc → Управление).")
+                    } else {
+                        format!("{} {keys}", tr("Клавиши:"))
+                    }
+                ),
+                r,
+            ));
+        }
         if inp.click(r) {
             p.cmd("potion", kind, 0);
         }
+    }
+    // the controls: how many cells and which keys
+    let gr = l.gear_rect();
+    let hov = inp.hover(gr);
+    round_rect(
+        gr.x,
+        gr.y,
+        gr.w,
+        gr.h,
+        5.0 * s,
+        if hov { c_hover() } else { c_panel2() },
+    );
+    round_rect_lines(gr.x, gr.y, gr.w, gr.h, 5.0 * s, 1.0 * s, c_border());
+    g.text_center(
+        "⚙",
+        gr.x + gr.w / 2.0,
+        gr.y + gr.h / 2.0,
+        gr.h * 0.7,
+        if hov { c_accent() } else { c_dim() },
+        false,
+        false,
+    );
+    if hov {
+        tip = Some((tr("Управление\nЧисло ячеек панели и их клавиши."), gr));
+    }
+    if inp.click(gr) {
+        p.open_controls(Mode::Game);
     }
     if let Some((text, r)) = tip {
         tooltip(g, &text, r.x, r.y - 6.0 * s, s);
@@ -716,6 +918,10 @@ pub fn ability_tip(p: &Session, key: &str) -> String {
         }
     }
     let mut out = vec![name];
+    if !a.parts.is_empty() {
+        out.extend(super::fusion::tip_lines(a));
+        return out.join("\n");
+    }
     out.push(tr(&format!(
         "Мана {:.0} • перезарядка {:.1}с",
         a.mana,
@@ -761,14 +967,12 @@ pub fn tooltip(g: &Gfx, text: &str, x: f32, y: f32, s: f32) {
 }
 
 /// The message log at the bottom left: recent lines, fading with age.
-fn log_box(p: &Session, g: &Gfx, h: f32, s: f32) {
-    // left of the ability bar (8 slots of 58 px and a gap, centred)
-    let bar_x0 = screen_width() / 2.0 - 246.0 * s;
-    let w = (520.0 * s).min(bar_x0 - 34.0 * s).max(220.0 * s);
+fn log_box(p: &Session, g: &Gfx, s: f32) {
+    // left of the quick-access bar, or above it when it is wide
+    let (x, w, bottom) = log_area(p, s);
     let fs = 13.0 * s;
     let lh = 17.0 * s;
-    let x = 12.0 * s;
-    let bottom = h - 14.0 * s - if p.mode == Mode::Chat { 34.0 * s } else { 0.0 };
+    let bottom = bottom - if p.mode == Mode::Chat { 34.0 * s } else { 0.0 };
     let max_lines = 9;
     let chatting = p.mode == Mode::Chat;
     let mut lines: Vec<(String, Color, f32)> = vec![];

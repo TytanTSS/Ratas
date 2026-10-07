@@ -6,7 +6,10 @@ use crate::world::{Bitset, Vec2};
 use std::collections::HashMap;
 
 pub const INVENTORY_SIZE: usize = 24;
-pub const HOTBAR_SIZE: usize = 6;
+/// Ability cells of the quick-access bar: every hero chooses how many (the
+/// client lays them out in rows and binds keys to them).
+pub const HOTBAR_DEFAULT: usize = 8;
+pub const HOTBAR_MAX: usize = 30;
 /// How long a fallen hero can be resurrected.
 pub const REVIVE_WINDOW_MS: f64 = 60000.0;
 
@@ -65,7 +68,8 @@ pub struct PlayerState {
     pub skill_points: i32,
     pub skills: BTreeMap<String, i32>,
     pub abilities: Vec<String>,
-    pub hotbar: [String; HOTBAR_SIZE],
+    /// the cells of the quick-access bar, as many as the hero chose
+    pub hotbar: Vec<String>,
     pub inventory: Vec<ItemStack>,
     pub equip: BTreeMap<String, ItemStack>,
     pub gold: i32,
@@ -169,6 +173,7 @@ impl Game {
             class: c.key.clone(),
             level: 1,
             gold: 25,
+            hotbar: vec![String::new(); HOTBAR_DEFAULT],
             classes: vec![c.key.clone()],
             attrs: c.attrs.clone(),
             ..Default::default()
@@ -223,6 +228,10 @@ impl Game {
             let p = e.pm();
             p.intent = Intent::default();
             p.talking = 0;
+            if p.hotbar.is_empty() {
+                p.hotbar = vec![String::new(); HOTBAR_DEFAULT];
+            }
+            p.hotbar.truncate(HOTBAR_MAX);
             if e.dead || e.hp <= 0.0 {
                 e.dead = false;
                 e.hp = e.max_hp * 0.5;
@@ -246,7 +255,7 @@ impl Game {
                 "#ffd24a",
                 format!("Добро пожаловать в {wn}, {name}! Время приключений."),
             );
-            self.log(id, "#a0a0a0", "WASD/стрелки — ходить (можно по диагонали), мышь — целиться, ЛКМ/пробел — атака, 1-6 — умения, E — взаимодействие, F1 — помощь.".into());
+            self.log(id, "#a0a0a0", "WASD/стрелки — ходить (можно по диагонали), мышь — целиться, ЛКМ/пробел — атака, 1-9 и 0 — умения панели (клавиши меняются: Esc → Управление), E — взаимодействие, F1 — помощь.".into());
             id
         };
         self.log_all("#80c0ff", format!("{name} входит в мир."));
@@ -782,6 +791,17 @@ impl Game {
                 format!("*** Уровень {lvl}! +3 очка характеристик, +1 очко навыков (C и K). ***"),
             );
             self.fx(&level, pos, "УРОВЕНЬ!", '\0', "#ffff4a", 1500);
+            let multi = self.ents[&id].p().classes.len() >= 2;
+            if multi && lvl > FUSION_LEVEL && lvl % FUSION_LEVEL == 0 {
+                self.log(
+                    id,
+                    "#ffd24a",
+                    format!(
+                        "Открыт новый слот слияния умений: теперь их {} (U).",
+                        max_fusions(lvl)
+                    ),
+                );
+            }
             let others: Vec<Id> = self.online.values().copied().filter(|&o| o != id).collect();
             for o in others {
                 self.log(o, "#c0c080", format!("{name} достигает {lvl} уровня."));
@@ -820,6 +840,37 @@ impl Game {
             "#80ff80",
             format!("Навык «{}» — ранг {}/{}.", sd.name, rank, sd.max_rank),
         );
+    }
+
+    /// Sets how many cells the hero's quick-access bar has. New cells take
+    /// the abilities not on the bar yet; abilities of removed cells move
+    /// to empty cells that remain, or leave the bar (they stay learned).
+    pub(crate) fn resize_hotbar(&mut self, id: Id, n: i32) {
+        let n = (n.max(1) as usize).min(HOTBAR_MAX);
+        let p = self.ents.get_mut(&id).unwrap().pm();
+        if n == p.hotbar.len() {
+            return;
+        }
+        if n < p.hotbar.len() {
+            let removed: Vec<String> = p.hotbar.split_off(n);
+            for key in removed.into_iter().filter(|k| !k.is_empty()) {
+                if let Some(h) = p.hotbar.iter_mut().find(|h| h.is_empty()) {
+                    *h = key;
+                }
+            }
+        } else {
+            let off: Vec<String> = p
+                .abilities
+                .iter()
+                .filter(|a| !p.hotbar.contains(a))
+                .cloned()
+                .collect();
+            let mut off = off.into_iter();
+            while p.hotbar.len() < n {
+                p.hotbar.push(off.next().unwrap_or_default());
+            }
+        }
+        p.dirty = true;
     }
 
     pub(crate) fn alloc_attr(&mut self, id: Id, key: &str) {
@@ -1057,11 +1108,12 @@ impl Game {
         match c.kind.as_str() {
             "alloc_attr" => self.alloc_attr(id, &c.key),
             "learn" => self.learn_skill(id, &c.key),
+            "hotbar_size" => self.resize_hotbar(id, c.index),
             "hotbar" => {
-                if c.index < 0 || c.index as usize >= HOTBAR_SIZE {
+                let p = self.ents.get_mut(&id).unwrap().pm();
+                if c.index < 0 || c.index as usize >= p.hotbar.len() {
                     return;
                 }
-                let p = self.ents.get_mut(&id).unwrap().pm();
                 if !c.key.is_empty() {
                     if !p.abilities.contains(&c.key) {
                         return;
@@ -1083,6 +1135,8 @@ impl Game {
             }
             "respawn" => self.rise(id),
             "start_class" => self.start_class(id, &c.key),
+            "fuse" => self.fuse(id, &c.key, &c.text),
+            "unfuse" => self.unfuse(id, &c.key),
             "choose_subclass" => self.choose_subclass(id, &c.key),
             "party_invite" => self.party_invite(id, &c.key),
             "party_accept" => self.party_accept(id, &c.key),
@@ -1112,10 +1166,11 @@ impl Game {
     }
 }
 
-/// Adds an ability to a hero and to the first free hotbar slot.
+/// Adds an ability to a hero and to the first free hotbar slot (unless it
+/// is already known, alone or melted into a fusion).
 pub(crate) fn unlock_ability_on(e: &mut Entity, key: &str) {
     let p = e.pm();
-    if p.abilities.iter().any(|a| a == key) {
+    if p.abilities.iter().any(|a| a == key) || fused_in(p, key) {
         return;
     }
     p.abilities.push(key.into());

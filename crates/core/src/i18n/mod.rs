@@ -176,6 +176,13 @@ mod tests {
     }
 
     #[test]
+    fn phrases_with_values() {
+        assert_eq!(tr_in(EN, "Броня -6"), "Armor -6");
+        let s = tr_in(EN, "Уязвимость (Броня -6; Сопр. всему урону % -15; 5 с)");
+        assert!(!has_cyrillic(&s), "{s}");
+    }
+
+    #[test]
     fn composite_lines() {
         let s = tr_in(EN, "Новая игра • Загрузить");
         assert_eq!(s, "New game • Load");

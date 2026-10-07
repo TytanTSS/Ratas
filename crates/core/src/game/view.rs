@@ -282,6 +282,7 @@ impl Game {
         if e.dead {
             you.respawn_in = (p.respawn_at - now).max(0.0) as i32;
         }
+        you.cooldown = vec![0.0; p.hotbar.len()];
         for (i, key) in p.hotbar.iter().enumerate() {
             if let Some(a) = db().ability(key) {
                 if a.cooldown_ms > 0 {

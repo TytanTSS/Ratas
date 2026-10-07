@@ -415,10 +415,11 @@ impl Game {
     // ---- abilities ----
 
     pub(crate) fn use_hotbar(&mut self, id: Id, slot: i32) -> bool {
-        if !(1..=HOTBAR_SIZE as i32).contains(&slot) {
+        let bar = &self.ents[&id].p().hotbar;
+        if slot < 1 || slot as usize > bar.len() {
             return true;
         }
-        let key = self.ents[&id].p().hotbar[slot as usize - 1].clone();
+        let key = bar[slot as usize - 1].clone();
         if key.is_empty() {
             self.log(
                 id,
@@ -459,11 +460,15 @@ impl Game {
             );
             return true;
         }
-        if ce.player.is_some() && !ce.stats.gear.has(&a.equip) {
+        // a fusion needs the gear of both its parts
+        let lacks = crate::content::fusion::equip_needs(a)
+            .into_iter()
+            .find(|need| !ce.stats.gear.has(need));
+        if let (true, Some(need)) = (ce.player.is_some(), lacks) {
             self.log(
                 c,
                 "#ff8080",
-                format!("Для «{}» нужно: {}.", a.name, gear_need_name(&a.equip)),
+                format!("Для «{}» нужно: {}.", a.name, gear_need_name(need)),
             );
             return true;
         }
@@ -480,7 +485,9 @@ impl Game {
         if target.is_none() {
             target = self.auto_target(c, a);
         }
-        if !cast(self, c, a, target) {
+        // an unstable ability may fizzle: the mana and the cooldown are spent
+        let fizzled = self.fizzles(c, a);
+        if !fizzled && !cast(self, c, a, target) {
             return true;
         }
         if !free {
@@ -489,8 +496,12 @@ impl Game {
                 ce.cooldowns.insert(key.into(), now + a.cooldown_ms as f64);
             }
         }
+        if fizzled {
+            return true;
+        }
+        self.pay_price(c, a);
         self.deed(c, "casts", 1);
-        if a.kind == "summon" {
+        if a.kind == "summon" || a.parts.iter().any(|p| p.kind == "summon") {
             self.deed(c, "summons", 1);
         }
         true
@@ -815,6 +826,7 @@ pub(crate) fn cast(g: &mut Game, c: Id, a: &AbilityDef, target: Option<Id>) -> b
         "echo" => g.cast_copy(c, target, 2.0),
         "revive" => abilities::cast_revive(g, c, a),
         "death_sentence" => abilities::cast_death_sentence(g, c, a),
+        "fusion" => fusion::cast_fusion(g, c, a, target),
         _ => {
             g.log(c, "#ff8080", format!("Неизвестный тип умения: {}.", a.kind));
             false

@@ -145,6 +145,13 @@ impl Game {
             ),
         );
         self.fx(&level, pos, &format!("{}!", c.name), '\0', &c.color, 1500);
+        if self.ents[&id].p().classes.len() == 2 {
+            self.log(
+                id,
+                "#ffd24a",
+                "Теперь умения разных классов можно сливать в одно — окно слияния (U).".into(),
+            );
+        }
     }
 
     pub(crate) fn choose_subclass(&mut self, id: Id, key: &str) {

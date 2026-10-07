@@ -8,7 +8,8 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 101: maps, regions and explored cells packed (see world::packed).
-pub const SAVE_VERSION: i32 = 101;
+/// 102: as many hotbar cells as the hero chooses (older saves keep six).
+pub const SAVE_VERSION: i32 = 102;
 /// The oldest save this version reads: the first one of the Rust game.
 const OLDEST_SAVE: i32 = 100;
 

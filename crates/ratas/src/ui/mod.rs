@@ -71,6 +71,8 @@ pub struct UiInput {
     pub mouse: Vec2,
     pub clicked: bool,
     pub rclicked: bool,
+    /// the middle button
+    pub mclicked: bool,
     pub down: bool,
     pub rdown: bool,
     pub wheel: f32,
@@ -95,6 +97,7 @@ impl UiInput {
         self.mouse = vec2(mx, my);
         self.clicked = is_mouse_button_pressed(MouseButton::Left);
         self.rclicked = is_mouse_button_pressed(MouseButton::Right);
+        self.mclicked = is_mouse_button_pressed(MouseButton::Middle);
         self.down = is_mouse_button_down(MouseButton::Left);
         self.rdown = is_mouse_button_down(MouseButton::Right);
         self.wheel = mouse_wheel().1;
