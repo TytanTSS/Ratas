@@ -2,6 +2,7 @@
 
 use crate::llm::Provider;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -34,6 +35,12 @@ pub struct Config {
     /// window scale of the interface (1.0 = default)
     pub ui_scale: f32,
     pub fullscreen: bool,
+    /// keys of the quick-access cells ("slot1".."slot10", "potion_health",
+    /// "potion_mana") → up to two bindings ("1", "Q", "Num 1", "MouseRight");
+    /// a cell missing here keeps its default keys (see the client's
+    /// controls.rs)
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub hotkeys: BTreeMap<String, Vec<String>>,
     /// set by the --admin flag for this run only: the host gets the testing
     /// commands (see game/admin.rs)
     #[serde(skip)]
@@ -61,6 +68,7 @@ impl Default for Config {
             language: String::new(),
             ui_scale: 1.0,
             fullscreen: false,
+            hotkeys: BTreeMap::new(),
             admin: false,
         }
     }

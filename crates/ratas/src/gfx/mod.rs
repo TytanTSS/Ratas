@@ -270,7 +270,15 @@ impl Gfx {
         let d = content::db().ability(key);
         let c = d.map_or(art::rgb(160, 160, 160), |a| art::hex(&a.color));
         let kind = d.map_or("", |a| a.kind.as_str());
-        let p = paint_ability(c, kind, key);
+        let p = match d.map(|a| a.parts.as_slice()) {
+            // a fusion: the runes of both parts split by a golden seam
+            Some([x, y, ..]) => paint_fusion(
+                &paint_ability(art::hex(&x.color), &x.kind, &x.key),
+                &paint_ability(art::hex(&y.color), &y.kind, &y.key),
+                key,
+            ),
+            _ => paint_ability(c, kind, key),
+        };
         let t = texture(&p);
         self.ability_icons.insert(key.to_string(), t.clone());
         t
@@ -516,6 +524,25 @@ fn paint_ability(c: Rgba, kind: &str, key: &str) -> Pc {
             p.thick(3.5, 10.0, 16.5, 10.0, 1.0, fg);
             p.ball(10.0, 10.0, 2.8, fg, 0.0);
             p.set(9, 9, WHITE);
+        }
+    }
+    p
+}
+
+/// The rune of a fused ability: the upper left of one part's rune, the
+/// lower right of the other's, a golden seam between them.
+fn paint_fusion(a: &Pc, b: &Pc, key: &str) -> Pc {
+    let mut p = Pc::new(a.w, a.h, key);
+    let n = a.w + a.h - 2;
+    for y in 0..a.h {
+        for x in 0..a.w {
+            let d = x + y - n / 2;
+            let c = if d < 0 { a.get(x, y) } else { b.get(x, y) };
+            if !c.visible() {
+                continue;
+            }
+            let seam = d == 0 || d == -1;
+            p.set(x, y, if seam { art::models::C_GOLD } else { c });
         }
     }
     p

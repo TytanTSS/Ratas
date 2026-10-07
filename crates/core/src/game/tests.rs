@@ -591,6 +591,141 @@ fn summons_and_decoys() {
 }
 
 #[test]
+fn hotbar_size() {
+    // saves of six-cell bars keep their six cells
+    let old: PlayerState =
+        serde_json::from_str(r#"{"hotbar": ["a", "b", "", "", "", "f"], "level": 3}"#).unwrap();
+    assert_eq!(old.hotbar.len(), 6);
+    let mut g = setup();
+    let p = g.join_for_test("Тест", "priest");
+    assert_eq!(g.ents[&p].p().hotbar.len(), HOTBAR_DEFAULT);
+    for a in ["heal", "blessing", "divine_shield"] {
+        g.unlock_ability(p, a);
+    }
+    // a small bar: the abilities of removed cells move to empty ones
+    g.command(p, &cmd("hotbar_size", "", 3));
+    let bar = g.ents[&p].p().hotbar.clone();
+    assert_eq!(bar.len(), 3);
+    assert!(bar.iter().all(|h| !h.is_empty()), "{bar:?}");
+    // a big bar: new cells take the abilities that were left off
+    g.command(p, &cmd("hotbar_size", "", 12));
+    let pl = g.ents[&p].p();
+    assert_eq!(pl.hotbar.len(), 12);
+    for a in &pl.abilities {
+        assert!(pl.hotbar.contains(a), "{a} is not on the bar");
+    }
+    g.command(p, &cmd("hotbar", "heal", 11));
+    assert_eq!(g.ents[&p].p().hotbar[11], "heal");
+    g.command(p, &cmd("hotbar_size", "", 1000));
+    assert_eq!(g.ents[&p].p().hotbar.len(), HOTBAR_MAX);
+    g.command(p, &cmd("hotbar_size", "", 0));
+    assert_eq!(g.ents[&p].p().hotbar.len(), 1);
+    // the snapshot has a cooldown for every cell
+    g.command(p, &cmd("hotbar_size", "", 9));
+    assert_eq!(g.snapshot(p).you.cooldown.len(), 9);
+}
+
+#[test]
+fn ability_fusion() {
+    use crate::content::fusion::fusion_key;
+    let mut g = setup();
+    let p = g.join_for_test("Тест", "mage");
+    let pl = g.ents[&p].p();
+    assert!(can_fuse(pl, "magic_missile", "power_strike").contains("уровня"));
+    g.give_xp(p, 2000);
+    g.ents.get_mut(&p).unwrap().pm().level = 5;
+    g.start_class(p, "warrior");
+    g.unlock_ability(p, "fireball");
+    let pl = g.ents[&p].p();
+    assert!(pl.abilities.contains(&"power_strike".to_string()));
+    assert!(can_fuse(pl, "magic_missile", "fireball").contains("разных классов"));
+    assert!(!can_fuse(pl, "magic_missile", "magic_missile").is_empty());
+    assert!(
+        !can_fuse(pl, "magic_missile", "cleave").is_empty(),
+        "not learned"
+    );
+    assert_eq!(can_fuse(pl, "magic_missile", "power_strike"), "");
+    let slot = pl.hotbar.iter().position(|h| h == "magic_missile").unwrap();
+
+    g.command(p, &Command::text("fuse", "power_strike"));
+    assert_eq!(g.ents[&p].p().abilities.len(), 3, "no key: nothing fused");
+    let mut c = cmd("fuse", "magic_missile", 0);
+    c.text = "power_strike".into();
+    g.command(p, &c);
+    let key = fusion_key("magic_missile", "power_strike");
+    let pl = g.ents[&p].p();
+    assert!(pl.abilities.contains(&key), "{:?}", pl.abilities);
+    assert!(!pl
+        .abilities
+        .iter()
+        .any(|k| k == "magic_missile" || k == "power_strike"));
+    assert_eq!(pl.hotbar[slot], key);
+    assert!(!pl.hotbar.iter().any(|h| h == "power_strike"));
+    // a slot for every five levels: the second fusion waits for level 10
+    assert!(can_fuse(pl, "fireball", "power_strike").contains("слоты"));
+    // learning a fused ability again does not split it
+    g.unlock_ability(p, "magic_missile");
+    assert!(!g.ents[&p]
+        .p()
+        .abilities
+        .contains(&"magic_missile".to_string()));
+
+    let def = db().ability(&key).expect("the fusion resolves").clone();
+    let (mm, ps) = (
+        db().ability("magic_missile").unwrap(),
+        db().ability("power_strike").unwrap(),
+    );
+    assert_eq!(def.kind, "fusion");
+    assert_eq!(def.parts.len(), 2);
+    assert!(def.mana >= mm.mana + ps.mana + 4.0);
+    assert!(def.cooldown_ms >= mm.cooldown_ms.max(ps.cooldown_ms));
+    // the strike borrows the missile's element
+    assert_eq!(def.parts[1].dmg_type, "arcane");
+
+    wild(&mut g, p);
+    let wolf = spawn_at(&mut g, "wolf", p, Vec2::new(1.1, 0.0));
+    g.ents.get_mut(&wolf).unwrap().max_hp = 5000.0;
+    g.ents.get_mut(&wolf).unwrap().hp = 5000.0;
+    let mut hurt = false;
+    for _ in 0..6 {
+        let e = g.ents.get_mut(&p).unwrap();
+        e.cooldowns.clear();
+        e.mp = 100.0;
+        e.hp = e.max_hp;
+        g.use_ability(p, &key, Some(wolf));
+        let e = &g.ents[&p];
+        assert!(
+            (e.mp - (100.0 - def.mana)).abs() < 0.01,
+            "the fusion costs its mana"
+        );
+        if def.backlash > 0.0 {
+            assert!(e.hp < e.max_hp, "no backlash");
+        }
+        if let Some(b) = &def.drawback {
+            assert!(e.buffs.iter().any(|x| x.def.key == b.key), "no weakness");
+        }
+        run(&mut g, 20);
+        hurt |= g.ents[&wolf].hp < 5000.0;
+    }
+    assert!(hurt, "the fused ability never hit");
+    assert!(g.ents[&p].cooldowns[&key] > g.now);
+
+    let left = g.ents[&p].cooldowns[&key];
+    g.command(p, &cmd("unfuse", &key, 0));
+    let e = &g.ents[&p];
+    let pl = e.p();
+    assert!(!pl.abilities.contains(&key));
+    assert!(pl.abilities.contains(&"magic_missile".to_string()));
+    assert!(pl.abilities.contains(&"power_strike".to_string()));
+    assert_eq!(pl.hotbar[slot], "magic_missile");
+    assert!(pl.hotbar.contains(&"power_strike".to_string()));
+    assert!(
+        e.cooldowns["power_strike"] >= left,
+        "splitting skips the cooldown"
+    );
+}
+
+#[test]
 fn archer_keeps_distance_and_healer_heals() {
     let mut g = setup();
     let p = g.join_for_test("Тест", "warrior");

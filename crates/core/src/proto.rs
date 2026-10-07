@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
-pub const VERSION: i32 = 102;
+pub const VERSION: i32 = 103;
 
 // ---- client -> server ----
 
@@ -31,7 +31,7 @@ pub struct Input {
     pub aim: Option<[f32; 2]>,
     pub attack: bool,
     pub interact: bool,
-    /// hotbar slot 1..6, 0 = none
+    /// hotbar cell from 1, 0 = none
     pub ability: i8,
 }
 
@@ -274,8 +274,8 @@ pub struct SelfView {
     pub xp_next: i32,
     pub level: i32,
     pub gold: i32,
-    /// remaining fraction per hotbar slot
-    pub cooldown: [f32; 6],
+    /// remaining fraction per hotbar cell
+    pub cooldown: Vec<f32>,
     pub buffs: Vec<BuffView>,
     pub dead: bool,
     pub respawn_in: i32,
@@ -343,7 +343,7 @@ pub struct PlayerSheet {
     pub stats: BTreeMap<String, f64>,
     pub skills: BTreeMap<String, i32>,
     pub abilities: Vec<String>,
-    pub hotbar: [String; 6],
+    pub hotbar: Vec<String>,
     pub inventory: Vec<ItemView>,
     pub equip: BTreeMap<String, ItemView>,
     pub quests: Vec<QuestView>,

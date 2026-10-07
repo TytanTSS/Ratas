@@ -151,7 +151,9 @@ impl Game {
                 }
             }
             p.abilities.clear();
-            p.hotbar = Default::default();
+            for h in p.hotbar.iter_mut() {
+                h.clear();
+            }
             for a in &c.abilities {
                 player::unlock_ability_on(e, a);
             }

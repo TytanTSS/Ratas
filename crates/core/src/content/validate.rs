@@ -55,6 +55,19 @@ pub const RARITIES: &[&str] = &["common", "uncommon", "rare", "epic", "legendary
 /// Gear requirements of skills and abilities.
 pub const EQUIP_NEEDS: &[&str] = &["", "weapon", "melee", "shield", "twohand_dual", "bow"];
 
+/// Describes a gear requirement for messages.
+pub fn gear_need_name(need: &str) -> String {
+    match need {
+        "weapon" => "оружие в руке",
+        "melee" => "оружие ближнего боя",
+        "shield" => "щит",
+        "twohand_dual" => "двуручное оружие или два оружия",
+        "bow" => "лук или арбалет",
+        _ => need,
+    }
+    .to_string()
+}
+
 pub const WEAPON_TYPES: &[&str] = &[
     "sword", "axe", "mace", "hammer", "dagger", "spear", "staff", "wand", "bow", "crossbow",
     "scythe",
@@ -196,26 +209,43 @@ impl Db {
                 ));
             }
         }
-        for a in &b.abilities {
-            dmg(&mut p, &format!("ability {}", a.key), &a.dmg_type);
-            buff(&mut p, &format!("ability {}", a.key), &a.buff);
-            buff(&mut p, &format!("ability {}", a.key), &a.on_hit);
-            if !EQUIP_NEEDS.contains(&a.equip.as_str()) {
-                p.push(format!("ability {:?}: unknown equip {:?}", a.key, a.equip));
-            }
-            for t in &a.split {
-                dmg(&mut p, &format!("ability {}", a.key), t);
-            }
-            for w in a.fx.split_whitespace() {
-                if !FX_ELEMENTS.contains(&w) && !FX_SHAPES.contains(&w) {
-                    p.push(format!("ability {:?}: unknown fx {:?}", a.key, w));
-                }
-            }
-            if !a.summon.is_empty() && !self.monsters.contains_key(&a.summon) {
+        for top in &b.abilities {
+            if top.key.contains('+') || fusion::is_fusion(&top.key) {
                 p.push(format!(
-                    "ability {:?}: unknown summon {:?}",
-                    a.key, a.summon
+                    "ability {:?}: '+' and {:?} are kept for fused abilities",
+                    top.key,
+                    fusion::FUSION_PREFIX
                 ));
+            }
+            if top.kind == fusion::FUSION_KIND && top.parts.len() < 2 {
+                p.push(format!("ability {:?}: a fusion needs two parts", top.key));
+            }
+            buff(&mut p, &format!("ability {}", top.key), &top.drawback);
+            // a fusion written in content: its parts are checked like abilities
+            for a in std::iter::once(top).chain(&top.parts) {
+                if a.key != top.key && a.kind == fusion::FUSION_KIND {
+                    p.push(format!("ability {:?}: a part is a fusion itself", top.key));
+                }
+                dmg(&mut p, &format!("ability {}", a.key), &a.dmg_type);
+                buff(&mut p, &format!("ability {}", a.key), &a.buff);
+                buff(&mut p, &format!("ability {}", a.key), &a.on_hit);
+                if !EQUIP_NEEDS.contains(&a.equip.as_str()) {
+                    p.push(format!("ability {:?}: unknown equip {:?}", a.key, a.equip));
+                }
+                for t in &a.split {
+                    dmg(&mut p, &format!("ability {}", a.key), t);
+                }
+                for w in a.fx.split_whitespace() {
+                    if !FX_ELEMENTS.contains(&w) && !FX_SHAPES.contains(&w) {
+                        p.push(format!("ability {:?}: unknown fx {:?}", a.key, w));
+                    }
+                }
+                if !a.summon.is_empty() && !self.monsters.contains_key(&a.summon) {
+                    p.push(format!(
+                        "ability {:?}: unknown summon {:?}",
+                        a.key, a.summon
+                    ));
+                }
             }
         }
         for n in &b.npcs {

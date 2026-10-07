@@ -2,7 +2,10 @@
 //! network), what the client knows of the world, the controls, and the
 //! interface drawn over the world.
 
+mod controls;
+mod fusion;
 mod hud;
+mod keys;
 mod skills;
 mod talk;
 mod windows;
@@ -29,6 +32,8 @@ pub enum Mode {
     Game,
     Inventory,
     Skills,
+    /// melting two abilities of different classes into one
+    Fusion,
     Char,
     Journal,
     Map,
@@ -42,6 +47,8 @@ pub enum Mode {
     Admin,
     /// the world's own story
     Lore,
+    /// the cells of the quick-access bar and their keys
+    Controls,
 }
 
 pub struct LogLine {
@@ -71,6 +78,11 @@ pub struct Session {
     tab: usize,
     trade_col: usize,
     scroll: usize,
+    /// the abilities picked in the fusion window (two at most)
+    fuse_pick: Vec<String>,
+    /// the keys of the quick-access cells (from the config, every frame)
+    keys: keys::Keys,
+    controls: controls::ControlsUi,
     chat: TextInput,
     talk: TextInput,
     paused: bool,
@@ -123,6 +135,9 @@ impl Session {
             tab: 0,
             trade_col: 0,
             scroll: 0,
+            fuse_pick: Vec::new(),
+            keys: keys::Keys::default(),
+            controls: controls::ControlsUi::default(),
             chat: TextInput::new(160),
             talk: TextInput::new(300),
             paused: false,
@@ -211,10 +226,26 @@ impl Session {
                     continue;
                 }
                 self.debug_done.push(i);
-                match c {
+                match c.split_whitespace().collect::<Vec<_>>().as_slice() {
                     // "!e" interacts with what is near (after the commands)
-                    "!e" => self.debug_interact = true,
-                    c => {
+                    ["!e"] => self.debug_interact = true,
+                    // "!pick a b" picks abilities in the fusion window,
+                    // "!fuse a b" fuses them, "!sel N" moves the cursor
+                    ["!sel", n] => self.sel = n.parse().unwrap_or(0),
+                    // "!cells N": N cells on the quick-access bar
+                    ["!cells", n] => self.cmd("hotbar_size", "", n.parse().unwrap_or(8)),
+                    ["!pick", keys @ ..] => {
+                        self.fuse_pick = keys.iter().take(2).map(|k| k.to_string()).collect()
+                    }
+                    ["!fuse", a, b] => {
+                        self.conn.cmd(Command {
+                            kind: "fuse".into(),
+                            key: a.to_string(),
+                            text: b.to_string(),
+                            index: 0,
+                        });
+                    }
+                    _ => {
                         self.cmd_text("admin", c);
                     }
                 }
@@ -234,6 +265,7 @@ impl Session {
             self.mode = match window {
                 "inventory" => Mode::Inventory,
                 "skills" => Mode::Skills,
+                "fusion" => Mode::Fusion,
                 "char" => Mode::Char,
                 "journal" => Mode::Journal,
                 "map" => Mode::Map,
@@ -257,6 +289,7 @@ impl Session {
                 "admin" => Mode::Admin,
                 "lore" => Mode::Lore,
                 "chat" => Mode::Chat,
+                "controls" => Mode::Controls,
                 _ => Mode::Game,
             };
         }
@@ -463,7 +496,8 @@ impl Session {
 
     /// Real-time controls of the hero: walking in eight directions with
     /// WASD or the arrows, attacking with the left button or Space toward
-    /// the mouse, abilities 1-6 (right button = ability 1), E to interact.
+    /// the mouse, the quick-access cells by their keys (keys.rs), E to
+    /// interact.
     fn game_keys(&mut self, inp: &mut UiInput, over_ui: bool) {
         let dead = self.snap.as_ref().is_some_and(|s| s.you.dead);
         if dead && (inp.take(KeyCode::Enter) || inp.take(KeyCode::E)) {
@@ -500,29 +534,14 @@ impl Session {
             if inp.take(KeyCode::E) || inp.take(KeyCode::F) {
                 want.interact = true;
             }
-            for (i, key) in [
-                KeyCode::Key1,
-                KeyCode::Key2,
-                KeyCode::Key3,
-                KeyCode::Key4,
-                KeyCode::Key5,
-                KeyCode::Key6,
-            ]
-            .iter()
-            .enumerate()
-            {
-                if inp.take(*key) {
-                    want.ability = i as i8 + 1;
+            let bar = self.sheet.as_ref().map_or(0, |sh| sh.hotbar.len());
+            for cell in self.keys.pressed(inp, !over_ui, true) {
+                match cell {
+                    keys::POTION_HEALTH => self.cmd("potion", "health", 0),
+                    keys::POTION_MANA => self.cmd("potion", "mana", 0),
+                    c if c < bar => want.ability = c as i8 + 1,
+                    _ => {}
                 }
-            }
-            if inp.rclicked && !over_ui && !inp.used {
-                want.ability = 1;
-            }
-            if inp.take(KeyCode::Q) {
-                self.cmd("potion", "health", 0);
-            }
-            if inp.take(KeyCode::R) {
-                self.cmd("potion", "mana", 0);
             }
         }
         // the server forgets held input after a while: repeat it while held
@@ -547,6 +566,10 @@ impl Session {
 
     /// Keys that open windows and other global keys.
     fn hotkeys(&mut self, inp: &mut UiInput) {
+        // a binding waiting for a key gets every key
+        if self.mode == Mode::Controls && self.controls.capture {
+            return;
+        }
         if inp.take(KeyCode::F5) {
             self.quick_save();
         }
@@ -589,6 +612,9 @@ impl Session {
                     self.mode = Mode::Dialogue;
                 }
                 Mode::Class => self.quit = true,
+                Mode::Controls => self.close_controls(),
+                // a window opened from the pause menu goes back to it
+                _ if self.paused => self.mode = Mode::Pause,
                 _ => self.mode = Mode::Game,
             }
             return;
@@ -602,6 +628,7 @@ impl Session {
         let pairs = [
             (KeyCode::I, Mode::Inventory),
             (KeyCode::K, Mode::Skills),
+            (KeyCode::U, Mode::Fusion),
             (KeyCode::C, Mode::Char),
             (KeyCode::J, Mode::Journal),
             (KeyCode::G, Mode::Party),
@@ -652,6 +679,7 @@ impl Session {
     /// Runs one frame; returns Some(message) when the session ends.
     pub fn frame(&mut self, g: &mut Gfx, inp: &mut UiInput, cfg: &mut Config) -> Option<String> {
         self.t += inp.dt;
+        self.keys = keys::Keys::load(cfg);
         self.receive();
         if self.quit {
             return Some(std::mem::take(&mut self.kick));
@@ -721,6 +749,8 @@ impl Session {
         match self.mode {
             Mode::Inventory => windows::inventory(self, g, inp),
             Mode::Skills => skills::window(self, g, inp),
+            Mode::Fusion => fusion::window(self, g, inp),
+            Mode::Controls => controls::window(self, g, inp, cfg),
             Mode::Char => windows::character(self, g, inp),
             Mode::Journal => windows::journal(self, g, inp),
             Mode::Map => windows::world_map(self, g, inp),

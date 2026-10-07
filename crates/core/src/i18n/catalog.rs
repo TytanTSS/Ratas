@@ -175,6 +175,9 @@ impl Catalog {
             }
         }
         if depth < 10 {
+            if let Some(v) = self.value_tail(body, depth) {
+                return format!("{lead}{v}{trail}");
+            }
             if let Some(v) = self.segment(body, depth) {
                 return format!("{lead}{v}{trail}");
             }
@@ -182,10 +185,67 @@ impl Catalog {
         format!("{lead}{}{trail}", self.fallback(body))
     }
 
+    /// A known phrase followed by a value ("Броня -6", "Сопр. огню % +25"):
+    /// the phrase is translated, the value kept.
+    fn value_tail(&self, s: &str, depth: usize) -> Option<String> {
+        let is_val = |c: char| c.is_ascii_digit() || " +-.,%×".contains(c);
+        let valued = |t: &str| t.chars().any(|c| c.is_ascii_digit() || c == '%');
+        let len: usize = s
+            .chars()
+            .rev()
+            .take_while(|&c| is_val(c))
+            .map(char::len_utf8)
+            .sum();
+        let start = s.len() - len;
+        if !valued(&s[start..]) {
+            return None;
+        }
+        // the longest phrase first: "Скорость бега %" before "Скорость бега"
+        let spaces: Vec<usize> = s[start..].match_indices(' ').map(|(i, _)| i).collect();
+        for i in spaces.into_iter().rev() {
+            let (head, value) = s.split_at(start + i);
+            if !has_cyrillic(head) || !valued(value) {
+                continue;
+            }
+            if let Some(h) = self.known(head, depth + 1) {
+                return Some(format!("{h}{value}"));
+            }
+        }
+        None
+    }
+
+    /// A translation found in the catalog (not guessed by transliteration).
+    fn known(&self, s: &str, depth: usize) -> Option<String> {
+        if let Some(v) = self.lookup(s) {
+            return Some(v);
+        }
+        let (pl, core, pt) = split_core(s);
+        if core != s && !core.is_empty() {
+            if let Some(v) = self.lookup(core) {
+                return Some(format!("{pl}{v}{pt}"));
+            }
+        }
+        if let Some(v) = self.match_template(s, depth) {
+            return Some(v);
+        }
+        if depth < 10 {
+            return self.value_tail(s, depth);
+        }
+        None
+    }
+
     fn segment(&self, s: &str, depth: usize) -> Option<String> {
         // sentences
+        // a dot before a small letter ends an abbreviation, not a sentence
+        // ("Сопр. всему урону", "Урон ближн. %")
         let locs: Vec<(usize, usize)> = sentence_end()
             .find_iter(s)
+            .filter(|m| {
+                s[m.end()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|c| !c.is_lowercase() && !"%+-×".contains(c))
+            })
             .map(|m| (m.start(), m.end()))
             .collect();
         if !locs.is_empty() {
@@ -338,6 +398,8 @@ fn sentence_end() -> &'static Regex {
 // separators that split composite lines, the strongest first
 const SEPARATORS: &[&str] = &[
     "\n", " • ", " — ", " – ", " | ", "; ", ", ", ": ", " / ", " («", "» ", "«", "»", " (", ")",
+    // fused abilities and their effects: "Огненный шар + Святой удар"
+    " + ",
 ];
 
 fn is_name(s: &str) -> bool {
