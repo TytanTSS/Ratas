@@ -296,7 +296,9 @@ impl Game {
         // a champion has a bodyguard
         let biome = self.levels["overworld"].def_at(spot).biome.clone();
         let mut rng = std::mem::replace(&mut self.rng, Rng::new(0, 0));
-        if let Some(minion) = pick_monster(&mut rng, &biome, 0, false, false) {
+        // no creatures for a party among them in the lands of newcomers
+        let land = self.overworld_level_at(spot, false).min(lvl);
+        if let Some(minion) = pick_monster(&mut rng, &biome, 0, false, false, land) {
             self.spawn_group(&mut rng, minion, "overworld", spot, lvl);
         }
         self.rng = rng;

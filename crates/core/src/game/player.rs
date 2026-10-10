@@ -136,6 +136,14 @@ pub struct PlayerState {
     pub deed_check: bool,
     #[serde(skip)]
     pub region: usize,
+    /// the belt of danger of the land the hero was last on (tier + 1;
+    /// 0 = not known yet)
+    #[serde(skip)]
+    pub zone: usize,
+    /// a belt the hero has just stepped into and since when: it counts
+    /// when the hero stays (walking along a border says nothing)
+    #[serde(skip)]
+    pub zone_next: (usize, f64),
     #[serde(skip)]
     pub last_hint: String,
     #[serde(skip)]
@@ -457,10 +465,13 @@ impl Game {
         let l = &self.levels[&e.level];
         let hint = match l.def_at(e.cell()).interact.as_str() {
             "dungeon" => match self.entrance_at(e.cell()) {
-                Some(i) => format!(
-                    "Вход: {}. Нажмите E, чтобы спуститься.",
-                    self.entrances[i].name
-                ),
+                Some(i) => {
+                    let [lo, hi] = self.dungeon_levels(i);
+                    format!(
+                        "Вход: {} (ур. {lo}–{hi}). Нажмите E, чтобы спуститься.",
+                        self.entrances[i].name
+                    )
+                }
                 None => String::new(),
             },
             "stairs_down" => "Лестница вниз. Нажмите E.".into(),
@@ -595,6 +606,17 @@ impl Game {
                 if self.ensure_level(&lid) {
                     let up = self.levels[&lid].up;
                     self.change_level(id, &lid, up);
+                    let tier = &gen::TIERS[gen::tier_of(self.dungeon_levels(idx)[1])];
+                    if tier.party > 1 {
+                        self.log(
+                            id,
+                            tier.color,
+                            format!(
+                                "Это твердыня: её стражи и владыка по силам лишь группе из {}+ героев.",
+                                tier.party
+                            ),
+                        );
+                    }
                 }
             }
             "stairs_down" => {

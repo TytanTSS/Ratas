@@ -76,6 +76,26 @@ const FACT_UNIQUES: usize = 3;
 const FACT_LANDS: usize = 3;
 const FACT_NEWS: usize = 5;
 
+impl Game {
+    /// The n nearest lands more dangerous than the place at, people warn
+    /// about (from the wild lands on).
+    fn fearsome_lands(&self, at: Pos, n: usize) -> Vec<&Region> {
+        let here = self.zone_tier_at(at);
+        let mut rs: Vec<&Region> = self
+            .regions
+            .iter()
+            .filter(|r| r.at.dist(at) <= NEAR_LANDS)
+            .filter(|r| {
+                let t = self.zone_tier_at(r.at);
+                t >= 2 && t > here
+            })
+            .collect();
+        rs.sort_by_key(|r| r.at.dist_sq(at));
+        rs.truncate(n);
+        rs
+    }
+}
+
 fn theme_word(theme: &str) -> &'static str {
     match theme {
         "cave" => "пещера",
@@ -415,8 +435,7 @@ impl Game {
                 .map(String::from),
             );
         }
-        let r = self.region_index(ne.cell());
-        if r != 0 && self.regions[r - 1].danger >= 2 {
+        if self.zone_tier_at(ne.cell()) >= gen::PARTY_TIER {
             lines.push("Места у нас гиблые. Каждый день как последний.".into());
         }
         if let Some(role) = db().npc_role(&ne.npc.as_ref().unwrap().role) {
@@ -471,13 +490,11 @@ impl Game {
                 ));
             }
         }
-        for r in &self.regions {
-            if r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS {
-                lines.push(format!(
-                    "Держись подальше от земель «{}». Оттуда мало кто возвращается.",
-                    r.name
-                ));
-            }
+        for r in self.fearsome_lands(at, 2) {
+            lines.push(format!(
+                "Держись подальше от земель «{}». Оттуда мало кто возвращается.",
+                r.name
+            ));
         }
         for m in &db().b.monsters {
             if m.boss {
@@ -728,16 +745,12 @@ impl Game {
                 round_steps(d)
             ));
         }
-        let mut rs: Vec<&Region> = self
-            .regions
-            .iter()
-            .filter(|r| r.danger >= 2 && r.at.dist(at) <= NEAR_LANDS)
-            .collect();
-        rs.sort_by_key(|r| r.at.dist_sq(at));
-        for r in rs.into_iter().take(FACT_LANDS) {
+        for r in self.fearsome_lands(at, FACT_LANDS) {
             facts.push(format!(
-                "The lands called {} ({}) are deadly.",
-                r.name, r.kind
+                "The lands called {} ({}) are deadly: {}.",
+                r.name,
+                r.kind,
+                self.zone_brief(r.at)
             ));
         }
         let lords: Vec<String> = db()
@@ -805,10 +818,11 @@ impl Game {
             lang: pl.lang.clone(),
             ..Default::default()
         };
-        let r = self.region_index(self.ents[&npc].cell());
+        let cell = self.ents[&npc].cell();
+        let r = self.region_index(cell);
         if r != 0 {
             let reg = &self.regions[r - 1];
-            req.region = format!("{} ({}, danger {} of 3)", reg.name, reg.kind, reg.danger);
+            req.region = format!("{} ({}), {}", reg.name, reg.kind, self.zone_brief(cell));
         }
         if let Some(role) = role {
             req.role = role.name.clone();

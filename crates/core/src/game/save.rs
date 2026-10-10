@@ -9,7 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 101: maps, regions and explored cells packed (see world::packed).
 /// 102: as many hotbar cells as the hero chooses (older saves keep six).
-pub const SAVE_VERSION: i32 = 102;
+/// 103: the belts of danger (older saves work them out from the map).
+pub const SAVE_VERSION: i32 = 103;
 /// The oldest save this version reads: the first one of the Rust game.
 const OLDEST_SAVE: i32 = 100;
 
@@ -29,6 +30,8 @@ pub struct SaveData {
     #[serde(with = "crate::world::packed")]
     pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
+    /// where the belts of danger end (see gen::ZoneMap)
+    pub zone_knots: Vec<f64>,
     pub no_pvp: bool,
     pub champions: HashMap<String, Id>,
     pub chronicle: Vec<String>,
@@ -82,6 +85,7 @@ impl Game {
             regions: self.regions.clone(),
             region_map: self.region_map.clone(),
             landmarks: self.landmarks.clone(),
+            zone_knots: self.zones.knots.clone(),
             no_pvp: !self.pvp,
             champions: self.champions.clone(),
             chronicle: self.chronicle.clone(),
@@ -187,6 +191,7 @@ impl Game {
             g.offline.insert(account, e);
         }
         g.next_id = g.next_id.max(sd.next_id);
+        g.zones = gen::ZoneMap::with_knots(g.seed, &g.levels["overworld"], g.start, &sd.zone_knots);
         g.anchor_regions();
         g.index_villages();
         g.index_levels();

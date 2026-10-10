@@ -11,6 +11,8 @@ pub type Id = u32;
 /// The radius of a creature's body in tiles; bosses are bigger.
 pub const BODY_RADIUS: f32 = 0.32;
 pub const BOSS_RADIUS: f32 = 0.45;
+/// creatures for a party are big
+pub const BIG_RADIUS: f32 = 0.41;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Kind {
@@ -156,18 +158,11 @@ impl Entity {
         match self.kind {
             Kind::Item => 0.2,
             Kind::Projectile => 0.12,
-            _ => {
-                let boss = self
-                    .monster
-                    .as_ref()
-                    .and_then(|m| db().monster(&m.def))
-                    .is_some_and(|d| d.boss);
-                if boss {
-                    BOSS_RADIUS
-                } else {
-                    BODY_RADIUS
-                }
-            }
+            _ => match self.monster.as_ref().and_then(|m| db().monster(&m.def)) {
+                Some(d) if d.boss => BOSS_RADIUS,
+                Some(d) if d.party > 1 => BIG_RADIUS,
+                _ => BODY_RADIUS,
+            },
         }
     }
     /// The tile it stands on.

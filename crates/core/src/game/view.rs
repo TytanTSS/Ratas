@@ -243,7 +243,10 @@ impl Game {
         }
         if let Some(m) = &te.monster {
             v.level = m.lvl;
-            v.boss = db().monster(&m.def).is_some_and(|d| d.boss);
+            if let Some(d) = db().monster(&m.def) {
+                v.boss = d.boss;
+                v.party = d.party;
+            }
         }
         for dt in &db().b.damage_types {
             let r = te.stats.resist(&dt.key).round() as i32;
@@ -299,6 +302,11 @@ impl Game {
         }
         if e.level == "overworld" {
             you.region = self.region_name(e.cell());
+            // the belt the hero settled in (see check_zone), else the land
+            you.zone = match p.zone {
+                0 => self.zone_tier_at(e.cell()) as u8 + 1,
+                z => z as u8,
+            };
         }
         if let Some(t) = self.target_for(id) {
             you.target = Some(self.target_view(t));
@@ -477,15 +485,17 @@ impl Game {
                 kind: if v.city { "city" } else { "village" }.into(),
                 x: v.center.x,
                 y: v.center.y,
+                ..Default::default()
             });
         }
-        for en in &self.entrances {
+        for (i, en) in self.entrances.iter().enumerate() {
             if seen(en.pos) {
                 out.push(Place {
                     name: en.name.clone(),
                     kind: format!("dungeon:{}", en.theme),
                     x: en.pos.x,
                     y: en.pos.y,
+                    levels: self.dungeon_levels(i),
                 });
             }
         }
@@ -496,6 +506,7 @@ impl Game {
                     kind: lm.kind.clone(),
                     x: lm.pos.x,
                     y: lm.pos.y,
+                    ..Default::default()
                 });
             }
         }
@@ -507,6 +518,7 @@ impl Game {
                     kind: format!("region:{}", r.kind),
                     x: r.at.x,
                     y: r.at.y,
+                    ..Default::default()
                 });
             }
         }
@@ -517,6 +529,7 @@ impl Game {
                     kind: "quest".into(),
                     x: at.x,
                     y: at.y,
+                    ..Default::default()
                 });
             }
         }
@@ -656,12 +669,31 @@ impl Game {
                 data
             }
         };
+        // the belts of danger of the surface, packed as its tiles
+        let (zones, zone_cell) = if l.id == "overworld" {
+            let key = "overworld#zones".to_string();
+            let data = match self.packed_tiles.get(&key) {
+                Some((ver, data)) if *ver == l.ver => data.clone(),
+                _ => {
+                    let data = compress(&self.zones.tiers(l));
+                    self.packed_tiles.insert(key, (l.ver, data.clone()));
+                    data
+                }
+            };
+            (data, self.zones.cell)
+        } else {
+            (Vec::new(), 0)
+        };
+        let e = &self.ents[&id];
+        let l = &self.levels[&e.level];
         LevelData {
             id: l.id.clone(),
             name: l.name.clone(),
             w: l.w,
             h: l.h,
             tiles,
+            zones,
+            zone_cell,
             explored: e
                 .p()
                 .explored

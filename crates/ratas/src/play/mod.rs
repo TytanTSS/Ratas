@@ -24,7 +24,7 @@ use ratas_core::server::{self, Conn, Server};
 use ratas_core::world::{Bitset, Level};
 
 use crate::gfx::world::{Scene, WorldRenderer};
-use crate::gfx::{tr, Gfx};
+use crate::gfx::{atlas, tr, Gfx};
 use crate::ui::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -68,6 +68,8 @@ pub struct Session {
     level: Option<Level>,
     level_ver: u64,
     explored: Bitset,
+    /// the belts of danger of the surface
+    pub(crate) zones: Option<atlas::ZoneOverlay>,
     snap: Option<Snapshot>,
     sheet: Option<PlayerSheet>,
     logs: VecDeque<LogLine>,
@@ -90,6 +92,8 @@ pub struct Session {
     kick: String,
     notice: (String, f32),
     region: (String, f32),
+    /// the belt of danger (gen::TIERS index + 1) and when it changed
+    zone: (u8, f32),
     t: f32,
     /// the last clicked list row and when (double clicks)
     last_click: (usize, f32),
@@ -126,6 +130,7 @@ impl Session {
             level: None,
             level_ver: 0,
             explored: Bitset::default(),
+            zones: None,
             snap: None,
             sheet: None,
             logs: VecDeque::new(),
@@ -145,6 +150,7 @@ impl Session {
             kick: String::new(),
             notice: (String::new(), -10.0),
             region: (String::new(), -10.0),
+            zone: (0, -10.0),
             t: 0.0,
             last_click: (usize::MAX, -10.0),
             wr: WorldRenderer::new(),
@@ -376,6 +382,11 @@ impl Session {
                     },
                 );
             }
+            // a new belt is announced; leaving the surface and coming back
+            // to the same one is not
+            if s.you.zone != 0 && s.you.zone != self.zone.0 {
+                self.zone = (s.you.zone, self.t);
+            }
             self.snap = Some(s);
         }
         if let Some(sh) = m.sheet {
@@ -419,6 +430,9 @@ impl Session {
                 return;
             }
         };
+        self.zones = decompress(&ld.zones)
+            .ok()
+            .and_then(|t| atlas::ZoneOverlay::new(ld.zone_cell, ld.w, ld.h, t));
         let mut l = Level::new(&ld.id, &ld.name, ld.w, ld.h, 0);
         l.tiles = tiles;
         l.lit = ld.lit;

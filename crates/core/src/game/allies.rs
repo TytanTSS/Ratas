@@ -8,8 +8,8 @@ use crate::world::Vec2;
 /// The combat state of a creature of a level, and its health.
 pub(crate) fn monster_state(def: &MonsterDef, lvl: i32, home: Vec2) -> (MonsterState, f64) {
     let lvl = lvl.max(1);
-    let hp_scale = 1.0 + 0.25 * (lvl - 1) as f64;
-    let dmg_scale = monster_scale(lvl);
+    let hp_scale = monster_hp_scale(lvl) * party_hp(def.party);
+    let dmg_scale = monster_scale(lvl) * party_dmg(def.party);
     (
         MonsterState {
             def: def.key.clone(),
@@ -20,7 +20,7 @@ pub(crate) fn monster_state(def: &MonsterDef, lvl: i32, home: Vec2) -> (MonsterS
             armor: def.armor + (lvl - 1) as f64 / 2.0,
             move_ms: def.move_ms as f64,
             attack_ms: def.attack_ms as f64,
-            xp: (def.xp as f64 * (1.0 + 0.3 * (lvl - 1) as f64)) as i32,
+            xp: (def.xp as f64 * monster_xp_scale(lvl) * party_xp(def.party)) as i32,
             persistent: def.boss || def.elite,
             ..Default::default()
         },

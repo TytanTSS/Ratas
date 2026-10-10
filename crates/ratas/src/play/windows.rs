@@ -802,6 +802,7 @@ pub fn world_map(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         area,
         view,
         p.t,
+        p.zones.as_ref(),
     );
     p.map_view = Some((level.id.clone(), view));
     g.text_center(

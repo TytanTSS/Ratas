@@ -256,7 +256,7 @@
 "Подключение к %s..." = "Connecting to %s..."
 "Старт: %s" = "Start: %s"
 "Герои: %s" = "Heroes: %s"
-"Вход: %s. Нажмите E, чтобы спуститься." = "Entrance: %s. Press E to go down."
+"Вход: %s (ур. %d–%d). Нажмите E, чтобы спуститься." = "Entrance: %s (lv. %d–%d). Press E to go down."
 
 # graphics window
 "Скриншот сохранён в ~/.ratas/screenshots" = "Screenshot saved to ~/.ratas/screenshots"

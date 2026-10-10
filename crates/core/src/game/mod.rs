@@ -103,6 +103,8 @@ pub struct Game {
     pub region_map: Vec<u16>,
     pub landmarks: Vec<Landmark>,
     pub start: Pos,
+    /// the belts of danger (rebuilt from the seed on load)
+    pub zones: gen::ZoneMap,
     pub ents: BTreeMap<Id, Entity>,
     pub next_id: Id,
     /// account -> player entity in the world
@@ -162,6 +164,7 @@ impl Game {
             region_map: Vec::new(),
             landmarks: Vec::new(),
             start: Pos::default(),
+            zones: Default::default(),
             ents: BTreeMap::new(),
             next_id: 1,
             online: BTreeMap::new(),
@@ -211,6 +214,7 @@ impl Game {
         g.regions = ow.regions;
         g.region_map = ow.region_map;
         g.landmarks = ow.landmarks;
+        g.zones = ow.zones;
         g.levels.insert("overworld".into(), ow.level);
         let mut r = Rng::labeled(seed, "population");
         for v in &ow.villages {
@@ -604,5 +608,7 @@ pub(crate) fn upper_first(s: &str) -> String {
     crate::i18n::upper_first(s)
 }
 
+#[cfg(test)]
+mod balance_tests;
 #[cfg(test)]
 mod tests;

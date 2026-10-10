@@ -52,6 +52,16 @@ impl Game {
             .unwrap_or(&db().b.monsters[0])
     }
 
+    /// Whether creatures a creature called are still about.
+    fn has_servants(&self, id: Id, key: &str) -> bool {
+        let e = &self.ents[&id];
+        self.near(&e.level, e.pos, 30.0).into_iter().any(|o| {
+            self.ents.get(&o).is_some_and(|oe| {
+                oe.owner == id && oe.alive() && oe.monster.as_ref().is_some_and(|m| m.def == key)
+            })
+        })
+    }
+
     pub(crate) fn ms(&mut self, id: Id) -> &mut MonsterState {
         self.ents.get_mut(&id).unwrap().monster.as_mut().unwrap()
     }
@@ -171,6 +181,15 @@ impl Game {
             if a.kind == "heal" && ready(self, a) && self.wounded_ally(id, a.radius.max(1) as f32) {
                 self.stop(id);
                 self.use_ability(id, &a.key, None);
+                return true;
+            }
+        }
+        // lords call their servants when the fight starts and again when
+        // the servants have fallen
+        for a in &abilities {
+            if a.kind == "summon" && ready(self, a) && !self.has_servants(id, &a.summon) {
+                self.stop(id);
+                self.use_ability(id, &a.key, Some(target));
                 return true;
             }
         }

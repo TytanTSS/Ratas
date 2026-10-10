@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 
-pub const VERSION: i32 = 103;
+pub const VERSION: i32 = 104;
 
 // ---- client -> server ----
 
@@ -103,6 +103,12 @@ pub struct LevelData {
     pub lit: bool,
     pub depth: i32,
     pub theme: String,
+    /// the surface: gzip-compressed belt of danger of every block of
+    /// zone_cell × zone_cell cells (row by row, 255 = water)
+    #[serde(default)]
+    pub zones: Vec<u8>,
+    #[serde(default)]
+    pub zone_cell: i32,
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -189,6 +195,9 @@ pub struct Place {
     pub kind: String,
     pub x: i32,
     pub y: i32,
+    /// dungeons: the levels of the first and the last floor
+    #[serde(default)]
+    pub levels: [i32; 2],
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -207,6 +216,9 @@ pub struct TargetView {
     pub hp: u8,
     pub level: i32,
     pub boss: bool,
+    /// how many heroes it takes (0 and 1: one is enough)
+    #[serde(default)]
+    pub party: i32,
     /// effective resistances that are not zero
     pub res: BTreeMap<String, i32>,
     pub effects: Vec<BuffView>,
@@ -286,6 +298,9 @@ pub struct SelfView {
     pub skill_points: i32,
     /// overworld region name
     pub region: String,
+    /// the belt of danger on the surface (gen::TIERS index + 1, 0 = none)
+    #[serde(default)]
+    pub zone: u8,
     pub target: Option<TargetView>,
     /// dead: the respawn button works
     pub can_rise: bool,

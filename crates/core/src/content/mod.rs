@@ -219,6 +219,10 @@ pub struct MonsterDef {
     pub night: bool,
     pub elite: bool,
     pub boss: bool,
+    /// the lowest level of the land (or dungeon floor) it lives on
+    pub min_level: i32,
+    /// how many heroes it takes (0 and 1: one is enough)
+    pub party: i32,
     pub persona: String,
     pub drops: Vec<String>,
 }
@@ -353,6 +357,8 @@ pub struct SquadDef {
     pub depth: [i32; 2],
     pub weight: i32,
     pub night: bool,
+    /// the lowest level of the land (or dungeon floor) it roams
+    pub min_level: i32,
     pub members: Vec<SquadMember>,
 }
 
