@@ -224,24 +224,42 @@ fn lang_name(code: &str) -> &'static str {
     }
 }
 
+/// The prompt of a character's reply. What stays the same from one line of
+/// a conversation to the next comes first and what changes comes last: a
+/// local model then reads only the new end of the prompt again.
 pub(super) fn npc_prompt(r: &NpcRequest) -> String {
     let mut b = String::new();
     let _ = write!(b, "<character>\nName: {}, {} of the village {} in the realm of {}.\nPersonality: {}\n</character>\n\n", r.npc_name, r.role, r.village, r.world, r.persona);
+    b += "<knowledge>\n";
+    if !r.region.is_empty() {
+        let _ = writeln!(b, "Region: {}.", r.region);
+    }
+    for f in &r.facts {
+        let _ = writeln!(b, "Known fact: {f}");
+    }
+    let _ = writeln!(
+        b,
+        "You can give quests: {}. You are a trader: {}.",
+        yes_no(r.can_give_quest),
+        yes_no(r.trader)
+    );
+    let _ = writeln!(b, "Gift list (key: name): {}", options(&r.gifts));
+    if r.can_give_quest {
+        let _ = writeln!(
+            b,
+            "Quest monster list (key: name): {}",
+            options(&r.monsters)
+        );
+    }
+    b += "</knowledge>\n\n";
     let _ = write!(
         b,
-        "<situation>\nLanguage: {}.\nTime of day: {}.\nPlayer: {}, a level {} {}.\n",
+        "<situation>\nLanguage: {}.\nPlayer: {}, a level {} {}.\n",
         lang_name(&r.lang),
-        r.time_of_day,
         r.player_name,
         r.player_level,
         r.player_class
     );
-    if !r.region.is_empty() {
-        let _ = writeln!(b, "Region: {}.", r.region);
-    }
-    if !r.mood.is_empty() {
-        let _ = writeln!(b, "Your mood: {}.", r.mood);
-    }
     if r.times_met > 0 {
         let _ = writeln!(
             b,
@@ -260,23 +278,10 @@ pub(super) fn npc_prompt(r: &NpcRequest) -> String {
     if !r.player_quests.is_empty() {
         let _ = writeln!(b, "Player's active quests: {}.", r.player_quests.join("; "));
     }
-    for f in &r.facts {
-        let _ = writeln!(b, "Known fact: {f}");
-    }
-    let _ = writeln!(
-        b,
-        "Your purse: {} gold. You can give quests: {}. You are a trader: {}.",
-        r.purse,
-        yes_no(r.can_give_quest),
-        yes_no(r.trader)
-    );
-    let _ = writeln!(b, "Gift list (key: name): {}", options(&r.gifts));
-    if r.can_give_quest {
-        let _ = writeln!(
-            b,
-            "Quest monster list (key: name): {}",
-            options(&r.monsters)
-        );
+    let _ = writeln!(b, "Time of day: {}.", r.time_of_day);
+    let _ = writeln!(b, "Your purse: {} gold.", r.purse);
+    if !r.mood.is_empty() {
+        let _ = writeln!(b, "Your mood: {}", r.mood);
     }
     b += "</situation>\n\n";
     if !r.history.is_empty() {
