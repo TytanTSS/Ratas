@@ -63,6 +63,18 @@ pub const TIERS: [Tier; 5] = [
     },
 ];
 
+impl Tier {
+    /// Its levels as shown: "21–27", the last one "28+".
+    pub fn range(&self) -> String {
+        let [lo, hi] = self.levels;
+        if hi >= MAX_ZONE_LEVEL {
+            format!("{lo}+")
+        } else {
+            format!("{lo}–{hi}")
+        }
+    }
+}
+
 /// The level of the deadliest land (with its biome and the night).
 pub const MAX_ZONE_LEVEL: i32 = 40;
 

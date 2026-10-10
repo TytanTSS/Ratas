@@ -23,6 +23,8 @@ pub(crate) struct Outcome {
 pub(crate) fn party(classes: &[&str], lvl: i32) -> (Game, Vec<Id>) {
     let mut g = setup();
     g.next_spawn = f64::MAX;
+    // the same gear and blows every time
+    g.rng = Rng::new(17, 3);
     let lead = g.join_for_test("Veteran", classes[0]);
     let at = wild(&mut g, lead);
     let mut out = vec![lead];
@@ -150,6 +152,30 @@ pub(crate) fn foe(g: &mut Game, key: &str, near: Id, lvl: i32) -> Id {
     id
 }
 
+/// A creature for a party is too much for one seasoned hero of its level
+/// but falls to three, while the common beasts of its land are fair game
+/// alone.
+#[test]
+fn party_creatures_need_a_party() {
+    let (mut g, hs) = party(&["warrior"], 24);
+    let m = foe(&mut g, "dire_wolf", hs[0], 24);
+    assert!(
+        fight(&mut g, &hs, m, 60.0).won,
+        "a lone hero loses to a dire wolf"
+    );
+    let (mut g, hs) = party(&["warrior"], 24);
+    let m = foe(&mut g, "stone_giant", hs[0], 24);
+    let o = fight(&mut g, &hs, m, 90.0);
+    assert!(
+        !o.won && o.fallen == 1,
+        "a lone hero against a stone giant: {o:?}"
+    );
+    let (mut g, hs) = party(&["warrior", "mage", "priest"], 24);
+    let m = foe(&mut g, "stone_giant", hs[0], 24);
+    let o = fight(&mut g, &hs, m, 90.0);
+    assert!(o.won, "three heroes against a stone giant: {o:?}");
+}
+
 /// Prints how seasoned heroes fare against creatures
 /// (`cargo test --release -p ratas-core balance_table -- --ignored --nocapture`,
 /// BALANCE="ogre:28,frost_giant:25" for other creatures).
@@ -220,40 +246,6 @@ fn balance_table() {
                 secs / tries as f64
             );
         }
-    }
-}
-
-#[test]
-#[ignore]
-fn balance_trace() {
-    let class = std::env::var("CLASS").unwrap_or("mage".into());
-    let (mut g, hs) = party(&[class.as_str()], 25);
-    let p = hs[0];
-    let m = foe(&mut g, "frost_giant", p, 26);
-    for step in 0..40 {
-        let Some(me) = g.ents.get(&m) else {
-            println!("step {step}: dead");
-            break;
-        };
-        println!(
-            "step {step}: hp {:.0}/{:.0} hero mp {:.0}",
-            me.hp, me.max_hp, g.ents[&p].mp
-        );
-        g.set_input(
-            p,
-            &Input {
-                aim: Some([g.ents[&m].pos.x, g.ents[&m].pos.y]),
-                ability: (1 + step % 8) as i8,
-                ..Default::default()
-            },
-        );
-        g.tick();
-        if let Some(o) = g.take_outbox(p) {
-            for l in o.logs.iter().take(6) {
-                println!("   {}", l.text);
-            }
-        }
-        g.end_frame();
     }
 }
 

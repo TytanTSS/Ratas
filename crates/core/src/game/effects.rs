@@ -248,19 +248,19 @@ impl Game {
         p.zone = t;
         p.zone_next = (0, 0.0);
         let tier = &gen::TIERS[t - 1];
-        let [lo, hi] = tier.levels;
+        let (lo, range) = (tier.levels[0], tier.range());
         if from > t {
             self.log(
                 id,
                 tier.color,
-                format!("Вы возвращаетесь в земли: {} (ур. {lo}–{hi}).", tier.name),
+                format!("Вы возвращаетесь в земли: {} (ур. {range}).", tier.name),
             );
             return;
         }
         self.log(
             id,
             tier.color,
-            format!("Вы вступаете в земли: {} (ур. {lo}–{hi}).", tier.name),
+            format!("Вы вступаете в земли: {} (ур. {range}).", tier.name),
         );
         self.log(id, "#d8d0b0", tier.hint.into());
         if hero + 3 < lo {

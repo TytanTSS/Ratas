@@ -5,6 +5,7 @@
 use macroquad::prelude::*;
 
 use ratas_core::content;
+use ratas_core::gen;
 use ratas_core::llm::{local, Provider};
 use ratas_core::proto::*;
 
@@ -70,6 +71,16 @@ pub fn draw(
     over
 }
 
+/// The belt of danger by its number in the snapshot (0 = none).
+pub fn zone_tier(z: u8) -> Option<&'static gen::Tier> {
+    gen::TIERS.get((z as usize).checked_sub(1)?)
+}
+
+/// "Гиблые земли 28+" or "Опасные земли 21–27", translated.
+pub fn zone_label(t: &gen::Tier) -> String {
+    format!("{} {}", tr(t.name), t.range())
+}
+
 fn me_facing(p: &Session) -> f32 {
     let you = p.welcome.as_ref().map_or(0, |w| w.you_id);
     p.snap
@@ -90,6 +101,10 @@ fn top_bar(p: &Session, g: &Gfx, w: f32, s: f32, local_ai: Option<local::State>)
     if !snap.you.region.is_empty() {
         x = g.text_raw(" • ", x, ty, fs, c_dim(), false);
         x = g.text(&snap.you.region, x, ty, fs, col("#d8c890"), false);
+    }
+    if let Some(t) = zone_tier(snap.you.zone) {
+        x = g.text_raw(" • ", x, ty, fs, c_dim(), false);
+        x = g.text_raw(&zone_label(t), x, ty, fs, col(t.color), false);
     }
     if level.lit {
         let t = snap.time_of_day;
@@ -356,6 +371,9 @@ fn target_frame(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) -> f32 {
     };
     let db = content::db();
     let mut lines: Vec<(String, Color)> = vec![];
+    if t.party > 1 {
+        lines.push((tr(&format!("Для группы: {}+", t.party)), col("#ff9a4a")));
+    }
     for good in [true, false] {
         let items: Vec<String> =
             db.b.damage_types
@@ -420,14 +438,15 @@ fn target_frame(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) -> f32 {
     if t.level > 0 {
         let lv = format!("{} {}", tr("ур."), t.level);
         let lw = g.measure(&lv, 12.0 * s, false);
-        g.text_raw(
-            &lv,
-            x + w - lw - 10.0 * s,
-            y + 8.0 * s,
-            12.0 * s,
-            c_dim(),
-            false,
-        );
+        // how much stronger than the hero: grey, plain, orange, red
+        let me = p.snap.as_ref().map_or(t.level, |s| s.you.level);
+        let c = match t.level - me {
+            d if d >= 5 => col("#ff4a4a"),
+            d if d >= 3 => col("#ffa040"),
+            d if d <= -6 => col("#808080"),
+            _ => c_dim(),
+        };
+        g.text_raw(&lv, x + w - lw - 10.0 * s, y + 8.0 * s, 12.0 * s, c, false);
     }
     bar(
         g,
@@ -1083,6 +1102,37 @@ fn banners(p: &Session, g: &Gfx, w: f32, h: f32, s: f32) {
             y + fs / 2.0,
             fs,
             Color::new(0.94, 0.86, 0.63, a),
+            true,
+            true,
+        );
+    }
+    // the belt of danger under the region's name
+    if let (Some(t), true) = (
+        zone_tier(p.zone.0),
+        p.mode == Mode::Game && p.t - p.zone.1 < 4.0,
+    ) {
+        let a = ((4.0 - (p.t - p.zone.1)) / 0.8).clamp(0.0, 1.0)
+            * ((p.t - p.zone.1) / 0.4).clamp(0.0, 1.0);
+        let fs = 18.0 * s;
+        let y = h * 0.22 + 52.0 * s;
+        let mut text = zone_label(t);
+        if t.party > 1 {
+            text += &format!(" • {}", tr(&format!("Для группы: {}+", t.party)));
+        }
+        let tw = g.measure(&text, fs, true);
+        draw_rectangle(
+            w / 2.0 - tw / 2.0 - 24.0 * s,
+            y - 4.0 * s,
+            tw + 48.0 * s,
+            fs + 10.0 * s,
+            Color::new(0.05, 0.05, 0.08, 0.6 * a),
+        );
+        g.text_center(
+            &text,
+            w / 2.0,
+            y + fs / 2.0,
+            fs,
+            with_a(col(t.color), a),
             true,
             true,
         );

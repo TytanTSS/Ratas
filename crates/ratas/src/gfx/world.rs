@@ -1645,6 +1645,9 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 
     let mut k = ts / SPX as f32;
     if e.boss {
         k *= 1.5;
+    } else if e.radius >= 0.4 {
+        // creatures for a party are big
+        k *= 1.3;
     }
     let feet = cy + ts * 0.44;
     let (w, h) = (img.width() * k, img.height() * k);

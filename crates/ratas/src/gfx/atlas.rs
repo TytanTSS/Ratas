@@ -1,12 +1,14 @@
 //! The world map, drawn as an old atlas: the explored land painted on
 //! parchment (coasts inked, forests dotted, mountains as little peaks), the
 //! unknown left blank, and villages, dungeons, sights, quest goals and
-//! companions marked on top. The same picture serves the minimap.
+//! companions marked on top; on the surface the belts of danger are washed
+//! over the explored land. The same picture serves the minimap.
 
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
 use ratas_core::content::{self, TileDef};
+use ratas_core::gen;
 use ratas_core::proto::{Place, Snapshot};
 use ratas_core::world::{Bitset, Level};
 
@@ -422,6 +424,141 @@ impl Atlas {
     }
 }
 
+// ---- belts of danger ----
+
+/// The belts of danger of the surface by blocks of cells (from the server,
+/// see gen::ZoneMap): a tier per block, 255 for water.
+#[derive(Clone, Debug, Default)]
+pub struct ZoneOverlay {
+    pub cell: i32,
+    pub gw: i32,
+    pub gh: i32,
+    pub tiers: Vec<u8>,
+}
+
+impl ZoneOverlay {
+    pub fn new(cell: i32, w: i32, h: i32, tiers: Vec<u8>) -> Option<ZoneOverlay> {
+        if cell <= 0 {
+            return None;
+        }
+        let (gw, gh) = ((w + cell - 1) / cell, (h + cell - 1) / cell);
+        (tiers.len() == (gw * gh) as usize).then_some(ZoneOverlay {
+            cell,
+            gw,
+            gh,
+            tiers,
+        })
+    }
+
+    /// The belt of a block, if it is known land.
+    fn at(&self, bx: i32, by: i32, l: &Level, explored: &Bitset) -> Option<usize> {
+        if bx < 0 || by < 0 || bx >= self.gw || by >= self.gh {
+            return None;
+        }
+        let t = self.tiers[(by * self.gw + bx) as usize];
+        let (x, y) = (
+            (bx * self.cell + self.cell / 2).min(l.w - 1),
+            (by * self.cell + self.cell / 2).min(l.h - 1),
+        );
+        (t != 255 && explored.get((y * l.w + x) as usize)).then_some(t as usize)
+    }
+
+    /// Washes the explored land in the colours of its belts and inks the
+    /// borders between them, over the tiles [x0, x1) × [y0, y1).
+    #[allow(clippy::too_many_arguments)]
+    fn draw(
+        &self,
+        l: &Level,
+        explored: &Bitset,
+        (x0, y0, x1, y1): (f32, f32, f32, f32),
+        ox: f32,
+        oy: f32,
+        k: f32,
+        s: f32,
+    ) {
+        let c = self.cell as f32;
+        let (bx0, by0) = ((x0 / c).floor() as i32, (y0 / c).floor() as i32);
+        let (bx1, by1) = ((x1 / c).ceil() as i32, (y1 / c).ceil() as i32);
+        let side = c * k;
+        let line = (1.5 * s).max(1.0);
+        for by in by0.max(0)..by1.min(self.gh) {
+            // runs of one belt along the row are washed at once
+            let mut run: Option<(i32, usize)> = None;
+            for bx in bx0.max(0)..=bx1.min(self.gw) {
+                let t = if bx < bx1.min(self.gw) {
+                    self.at(bx, by, l, explored)
+                } else {
+                    None
+                };
+                if run.map(|r| Some(r.1)) != Some(t) {
+                    if let Some((from, rt)) = run {
+                        let col = col(gen::TIERS[rt].color);
+                        draw_rectangle(
+                            ox + from as f32 * side,
+                            oy + by as f32 * side,
+                            (bx - from) as f32 * side,
+                            side,
+                            with_a(col, 0.13),
+                        );
+                    }
+                    run = t.map(|t| (bx, t));
+                }
+                // borders with the next block to the right and below
+                let Some(t) = t else { continue };
+                let (px, py) = (ox + bx as f32 * side, oy + by as f32 * side);
+                for (dx, dy) in [(1, 0), (0, 1)] {
+                    let Some(o) = self.at(bx + dx, by + dy, l, explored) else {
+                        continue;
+                    };
+                    if o == t {
+                        continue;
+                    }
+                    let ink = with_a(col(gen::TIERS[t.max(o)].color), 0.75);
+                    if dx == 1 {
+                        draw_line(px + side, py, px + side, py + side, line, ink);
+                    } else {
+                        draw_line(px, py + side, px + side, py + side, line, ink);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The belts of danger and their levels, with colour swatches.
+fn zone_legend_rect(g: &Gfx, x: f32, bottom: f32, size: f32) -> Rect {
+    let lh = 18.0 * g.s;
+    let w = std::iter::once(g.measure(&tr("Пояса опасности"), size, true))
+        .chain(
+            gen::TIERS
+                .iter()
+                .map(|t| g.measure(&zone_text(t), size, false)),
+        )
+        .fold(0.0, f32::max);
+    let h = (gen::TIERS.len() + 1) as f32 * lh + 12.0 * g.s;
+    Rect::new(x, bottom - h, w + 36.0 * g.s, h)
+}
+
+fn zone_text(t: &gen::Tier) -> String {
+    format!("{} {}", tr(t.name), t.range())
+}
+
+fn zone_legend(g: &Gfx, r: Rect, size: f32) {
+    let s = g.s;
+    round_rect(r.x, r.y, r.w, r.h, 5.0 * s, with_a(rgba(PARCHMENT), 0.92));
+    draw_rectangle_lines(r.x, r.y, r.w, r.h, s, rgba(INK_SOFT));
+    let lh = 18.0 * s;
+    let x = r.x + 8.0 * s;
+    g.text("Пояса опасности", x, r.y + 6.0 * s, size, ink(), true);
+    for (i, t) in gen::TIERS.iter().enumerate() {
+        let y = r.y + 6.0 * s + (i + 1) as f32 * lh;
+        let c = col(t.color);
+        draw_rectangle(x, y + 2.0 * s, 14.0 * s, size, with_a(c, 0.5));
+        draw_rectangle_lines(x, y + 2.0 * s, 14.0 * s, size, s, mul_c(c, 0.6));
+        g.text_raw(&zone_text(t), x + 20.0 * s, y, size, ink(), false);
+    }
+}
+
 // ---- markers ----
 
 fn poly(pts: &[(f32, f32)]) -> Vec<Vec2> {
@@ -699,6 +836,7 @@ pub fn draw_world_map(
     area: Rect,
     view: MapView,
     t: f32,
+    zones: Option<&ZoneOverlay>,
 ) {
     let s = g.s;
     draw_rectangle(area.x, area.y, area.w, area.h, col("#2a1e14"));
@@ -742,6 +880,23 @@ pub fn draw_world_map(
         k,
         t,
     );
+    let zones = zones.filter(|_| l.id == "overworld");
+    if let Some(z) = zones {
+        z.draw(
+            l,
+            explored,
+            (
+                (mx - ox) / k,
+                (my - oy) / k,
+                (mx + mw - ox) / k,
+                (my + mh - oy) / k,
+            ),
+            ox,
+            oy,
+            k,
+            s,
+        );
+    }
     let shown = |x: f32, y: f32| x >= mx && y >= my && x <= mx + mw && y <= my + mh;
     // a double frame with corner ornaments
     let (fx0, fy0, fw, fh) = (mx - 6.0 * s, my - 6.0 * s, mw + 12.0 * s, mh + 12.0 * s);
@@ -889,6 +1044,8 @@ pub fn draw_world_map(
     let overworld = l.id == "overworld";
     let legend = legend_rect(g, mx + 12.0 * s, my + mh - 12.0 * s, small, ms, overworld);
     labels.taken.push(legend);
+    let zone_box = zones.map(|_| zone_legend_rect(g, legend.x, legend.y - 8.0 * s, small));
+    labels.taken.extend(zone_box);
     let (ccx, ccy) = (mx + mw - 30.0 * s, my + mh - 34.0 * s);
     labels.taken.push(Rect::new(
         ccx - 26.0 * s,
@@ -958,12 +1115,19 @@ pub fn draw_world_map(
     for kind in ["dungeon", "sight"] {
         for p in places.iter().filter(|p| kind_of(p) == kind) {
             let (x, y) = at(p.x as f32 + 0.5, p.y as f32 + 0.5);
-            let fg = if kind == "dungeon" {
-                col("#5a1e14")
-            } else {
+            let [lo, hi] = p.levels;
+            // the strongholds of the dangerous lands are inked in their colour
+            let fg = if kind != "dungeon" {
                 rgba(INK_SOFT)
+            } else if gen::tier_of(hi) >= gen::PARTY_TIER {
+                mul_c(col(gen::TIERS[gen::tier_of(hi)].color), 0.55)
+            } else {
+                col("#5a1e14")
             };
-            let n = tr(&p.name);
+            let mut n = tr(&p.name);
+            if hi > 0 {
+                n += &format!(" ({} {lo}–{hi})", tr("ур."));
+            }
             if !put(
                 &mut labels,
                 &mut texts,
@@ -1044,6 +1208,9 @@ pub fn draw_world_map(
     }
     compass(g, ccx, ccy, 18.0 * s, small);
     map_legend(g, legend, small, ms, overworld);
+    if let Some(r) = zone_box {
+        zone_legend(g, r, small);
+    }
 }
 
 fn compass(g: &Gfx, x: f32, y: f32, s: f32, size: f32) {
