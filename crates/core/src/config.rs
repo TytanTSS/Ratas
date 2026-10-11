@@ -35,6 +35,13 @@ pub struct Config {
     /// window scale of the interface (1.0 = default)
     pub ui_scale: f32,
     pub fullscreen: bool,
+    /// how the world is drawn: "2d" (pixel art, the default), "3d"
+    /// (low-poly), "hd" (detailed, carved) or "high" (high-poly, smooth);
+    /// RATAS_GRAPHICS overrides it for a run
+    pub graphics: String,
+    /// pixel art keeps its square pixels (otherwise it is drawn finer,
+    /// its edges smoothed)
+    pub crisp_pixels: bool,
     /// keys of the quick-access cells ("slot1".."slot10", "potion_health",
     /// "potion_mana") → up to two bindings ("1", "Q", "Num 1", "MouseRight");
     /// a cell missing here keeps its default keys (see the client's
@@ -45,6 +52,39 @@ pub struct Config {
     /// commands (see game/admin.rs)
     #[serde(skip)]
     pub admin: bool,
+}
+
+impl Config {
+    /// How the world is drawn: "2d", "3d" (low-poly), "hd" (3D of many
+    /// carved faces) or "high" (3D of still more, smooth faces);
+    /// RATAS_GRAPHICS overrides the setting.
+    pub fn graphics_mode(&self) -> &str {
+        let pick = |v: &str| match v {
+            "3d" => "3d",
+            "hd" => "hd",
+            "high" => "high",
+            _ => "2d",
+        };
+        match std::env::var("RATAS_GRAPHICS") {
+            Ok(v) if !v.is_empty() => pick(&v),
+            _ => pick(&self.graphics),
+        }
+    }
+
+    /// The world is drawn in 3D.
+    pub fn three_d(&self) -> bool {
+        self.graphics_mode() != "2d"
+    }
+
+    /// The 3D world is drawn of many faces, with materials.
+    pub fn detailed(&self) -> bool {
+        matches!(self.graphics_mode(), "hd" | "high")
+    }
+
+    /// The 3D world is drawn of the most faces, smooth.
+    pub fn high_poly(&self) -> bool {
+        self.graphics_mode() == "high"
+    }
 }
 
 impl Default for Config {
@@ -68,6 +108,8 @@ impl Default for Config {
             language: String::new(),
             ui_scale: 1.0,
             fullscreen: false,
+            graphics: String::new(),
+            crisp_pixels: false,
             hotkeys: BTreeMap::new(),
             admin: false,
         }

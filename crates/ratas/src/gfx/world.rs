@@ -2,6 +2,7 @@
 //! real-time positions, light and darkness, particles, floating numbers,
 //! speech bubbles and the boss bar. Abilities are drawn by `spells`.
 
+mod d3;
 mod spells;
 
 use std::collections::HashMap;
@@ -49,8 +50,10 @@ struct EntState {
     sy: f32,
     vx: f32,
     vy: f32,
-    /// distance walked: drives walking frames and bobbing
-    walk: f32,
+    /// the gait: how many steps-and-back it has made (drives walking
+    /// frames, bobbing and limbs), and how much it runs (0 walks, 1 sprints)
+    gait: f32,
+    run: f32,
     /// fades in and out of sight
     alpha: f32,
     seen: bool,
@@ -231,6 +234,8 @@ pub struct WorldRenderer {
     snap_at: f32,
     pub view: View,
     pub atlas: super::atlas::Atlas,
+    /// the state of the 3D view
+    pub d3: d3::D3,
 }
 
 impl Default for WorldRenderer {
@@ -268,7 +273,21 @@ impl WorldRenderer {
             snap_at: 0.0,
             view: View::default(),
             atlas: super::atlas::Atlas::default(),
+            d3: d3::D3::default(),
         }
+    }
+
+    /// Shows the 3D forms of `k` abilities from the `n`-th (by key) round
+    /// the hero (to look them over).
+    pub fn gallery(&mut self, n: usize, k: usize) {
+        let mut keys: Vec<String> = content::db()
+            .b
+            .abilities
+            .iter()
+            .map(|a| a.key.clone())
+            .collect();
+        keys.sort();
+        self.spells.gallery = keys.into_iter().skip(n).take(k).collect();
     }
 
     pub fn zoom(&mut self, dir: f32) {
@@ -452,7 +471,22 @@ impl WorldRenderer {
                 st.y += (py - st.y) * follow;
             }
             let moved = ((st.x - ox).powi(2) + (st.y - oy).powi(2)).sqrt();
-            st.walk += moved;
+            // the faster one goes, the quicker the steps but the longer
+            // the strides too: a walk is about one step-and-back a second,
+            // a sprint about two (in heights of the body per second)
+            let size = if e.boss {
+                1.5
+            } else if e.radius >= 0.4 {
+                1.3
+            } else {
+                1.0
+            };
+            let pace = st.vx.hypot(st.vy) / (1.15 * size);
+            if pace > 0.05 && moved > 0.0 {
+                st.gait += cadence(pace) * dt;
+            }
+            let run = ((pace - 1.8) / 3.0).clamp(0.0, 1.0);
+            st.run += (run - st.run) * (1.0 - (-dt * 6.0).exp());
             if moved > 0.002 && e.kind != KIND_PROJECTILE {
                 let dxm = st.x - ox;
                 if dxm.abs() > 0.004 {
@@ -885,7 +919,7 @@ impl WorldRenderer {
                 let c = if lit(x, y) { WHITE } else { memory };
                 let (px, py) = v.px(x as f32, y as f32);
                 let img = &tt.object[tile_hash(x, y) % tt.object.len()];
-                let h = img.height() / SPX as f32 * ts;
+                let h = img.height() / ART / SPX as f32 * ts;
                 let top = py + ts - h;
                 let amp = sway(&def.key);
                 if amp > 0.0 && l.lit {
@@ -921,6 +955,7 @@ impl WorldRenderer {
 
     /// Draws the world of a scene into an area of the screen.
     pub fn draw(&mut self, g: &mut Gfx, sc: &Scene, area: Rect) {
+        self.d3.on = false;
         let l = sc.level;
         self.tops.clear();
         self.spells.prepare(g);
@@ -1013,7 +1048,8 @@ impl WorldRenderer {
             }
         }
         self.draw_lighting(g, &v, sc, &vis);
-        self.draw_overlays(g, &v, sc, area);
+        let pr = |x: f32, y: f32, h: f32| v.px(x, y - h);
+        self.draw_overlays(g, sc, area, &pr, v.ts, false);
     }
 
     /// How dark a tile is: unexplored, remembered, or by the distance from
@@ -1044,6 +1080,84 @@ impl WorldRenderer {
             return night * (0.18 + 0.6 * d * d);
         }
         (0.04 + 0.82 * d.powf(1.5)).min(0.86)
+    }
+
+    /// The map of darkness over tiles x0.., y0.. (dw by dh), one texel per
+    /// tile, eased over time; the 3D view reads it in its shader.
+    fn dark_map(&mut self, sc: &Scene, vis: &Vis, x0: i32, y0: i32, dw: i32, dh: i32) -> Texture2D {
+        let l = sc.level;
+        let tod = sc.snap.time_of_day;
+        if self.dark_id != l.id || self.dark_cur.len() != (l.w * l.h) as usize {
+            self.dark_id = l.id.clone();
+            self.dark_cur = vec![-1.0; (l.w * l.h) as usize];
+        }
+        self.dark_buf.resize((dw * dh * 4) as usize, 0);
+        let ease = 1.0 - (-self.dt * 7.0).exp();
+        let (ex, ey) = match self.ents.get(&sc.you) {
+            Some(me) => (me.x, me.y),
+            None => (sc.snap.you.x, sc.snap.you.y),
+        };
+        let eye = (ex, ey, (sc.snap.you.vision as f32).max(1.0));
+        for yy in 0..dh {
+            for xx in 0..dw {
+                let (x, y) = (x0 + xx, y0 + yy);
+                let mut a = Self::darkness(l, vis, sc.explored, eye, x, y, tod);
+                if l.inside(x, y) {
+                    let i = (y * l.w + x) as usize;
+                    let cur = self.dark_cur[i];
+                    if cur >= 0.0 {
+                        a = cur + (a - cur) * ease;
+                    }
+                    self.dark_cur[i] = a;
+                }
+                let o = ((yy * dw + xx) * 4) as usize;
+                self.dark_buf[o..o + 4].copy_from_slice(&[
+                    0,
+                    0,
+                    0,
+                    (255.0 * a.clamp(0.0, 1.0)) as u8,
+                ]);
+            }
+        }
+        // under a roof it is as dark as the walls round it
+        if self.d3.on {
+            let cell = |x: i32, y: i32| -> Option<usize> {
+                let (xx, yy) = (x - x0, y - y0);
+                (xx >= 0 && yy >= 0 && xx < dw && yy < dh)
+                    .then(|| ((yy * dw + xx) * 4 + 3) as usize)
+            };
+            for &(hx, hy, hw, hh) in &self.d3.covers {
+                let mut least = 255u8;
+                for y in hy..hy + hh {
+                    for x in hx..hx + hw {
+                        let edge = x == hx || y == hy || x == hx + hw - 1 || y == hy + hh - 1;
+                        if let (true, Some(k)) = (edge, cell(x, y)) {
+                            least = least.min(self.dark_buf[k]);
+                        }
+                    }
+                }
+                // the whole roof as light as its best seen wall
+                for y in hy..hy + hh {
+                    for x in hx..hx + hw {
+                        if let Some(k) = cell(x, y) {
+                            self.dark_buf[k] = self.dark_buf[k].min(least);
+                        }
+                    }
+                }
+            }
+        }
+        match &self.dark_tex {
+            Some(t) if t.width() as i32 == dw && t.height() as i32 == dh => {
+                t.update_from_bytes(dw as u32, dh as u32, &self.dark_buf);
+                t.clone()
+            }
+            _ => {
+                let t = Texture2D::from_rgba8(dw as u16, dh as u16, &self.dark_buf);
+                t.set_filter(FilterMode::Linear);
+                self.dark_tex = Some(t.clone());
+                t
+            }
+        }
     }
 
     fn draw_lighting(&mut self, g: &Gfx, v: &View, sc: &Scene, vis: &Vis) {
@@ -1102,50 +1216,7 @@ impl WorldRenderer {
         // darkness map: one pixel per tile, scaled up with linear filtering
         let (x0, y0) = (v.tx0 - 1, v.ty0 - 1);
         let (dw, dh) = (v.tx1 - x0 + 2, v.ty1 - y0 + 2);
-        if self.dark_id != l.id || self.dark_cur.len() != (l.w * l.h) as usize {
-            self.dark_id = l.id.clone();
-            self.dark_cur = vec![-1.0; (l.w * l.h) as usize];
-        }
-        self.dark_buf.resize((dw * dh * 4) as usize, 0);
-        let ease = 1.0 - (-self.dt * 7.0).exp();
-        let (ex, ey) = match self.ents.get(&sc.you) {
-            Some(me) => (me.x, me.y),
-            None => (sc.snap.you.x, sc.snap.you.y),
-        };
-        let eye = (ex, ey, (sc.snap.you.vision as f32).max(1.0));
-        for yy in 0..dh {
-            for xx in 0..dw {
-                let (x, y) = (x0 + xx, y0 + yy);
-                let mut a = Self::darkness(l, vis, sc.explored, eye, x, y, tod);
-                if l.inside(x, y) {
-                    let i = (y * l.w + x) as usize;
-                    let cur = self.dark_cur[i];
-                    if cur >= 0.0 {
-                        a = cur + (a - cur) * ease;
-                    }
-                    self.dark_cur[i] = a;
-                }
-                let o = ((yy * dw + xx) * 4) as usize;
-                self.dark_buf[o..o + 4].copy_from_slice(&[
-                    0,
-                    0,
-                    0,
-                    (255.0 * a.clamp(0.0, 1.0)) as u8,
-                ]);
-            }
-        }
-        let tex = match &self.dark_tex {
-            Some(t) if t.width() as i32 == dw && t.height() as i32 == dh => {
-                t.update_from_bytes(dw as u32, dh as u32, &self.dark_buf);
-                t.clone()
-            }
-            _ => {
-                let t = Texture2D::from_rgba8(dw as u16, dh as u16, &self.dark_buf);
-                t.set_filter(FilterMode::Linear);
-                self.dark_tex = Some(t.clone());
-                t
-            }
-        };
+        let tex = self.dark_map(sc, vis, x0, y0, dw, dh);
         // texels are tile centres: shift by half a tile
         let (ox, oy) = v.px(x0 as f32, y0 as f32);
         draw_texture_ex(
@@ -1304,8 +1375,18 @@ impl WorldRenderer {
         }
     }
 
-    fn draw_overlays(&self, g: &Gfx, v: &View, sc: &Scene, area: Rect) {
-        let ts = v.ts;
+    /// Names, bars, hints, speech bubbles, floating numbers and the boss
+    /// bar. `pr` puts a world point (x, y, height in tiles) on the screen,
+    /// `ts` is the size of a tile there; `three` is the 3D view.
+    fn draw_overlays(
+        &self,
+        g: &Gfx,
+        sc: &Scene,
+        area: Rect,
+        pr: &dyn Fn(f32, f32, f32) -> (f32, f32),
+        ts: f32,
+        three: bool,
+    ) {
         let label = (ts * 0.3).max(10.0 * g.s);
         let me = &sc.snap.you;
         for (id, st) in &self.ents {
@@ -1313,8 +1394,11 @@ impl WorldRenderer {
             if st.alpha < 0.5 || e.kind == KIND_ITEM || e.kind == KIND_PROJECTILE {
                 continue;
             }
-            let (cx, cy) = v.px(st.x, st.y);
-            let mut top = self.tops.get(id).map_or(cy - ts * 0.62, |t| t - ts * 0.06);
+            let (cx, cy) = pr(st.x, st.y, 0.0);
+            let mut top = self
+                .tops
+                .get(id)
+                .map_or(pr(st.x, st.y, 0.62).1, |t| t - ts * 0.06);
             if e.dead {
                 if e.kind == KIND_PLAYER {
                     g.text_center(
@@ -1387,10 +1471,10 @@ impl WorldRenderer {
             "dungeon" | "stairs_down" | "stairs_up"
         ) {
             if let Some(st) = self.ents.get(&sc.you) {
-                let (cx, cy) = v.px(st.x, st.y);
+                let (cx, _) = pr(st.x, st.y, 0.0);
                 let pulse = 0.75 + 0.25 * (self.t * 5.0).sin();
                 let s = ts * 0.42;
-                let (bx, by) = (cx - s / 2.0, cy - ts * 1.25 - s / 2.0);
+                let (bx, by) = (cx - s / 2.0, pr(st.x, st.y, 1.25).1 - s / 2.0);
                 round_rect(
                     bx,
                     by,
@@ -1426,9 +1510,13 @@ impl WorldRenderer {
                 .fold(0.0, f32::max);
             let pad = bub * 0.5;
             let (bw, bh) = (w + pad * 2.0, lines.len() as f32 * lh + pad * 1.4);
-            let (cx, cy) = v.px(st.x, st.y);
+            let (cx, _) = pr(st.x, st.y, 0.0);
             let bx = (cx - bw / 2.0).clamp(4.0, (screen_width() - bw - 4.0).max(4.0));
-            let head = self.tops.get(&e.id).copied().unwrap_or(cy - ts * 0.75);
+            let head = self
+                .tops
+                .get(&e.id)
+                .copied()
+                .unwrap_or(pr(st.x, st.y, 0.75).1);
             let by = head - bh - ts * 0.3;
             let (bg, fg) = if e.hostile {
                 (
@@ -1462,7 +1550,12 @@ impl WorldRenderer {
                 size = ts * 0.55;
             }
             let pop = 1.0 + 0.35 * (1.0 - t.t / 0.12).max(0.0);
-            let (x, y) = v.px(t.x, t.y - k * 1.1);
+            // the 3D view raises them from the head (they start 0.6 north of it)
+            let (x, y) = if three {
+                pr(t.x, t.y + 0.6, 1.1 + k * 1.1)
+            } else {
+                pr(t.x, t.y, k * 1.1)
+            };
             let a = if k > 0.6 { 1.0 - (k - 0.6) / 0.4 } else { 1.0 };
             g.text_center(
                 &t.text,
@@ -1547,6 +1640,12 @@ impl WorldRenderer {
     }
 }
 
+/// Steps-and-back a second at a pace (heights of the body a second): about
+/// one walking, about two at a sprint, never quicker than a man can run.
+fn cadence(pace: f32) -> f32 {
+    (0.75 + 0.24 * pace).min(2.3)
+}
+
 /// Draws one creature or item; returns the screen y of its top.
 fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 {
     let e = &st.view;
@@ -1554,13 +1653,14 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 
     let mut c = col(&e.color);
     let al = st.alpha;
     let walking = st.vx.abs() + st.vy.abs() > 0.05;
+    // a frame and a bob for every step
     let frame = if walking {
-        ((st.walk * 2.6) as i32 % 2) as usize
+        ((st.gait * 2.0) as i32 % 2) as usize
     } else {
         0
     };
     let bob = if walking {
-        (st.walk * PI * 2.6).sin().abs()
+        (st.gait * TAU).sin().abs()
     } else {
         0.0
     };
@@ -1607,7 +1707,7 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 
         );
         match g.icon(&e.def, e.glyph, &ccol) {
             Some(icon) => {
-                let (w, h) = (icon.width() * k, icon.height() * k);
+                let (w, h) = (icon.width() / ART * k, icon.height() / ART * k);
                 draw_texture_ex(
                     &icon,
                     (cx - w / 2.0).round(),
@@ -1650,7 +1750,7 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 
         k *= 1.3;
     }
     let feet = cy + ts * 0.44;
-    let (w, h) = (img.width() * k, img.height() * k);
+    let (w, h) = (img.width() / ART * k, img.height() / ART * k);
     if e.dead {
         // lying on the side, greyed out
         g.shadow(cx, feet - ts * 0.1, h * 0.8, ts * 0.2, 0.4 * al);
@@ -1818,4 +1918,22 @@ fn draw_entity(g: &mut Gfx, v: &View, sc: &Scene, st: &EntState, t: f32) -> f32 
         }
     }
     top
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Running moves the limbs at a man's pace, not a hummingbird's: the hero
+    /// (160 ms a tile) takes about four steps a second, a villager two or three.
+    #[test]
+    fn steps_come_at_a_human_pace() {
+        let hero = cadence((1000.0 / 160.0) / 1.15);
+        assert!((1.6..=2.3).contains(&hero), "{hero}");
+        let villager = cadence((1000.0 / 300.0) / 1.15);
+        assert!((1.1..1.7).contains(&villager), "{villager}");
+        // the old gait: a step-and-back every 0.77 tiles
+        let old = (1000.0 / 160.0) / 0.77;
+        assert!(hero * 3.0 < old);
+    }
 }

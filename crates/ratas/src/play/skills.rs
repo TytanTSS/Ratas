@@ -14,6 +14,9 @@ use super::Session;
 use crate::gfx::{col, mul_c, round_rect, tr, Gfx};
 use crate::ui::*;
 
+/// The tint of an icon out of reach.
+const DIM_ICON: Color = Color::new(0.4, 0.4, 0.46, 1.0);
+
 #[derive(Clone)]
 struct Tab {
     kind: &'static str,
@@ -22,9 +25,12 @@ struct Tab {
     color: String,
 }
 
+/// Whose shield a row shows: a class's (true) or a subclass's (false).
+type Shield = Option<(bool, String)>;
+
 #[derive(Clone)]
 enum Row {
-    Header(String),
+    Header(String, Shield),
     Skill(&'static SkillDef),
     Sub(&'static SubclassDef),
     Class(&'static ClassDef),
@@ -129,11 +135,10 @@ fn rows_for(p: &Session, t: &Tab) -> Vec<Row> {
             let Some(c) = db.class(&t.key) else {
                 return rows;
             };
-            rows.push(Row::Header(format!(
-                "{} «{}»",
-                tr("Ветка класса"),
-                tr(&c.name)
-            )));
+            rows.push(Row::Header(
+                format!("{} «{}»", tr("Ветка класса"), tr(&c.name)),
+                Some((true, c.key.clone())),
+            ));
             for s in branch_skills(&class_branch(&t.key, "")) {
                 rows.push(Row::Skill(s));
             }
@@ -144,16 +149,15 @@ fn rows_for(p: &Session, t: &Tab) -> Vec<Row> {
                 .map(|cv| cv.subclass.clone())
                 .unwrap_or_default();
             if let Some(sc) = db.subclass(&sub) {
-                rows.push(Row::Header(format!(
-                    "{} «{}»",
-                    tr("Подкласс"),
-                    tr(&sc.name)
-                )));
+                rows.push(Row::Header(
+                    format!("{} «{}»", tr("Подкласс"), tr(&sc.name)),
+                    Some((false, sc.key.clone())),
+                ));
                 for s in branch_skills(&class_branch(&t.key, &sub)) {
                     rows.push(Row::Skill(s));
                 }
             } else {
-                rows.push(Row::Header(tr("Выбор подкласса")));
+                rows.push(Row::Header(tr("Выбор подкласса"), None));
                 for sc in db.subclasses_of(&t.key) {
                     rows.push(Row::Sub(sc));
                 }
@@ -169,11 +173,14 @@ fn rows_for(p: &Session, t: &Tab) -> Vec<Row> {
                     .iter()
                     .filter(|s| sh.skills.get(&s.key).copied().unwrap_or(0) > 0)
                     .count();
-                rows.push(Row::Header(tr(&format!(
-                    "Скрытые навыки: открыто {} из {}",
-                    opened,
-                    hidden.len()
-                ))));
+                rows.push(Row::Header(
+                    tr(&format!(
+                        "Скрытые навыки: открыто {} из {}",
+                        opened,
+                        hidden.len()
+                    )),
+                    None,
+                ));
                 rows.extend(hidden.into_iter().map(Row::Skill));
             }
         }
@@ -191,7 +198,7 @@ fn rows_for(p: &Session, t: &Tab) -> Vec<Row> {
 }
 
 fn selectable(r: &Row) -> bool {
-    !matches!(r, Row::Header(_))
+    !matches!(r, Row::Header(..))
 }
 
 pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
@@ -218,7 +225,9 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     let mut tx = inner.x;
     let mut ty = inner.y;
     for (i, t) in tabs.iter().enumerate() {
-        let tw = g.measure(&t.name, 14.0 * s, true) + 20.0 * s;
+        let shield = t.kind == "class";
+        let pad = if shield { 26.0 * s } else { 0.0 };
+        let tw = g.measure(&t.name, 14.0 * s, true) + 20.0 * s + pad;
         if tx + tw > inner.x + inner.w {
             tx = inner.x;
             ty += 32.0 * s;
@@ -241,9 +250,14 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
             },
         );
         let c = col(&t.color);
+        if shield {
+            let icon = g.class_icon(&t.key);
+            let tint = if active { WHITE } else { DIM_ICON };
+            g.icon_at(&icon, tr_.x + 6.0 * s, tr_.y + 3.0 * s, 22.0 * s, tint);
+        }
         g.text_raw(
             &t.name,
-            tr_.x + 10.0 * s,
+            tr_.x + 10.0 * s + pad,
             tr_.y + 6.0 * s,
             14.0 * s,
             if active { c } else { mul_c(c, 0.6) },
@@ -333,7 +347,8 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                 false,
             );
             if p.sel == i {
-                ability_details(g, a, dx, top, dw);
+                big_icon(g, &icon, dx + dw, top);
+                ability_details(g, a, dx, top, dw - 56.0 * s);
             }
         }
         if n == 0 {
@@ -398,7 +413,7 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         Row::Skill(sd) => p.cmd("learn", &sd.key, 0),
         Row::Sub(sc) => p.cmd("choose_subclass", &sc.key, 0),
         Row::Class(c) => p.cmd("start_class", &c.key, 0),
-        Row::Header(_) => {}
+        Row::Header(..) => {}
     };
     if inp.take(KeyCode::Enter) && p.sel < n {
         act(p, &rows[p.sel]);
@@ -406,12 +421,22 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     for (i, rw) in rows.iter().enumerate().skip(p.scroll).take(max_rows) {
         let y = top + (i - p.scroll) as f32 * row_h;
         let rr = Rect::new(inner.x, y, list_w, row_h - 2.0 * s);
-        if let Row::Header(text) = rw {
+        if let Row::Header(text, shield) = rw {
+            let mut tx = rr.x + 4.0 * s;
+            if let Some((class, key)) = shield {
+                let icon = if *class {
+                    g.class_icon(key)
+                } else {
+                    g.subclass_icon(key)
+                };
+                g.icon_at(&icon, tx, rr.y + 1.0 * s, row_h - 4.0 * s, WHITE);
+                tx += row_h + 2.0 * s;
+            }
             g.text_clip(
                 text,
-                rr.x + 4.0 * s,
+                tx,
                 rr.y + 5.0 * s,
-                rr.w,
+                rr.x + rr.w - tx,
                 14.0 * s,
                 c_accent(),
                 true,
@@ -453,19 +478,35 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                     c_dim(),
                     false,
                 );
-                g.text_raw(
-                    if rank > 0 { "●" } else { "○" },
-                    rr.x + 34.0 * s,
-                    rr.y + 4.0 * s,
-                    14.0 * s,
-                    fg,
-                    false,
+                let secret = !sd.deed.is_empty() && rank == 0;
+                let icon = if secret {
+                    g.secret_icon()
+                } else {
+                    g.skill_icon(&sd.key)
+                };
+                // learned skills shine, the ones out of reach are dim
+                let tint = if rank > 0 {
+                    WHITE
+                } else if why.is_empty() && !secret {
+                    Color::new(0.8, 0.8, 0.8, 1.0)
+                } else {
+                    DIM_ICON
+                };
+                draw_texture_ex(
+                    &icon,
+                    rr.x + 30.0 * s,
+                    rr.y + 1.0 * s,
+                    tint,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(row_h - 4.0 * s, row_h - 4.0 * s)),
+                        ..Default::default()
+                    },
                 );
                 g.text_clip(
                     &name,
-                    rr.x + 54.0 * s,
+                    rr.x + 58.0 * s,
                     rr.y + 4.0 * s,
-                    list_w - 110.0 * s,
+                    list_w - 114.0 * s,
                     14.0 * s,
                     fg,
                     false,
@@ -483,44 +524,59 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
             }
             Row::Sub(sc) => {
                 let why = can_choose_subclass(&ps, &sc.key);
-                let (name, fg) = if sc.secret && !ps.unlocked("subclass", &sc.key) {
+                let locked = sc.secret && !ps.unlocked("subclass", &sc.key);
+                let (name, fg) = if locked {
                     (tr("??? (секретный подкласс)"), c_dim())
                 } else if !why.is_empty() {
                     (tr(&sc.name), mul_c(col(&sc.color), 0.6))
                 } else {
                     (tr(&sc.name), col(&sc.color))
                 };
-                g.text_raw("♦", rr.x + 8.0 * s, rr.y + 4.0 * s, 14.0 * s, fg, false);
+                let icon = if locked {
+                    g.secret_shield(false)
+                } else {
+                    g.subclass_icon(&sc.key)
+                };
+                let tint = if why.is_empty() { WHITE } else { DIM_ICON };
+                g.icon_at(&icon, rr.x + 6.0 * s, rr.y + 1.0 * s, row_h - 4.0 * s, tint);
                 g.text_clip(
                     &name,
-                    rr.x + 28.0 * s,
+                    rr.x + 34.0 * s,
                     rr.y + 4.0 * s,
-                    list_w - 36.0 * s,
+                    list_w - 42.0 * s,
                     14.0 * s,
                     fg,
                     false,
                 );
             }
             Row::Class(cl) => {
-                let (name, fg) = if cl.secret && !ps.unlocked("class", &cl.key) {
+                let locked = cl.secret && !ps.unlocked("class", &cl.key);
+                let open = can_start_class(&ps, &cl.key).is_empty();
+                let (name, fg) = if locked {
                     (tr("??? (секретный класс)"), c_dim())
-                } else if !can_start_class(&ps, &cl.key).is_empty() {
+                } else if !open {
                     (tr(&cl.name), mul_c(col(&cl.color), 0.6))
                 } else {
                     (tr(&cl.name), col(&cl.color))
                 };
-                g.text_raw("♦", rr.x + 8.0 * s, rr.y + 4.0 * s, 14.0 * s, fg, false);
+                let icon = if locked {
+                    g.secret_shield(true)
+                } else {
+                    g.class_icon(&cl.key)
+                };
+                let tint = if open { WHITE } else { DIM_ICON };
+                g.icon_at(&icon, rr.x + 6.0 * s, rr.y + 1.0 * s, row_h - 4.0 * s, tint);
                 g.text_clip(
                     &name,
-                    rr.x + 28.0 * s,
+                    rr.x + 34.0 * s,
                     rr.y + 4.0 * s,
-                    list_w - 36.0 * s,
+                    list_w - 42.0 * s,
                     14.0 * s,
                     fg,
                     false,
                 );
             }
-            Row::Header(_) => {}
+            Row::Header(..) => {}
         }
     }
     if let Some(rw) = rows.get(p.sel) {
@@ -550,20 +606,37 @@ pub fn window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
     );
 }
 
-fn row_details(p: &Session, g: &Gfx, rw: &Row, ps: &PlayerState, x: f32, y: f32, w: f32) {
+/// A large icon with its top-right corner at (right, y).
+fn big_icon(g: &Gfx, icon: &Texture2D, right: f32, y: f32) {
+    let k = 48.0 * g.s;
+    draw_texture_ex(
+        icon,
+        right - k,
+        y,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(vec2(k, k)),
+            ..Default::default()
+        },
+    );
+}
+
+fn row_details(p: &Session, g: &mut Gfx, rw: &Row, ps: &PlayerState, x: f32, y: f32, w: f32) {
     let s = g.s;
     let sheet = p.sheet.as_ref().unwrap();
     match rw {
         Row::Skill(sd) => {
             let rank = sheet.skills.get(&sd.key).copied().unwrap_or(0);
             if !sd.deed.is_empty() && rank == 0 {
+                let icon = g.secret_icon();
+                big_icon(g, &icon, x + w, y);
                 g.text("Скрытый навык", x, y, 16.0 * s, col("#ff80ff"), true);
                 let text = format!(
                     "{} {}.",
                     tr("Откроется сам, когда вы совершите деяние:"),
                     tr(&deed_text(&sd.deed, sd.deed_count))
                 );
-                let yy = paragraph(g, &text, x, y + 28.0 * s, w, 14.0 * s, c_text());
+                let yy = paragraph(g, &text, x, y + 28.0 * s, w - 56.0 * s, 14.0 * s, c_text());
                 let done = deed_progress(ps, sd);
                 g.text_raw(
                     &tr(&format!(
@@ -591,13 +664,25 @@ fn row_details(p: &Session, g: &Gfx, rw: &Row, ps: &PlayerState, x: f32, y: f32,
         }
         Row::Sub(sc) => {
             if sc.secret && !ps.unlocked("subclass", &sc.key) {
+                let icon = g.secret_shield(false);
+                big_icon(g, &icon, x + w, y);
                 g.text("Секретный подкласс", x, y, 16.0 * s, c_accent(), true);
-                paragraph(g, "Его открывает задание одного из уникальных персонажей мира. Говорите со странниками и ищите слухи.", x, y + 28.0 * s, w, 14.0 * s, c_dim());
+                paragraph(g, "Его открывает задание одного из уникальных персонажей мира. Говорите со странниками и ищите слухи.", x, y + 28.0 * s, w - 56.0 * s, 14.0 * s, c_dim());
                 return;
             }
             let why = can_choose_subclass(ps, &sc.key);
+            let icon = g.subclass_icon(&sc.key);
+            big_icon(g, &icon, x + w, y);
             g.text(&sc.name, x, y, 16.0 * s, col(&sc.color), true);
-            let mut yy = paragraph(g, &sc.desc, x, y + 28.0 * s, w, 14.0 * s, c_text()) + 8.0 * s;
+            let mut yy = paragraph(
+                g,
+                &sc.desc,
+                x,
+                y + 28.0 * s,
+                w - 56.0 * s,
+                14.0 * s,
+                c_text(),
+            ) + 8.0 * s;
             let names: Vec<String> = branch_skills(&class_branch(&sc.class, &sc.key))
                 .iter()
                 .map(|s| tr(&s.name))
@@ -635,21 +720,33 @@ fn row_details(p: &Session, g: &Gfx, rw: &Row, ps: &PlayerState, x: f32, y: f32,
         }
         Row::Class(cl) => {
             if cl.secret && !ps.unlocked("class", &cl.key) {
+                let icon = g.secret_shield(true);
+                big_icon(g, &icon, x + w, y);
                 g.text("Секретный класс", x, y, 16.0 * s, c_accent(), true);
                 paragraph(
                     g,
                     "Его открывает задание одного из уникальных персонажей мира.",
                     x,
                     y + 28.0 * s,
-                    w,
+                    w - 56.0 * s,
                     14.0 * s,
                     c_dim(),
                 );
                 return;
             }
             let why = can_start_class(ps, &cl.key);
+            let icon = g.class_icon(&cl.key);
+            big_icon(g, &icon, x + w, y);
             g.text(&cl.name, x, y, 16.0 * s, col(&cl.color), true);
-            let yy = paragraph(g, &cl.desc, x, y + 28.0 * s, w, 14.0 * s, c_text()) + 8.0 * s;
+            let yy = paragraph(
+                g,
+                &cl.desc,
+                x,
+                y + 28.0 * s,
+                w - 56.0 * s,
+                14.0 * s,
+                c_text(),
+            ) + 8.0 * s;
             if why.is_empty() {
                 paragraph(
                     g,
@@ -672,14 +769,14 @@ fn row_details(p: &Session, g: &Gfx, rw: &Row, ps: &PlayerState, x: f32, y: f32,
                 );
             }
         }
-        Row::Header(_) => {}
+        Row::Header(..) => {}
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn skill_details(
     p: &Session,
-    g: &Gfx,
+    g: &mut Gfx,
     sd: &SkillDef,
     rank: i32,
     why: &str,
@@ -689,6 +786,8 @@ fn skill_details(
 ) {
     let s = g.s;
     let mut y = y;
+    let icon = g.skill_icon(&sd.key);
+    big_icon(g, &icon, x + w, y);
     g.text(&sd.name, x, y, 16.0 * s, c_accent(), true);
     y += 24.0 * s;
     g.text(

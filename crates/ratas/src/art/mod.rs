@@ -5,6 +5,9 @@
 
 pub mod icons;
 pub mod models;
+pub mod picks;
+pub mod runes;
+pub mod smooth;
 pub mod specs;
 pub mod tiles;
 
