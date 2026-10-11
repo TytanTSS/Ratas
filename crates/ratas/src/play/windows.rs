@@ -8,7 +8,7 @@ use ratas_core::game::{rarity_color, slot_name, ADMIN_COMMANDS, EQUIP_SLOTS, INV
 use ratas_core::proto::*;
 
 use super::{Mode, Session};
-use crate::gfx::{atlas, col, round_rect, round_rect_lines, tr, with_a, Gfx};
+use crate::gfx::{atlas, col, round_rect, round_rect_lines, tr, with_a, Gfx, ART};
 use crate::ui::*;
 
 /// Colours an item name by rarity; common items stay plain.
@@ -431,20 +431,33 @@ pub fn character(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         c_accent(),
         true,
     ) + 16.0 * s;
+    // each class with its shield, and its subclass's
+    let k = 22.0 * s;
     for cv in &sh.classes {
         if let Some(cl) = db.class(&cv.key) {
-            let mut label = format!("{} {}", tr(&cl.name), cv.level);
-            if let Some(sc) = db.subclass(&cv.subclass) {
-                label += &format!(" ({})", tr(&sc.name));
-            }
+            let icon = g.class_icon(&cl.key);
+            g.icon_at(&icon, x, inner.y - 2.0 * s, k, WHITE);
             x = g.text_raw(
-                &label,
-                x,
+                &format!("{} {}", tr(&cl.name), cv.level),
+                x + k + 4.0 * s,
                 inner.y + 2.0 * s,
                 15.0 * s,
                 col(&cl.color),
                 false,
-            ) + 14.0 * s;
+            ) + 8.0 * s;
+            if let Some(sc) = db.subclass(&cv.subclass) {
+                let icon = g.subclass_icon(&sc.key);
+                g.icon_at(&icon, x, inner.y - 2.0 * s, k, WHITE);
+                x = g.text_raw(
+                    &tr(&sc.name),
+                    x + k + 4.0 * s,
+                    inner.y + 2.0 * s,
+                    15.0 * s,
+                    col(&sc.color),
+                    false,
+                ) + 8.0 * s;
+            }
+            x += 10.0 * s;
         }
     }
     let y0 = inner.y + 34.0 * s;
@@ -913,6 +926,15 @@ pub fn pause(
         }
     }
     items.push(("controls", tr("Управление")));
+    items.push((
+        "graphics",
+        match cfg.graphics_mode() {
+            "3d" => tr("Графика: 3D низкополигональная (сменить)"),
+            "hd" => tr("Графика: 3D детальная (сменить)"),
+            "high" => tr("Графика: 3D высокополигональная (сменить)"),
+            _ => tr("Графика: 2D (сменить)"),
+        },
+    ));
     items.push(("help", tr("Помощь")));
     items.push(("exit", tr("Выйти в главное меню")));
     let n = items.len();
@@ -945,6 +967,16 @@ pub fn pause(
         Some("resume") => {
             p.mode = Mode::Game;
             p.set_pause(false);
+        }
+        Some("graphics") => {
+            cfg.graphics = match cfg.graphics_mode() {
+                "2d" => "3d",
+                "3d" => "hd",
+                "hd" => "high",
+                _ => "2d",
+            }
+            .into();
+            let _ = cfg.save();
         }
         Some("save") => p.quick_save(),
         Some("open") => {
@@ -1421,11 +1453,9 @@ pub fn class_window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
         let tex = g.model(&name, &cl.color, 0, &[]).frames
             [((p.t * 2.0) as usize + i) % 2 * selected as usize]
             .clone();
-        let k = ((ch - 40.0 * s) / tex.height())
-            .min(90.0 * s / tex.width())
-            .floor()
-            .max(1.0);
-        let (tw, th) = (tex.width() * k, tex.height() * k);
+        let (aw, ah) = (tex.width() / ART, tex.height() / ART);
+        let k = ((ch - 40.0 * s) / ah).min(90.0 * s / aw).floor().max(1.0);
+        let (tw, th) = (aw * k, ah * k);
         g.shadow(
             cr.x + 60.0 * s,
             cr.y + ch - 18.0 * s,
@@ -1442,6 +1472,15 @@ pub fn class_window(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
                 dest_size: Some(vec2(tw, th)),
                 ..Default::default()
             },
+        );
+        let icon = g.class_icon(&cl.key);
+        let k = 32.0 * s;
+        g.icon_at(
+            &icon,
+            cr.x + cw - k - 8.0 * s,
+            cr.y + ch - k - 8.0 * s,
+            k,
+            WHITE,
         );
         g.text_clip(
             &cl.name,

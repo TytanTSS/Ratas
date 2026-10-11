@@ -1553,7 +1553,29 @@ pub fn humanoid(name: &str, c: Rgba, v: i32) -> Option<Hum> {
 
 /// Paints a beast model, if the name is a beast.
 pub fn beast(name: &str, c: Rgba, f: i32) -> Option<Pc> {
-    let q = |q: Quad| Some(paint_quad(&q, f));
+    if let Some(q) = quad_spec(name, c) {
+        return Some(paint_quad(&q, f));
+    }
+    match name {
+        "spider" => Some(paint_spider(c, NONE, f)),
+        "cave_spider_queen" => Some(paint_spider(c, hex("#ff3a3a"), f)),
+        "scorpion" => Some(paint_scorpion(c, f)),
+        "scarab" => Some(paint_beetle(c, f)),
+        "giant_bat" => Some(paint_bat(c, f)),
+        "slime" => Some(paint_slime(c, f)),
+        "ghost" => Some(paint_ghost(c, f, NONE, false)),
+        "banshee" => Some(paint_ghost(c, f, hex("#3a3a58"), false)),
+        "wraith" => Some(paint_ghost(c, f, NONE, true)),
+        "ice_elemental" => Some(paint_elemental(c, f)),
+        "sand_worm" => Some(paint_worm(c, f)),
+        "treant" => Some(paint_treant(c, f)),
+        _ => None,
+    }
+}
+
+/// The four-legged beasts: their shapes (also built in 3D).
+pub fn quad_spec(name: &str, c: Rgba) -> Option<Quad> {
+    let q = Some;
     match name {
         "wolf" => q(Quad {
             w: 20,
@@ -1655,18 +1677,6 @@ pub fn beast(name: &str, c: Rgba, f: i32) -> Option<Pc> {
             eye: hex("#fff06a"),
             ..Quad::default()
         }),
-        "spider" => Some(paint_spider(c, NONE, f)),
-        "cave_spider_queen" => Some(paint_spider(c, hex("#ff3a3a"), f)),
-        "scorpion" => Some(paint_scorpion(c, f)),
-        "scarab" => Some(paint_beetle(c, f)),
-        "giant_bat" => Some(paint_bat(c, f)),
-        "slime" => Some(paint_slime(c, f)),
-        "ghost" => Some(paint_ghost(c, f, NONE, false)),
-        "banshee" => Some(paint_ghost(c, f, hex("#3a3a58"), false)),
-        "wraith" => Some(paint_ghost(c, f, NONE, true)),
-        "ice_elemental" => Some(paint_elemental(c, f)),
-        "sand_worm" => Some(paint_worm(c, f)),
-        "treant" => Some(paint_treant(c, f)),
         _ => None,
     }
 }

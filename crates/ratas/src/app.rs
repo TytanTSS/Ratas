@@ -40,6 +40,14 @@ pub fn run(cfg: Config, mods: Vec<String>, start: Start) {
         icon: Some(icon),
         ..Default::default()
     };
+    // the 3D view draws whole chunks of land in one call
+    let conf = macroquad::conf::Conf {
+        miniquad_conf: conf,
+        update_on: None,
+        default_filter_mode: FilterMode::Linear,
+        draw_call_vertex_capacity: 40_000,
+        draw_call_index_capacity: 40_000,
+    };
     macroquad::Window::from_config(conf, async move {
         let mut app = App::new(cfg, mods);
         app.start(start);
@@ -439,6 +447,7 @@ impl App {
         loop {
             self.g.s = self.scale();
             self.g.check_content();
+            self.g.set_crisp(self.cfg.crisp_pixels);
             self.inp.poll();
             let dt = self.inp.dt;
             self.t += dt;
@@ -473,6 +482,7 @@ impl App {
                 self.screenshot();
             }
             if !auto.is_empty() && self.t > auto_at {
+                eprintln!("autoshot: {} fps", get_fps());
                 save_screen(&auto[0]);
                 self.quit = true;
             }
@@ -1323,6 +1333,38 @@ impl App {
                     if self.cfg.fullscreen { 1 } else { 0 },
                     "F11 переключает в любой момент.",
                 ),
+                Field::choice(
+                    "Графика",
+                    vec![
+                        tr("2D: пиксельная"),
+                        tr("3D: низкополигональная"),
+                        tr("3D: детальная"),
+                        tr("3D: высокополигональная"),
+                    ],
+                    vec![
+                        tr("Мир из пиксельных тайлов и спрайтов, вид сверху в три четверти."),
+                        tr("Объёмный мир из простых многогранников, камера смотрит на героя сверху-сзади. Меняется и в меню паузы (Esc)."),
+                        tr("Объёмный мир из фигур со множеством рубленых граней, как вырезанных резцом: трава, камни, листва, лица, ткань, кожа, металл и дерево с рельефом; свет считается для каждой точки. Нужна видеокарта посильнее."),
+                        tr("Самая подробная графика: гладкие фигуры из ещё большего числа граней, плавные изгибы, ткань, кожа, металл, мех, чешуя, кора и камень с рельефом и бликами. Нужна мощная видеокарта."),
+                    ],
+                    match self.cfg.graphics.as_str() {
+                        "3d" => 1,
+                        "hd" => 2,
+                        "high" => 3,
+                        _ => 0,
+                    },
+                    "",
+                ),
+                Field::choice(
+                    "Пиксельная графика",
+                    vec![tr("Сглаженная"), tr("Чёткие пиксели")],
+                    vec![
+                        tr("Спрайты, тайлы и значки нарисованы вчетверо подробнее: ступеньки пикселей сглажены в плавные линии и изгибы."),
+                        tr("Спрайты, тайлы и значки как есть: крупные квадратные пиксели."),
+                    ],
+                    if self.cfg.crisp_pixels { 1 } else { 0 },
+                    "",
+                ),
                 Field::button("Сохранить"),
             ],
         )
@@ -1348,6 +1390,8 @@ impl App {
         self.cfg.local_model = f.fields[7].value();
         self.cfg.ai_director = f.fields[8].idx() == 0;
         self.cfg.ui_scale = [0.75, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0][f.fields[9].idx()];
+        self.cfg.graphics = ["2d", "3d", "hd", "high"][f.fields[11].idx().min(3)].into();
+        self.cfg.crisp_pixels = f.fields[12].idx() == 1;
         let fs = f.fields[10].idx() == 1;
         if fs != self.cfg.fullscreen {
             self.cfg.fullscreen = fs;

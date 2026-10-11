@@ -7,7 +7,7 @@ use ratas_core::content;
 
 use super::windows::{item_icon, rarity_col};
 use super::{Mode, Session};
-use crate::gfx::{round_rect, round_rect_lines, tr, Gfx};
+use crate::gfx::{round_rect, round_rect_lines, tr, Gfx, ART};
 use crate::ui::*;
 
 pub fn dialogue(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
@@ -65,11 +65,9 @@ pub fn dialogue(p: &mut Session, g: &mut Gfx, inp: &mut UiInput) {
             0
         };
         let tex = g.model(&name, &e.color, variant, &e.gear).frames[0].clone();
-        let k = (pr.h * 0.85 / tex.height())
-            .min(pr.w * 0.85 / tex.width())
-            .floor()
-            .max(1.0);
-        let (tw, th) = (tex.width() * k, tex.height() * k);
+        let (aw, ah) = (tex.width() / ART, tex.height() / ART);
+        let k = (pr.h * 0.85 / ah).min(pr.w * 0.85 / aw).floor().max(1.0);
+        let (tw, th) = (aw * k, ah * k);
         draw_texture_ex(
             &tex,
             pr.x + (pr.w - tw) / 2.0,

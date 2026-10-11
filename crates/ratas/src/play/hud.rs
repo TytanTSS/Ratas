@@ -10,7 +10,7 @@ use ratas_core::llm::{local, Provider};
 use ratas_core::proto::*;
 
 use super::{Mode, Session};
-use crate::gfx::{atlas, col, daylight, round_rect, round_rect_lines, tr, with_a, Gfx};
+use crate::gfx::{atlas, col, daylight, round_rect, round_rect_lines, tr, with_a, Gfx, ART};
 use crate::ui::*;
 
 /// Draws the HUD; returns true when the mouse is over it.
@@ -174,11 +174,9 @@ fn hero_frame(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, s: f32) -> bool {
     if let Some(e) = snap.entities.iter().find(|e| e.id == you) {
         let name = crate::art::specs::resolve(&e.model, &e.def, e.glyph, e.kind);
         let tex = g.model(&name, &e.color, 0, &e.gear).frames[0].clone();
-        let k = (pr.h * 0.9 / tex.height())
-            .min(pr.w * 0.9 / tex.width())
-            .floor()
-            .max(1.0);
-        let (tw, th) = (tex.width() * k, tex.height() * k);
+        let (aw, ah) = (tex.width() / ART, tex.height() / ART);
+        let k = (pr.h * 0.9 / ah).min(pr.w * 0.9 / aw).floor().max(1.0);
+        let (tw, th) = (aw * k, ah * k);
         draw_texture_ex(
             &tex,
             pr.x + (pr.w - tw) / 2.0,
@@ -216,10 +214,13 @@ fn hero_frame(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, s: f32) -> bool {
     );
     let tx = pr.x + pr.w + 10.0 * s;
     let bw = x + fw - tx - 10.0 * s;
-    let class_name = p
+    let class = p
         .sheet
         .as_ref()
-        .and_then(|sh| content::db().class(&sh.class))
+        .map(|sh| sh.class.clone())
+        .unwrap_or_default();
+    let class_name = content::db()
+        .class(&class)
         .map(|c| tr(&c.name))
         .unwrap_or_default();
     let nx = g.text_clip(
@@ -231,11 +232,15 @@ fn hero_frame(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, s: f32) -> bool {
         c_accent(),
         true,
     );
+    if !class_name.is_empty() {
+        let icon = g.class_icon(&class);
+        g.icon_at(&icon, nx + 8.0 * s, y + 7.0 * s, 18.0 * s, WHITE);
+    }
     g.text_clip(
         &class_name,
-        nx + 8.0 * s,
+        nx + 30.0 * s,
         y + 10.0 * s,
-        (x + fw - nx - 18.0 * s).max(0.0),
+        (x + fw - nx - 40.0 * s).max(0.0),
         12.0 * s,
         c_dim(),
         false,
@@ -463,7 +468,7 @@ fn target_frame(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) -> f32 {
     y + h + 8.0 * s
 }
 
-fn party_frames(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) {
+fn party_frames(p: &Session, g: &mut Gfx, x: f32, y: f32, w: f32, s: f32) {
     let me = &p.snap.as_ref().unwrap().you;
     let mut y = y;
     for m in &me.party {
@@ -480,11 +485,13 @@ fn party_frames(p: &Session, g: &Gfx, x: f32, y: f32, w: f32, s: f32) {
             name = format!("♛ {name}");
         }
         let c = if m.dead { c_bad() } else { c_text() };
+        let icon = g.class_icon(&m.class);
+        g.icon_at(&icon, x + 6.0 * s, y + 2.0 * s, 18.0 * s, WHITE);
         g.text_clip(
             &name,
-            x + 8.0 * s,
+            x + 28.0 * s,
             y + 4.0 * s,
-            w - 60.0 * s,
+            w - 80.0 * s,
             13.0 * s,
             c,
             true,
@@ -851,8 +858,10 @@ fn hotbar(p: &mut Session, g: &mut Gfx, inp: &mut UiInput, w: f32, h: f32, s: f3
             Color::from_rgba(24, 22, 34, 255),
         );
         if let Some(icon) = g.icon("", '!', color) {
-            let k = (r.w * 0.7 / icon.width()).floor().max(1.0);
-            let (iw, ih) = (icon.width() * k, icon.height() * k);
+            // whole pixels of the art, as many as fit
+            let (aw, ah) = (icon.width() / ART, icon.height() / ART);
+            let k = (r.w * 0.7 / aw).floor().max(1.0);
+            let (iw, ih) = (aw * k, ah * k);
             let c = if count > 0 {
                 WHITE
             } else {

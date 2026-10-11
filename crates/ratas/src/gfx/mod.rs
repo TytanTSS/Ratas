@@ -6,11 +6,13 @@ pub mod world;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use macroquad::prelude::*;
 use macroquad::text::{load_ttf_font_from_bytes, Font};
 use miniquad::{BlendFactor, BlendState, BlendValue, Equation, PipelineParams};
 
+use crate::art::runes::{Frame, Look};
 use crate::art::{self, Pc, Rgba};
 use ratas_core::content::{self, TileDef};
 use ratas_core::i18n;
@@ -86,6 +88,32 @@ pub fn texture(p: &Pc) -> Texture2D {
     t
 }
 
+/// Pixel art keeps its square pixels instead of being smoothed.
+static CRISP: AtomicBool = AtomicBool::new(false);
+
+/// How many times finer than it is painted pixel art is drawn: a picture
+/// of art is ART times wider than its canvas.
+pub const ART: f32 = art::smooth::SCALE as f32;
+
+/// Pixel art is smoothed (false) or keeps its square pixels (true).
+pub fn crisp() -> bool {
+    CRISP.load(Ordering::Relaxed)
+}
+
+/// A texture of pixel art, drawn ART times finer than its canvas: its
+/// edges smoothed (or its pixels kept square when crisp), filtered
+/// smoothly, with smaller copies for when it is drawn small. `wrap`: it is
+/// a tile that repeats.
+pub fn art_texture(p: &Pc, wrap: bool) -> Texture2D {
+    let f = art::smooth::finer(p, wrap, crisp());
+    let t = Texture2D::from_rgba8(f.w.max(1) as u16, f.h.max(1) as u16, &f.bytes());
+    let id = t.raw_miniquad_id();
+    let ctx = unsafe { get_internal_gl() }.quad_context;
+    ctx.texture_generate_mipmaps(id);
+    ctx.texture_set_filter(id, FilterMode::Linear, miniquad::MipmapFilterMode::Linear);
+    t
+}
+
 /// The art of one tile type, as textures.
 pub struct TileTex {
     /// [variant][frame]
@@ -136,6 +164,9 @@ pub struct Gfx {
     models: HashMap<String, ModelTex>,
     icons: HashMap<String, Texture2D>,
     ability_icons: HashMap<String, Texture2D>,
+    skill_icons: HashMap<String, Texture2D>,
+    /// which picture each ability and skill of the content set shows
+    book: Option<art::picks::Book>,
     /// identifies the content set the caches were built for
     content_id: usize,
 }
@@ -182,7 +213,21 @@ impl Gfx {
             models: HashMap::new(),
             icons: HashMap::new(),
             ability_icons: HashMap::new(),
+            skill_icons: HashMap::new(),
+            book: None,
             content_id: 0,
+        }
+    }
+
+    /// Sets whether pixel art keeps its square pixels; the art is painted
+    /// anew when that changes.
+    pub fn set_crisp(&mut self, on: bool) {
+        if CRISP.swap(on, Ordering::Relaxed) != on {
+            self.tiles.clear();
+            self.models.clear();
+            self.icons.clear();
+            self.ability_icons.clear();
+            self.skill_icons.clear();
         }
     }
 
@@ -195,6 +240,8 @@ impl Gfx {
             self.models.clear();
             self.icons.clear();
             self.ability_icons.clear();
+            self.skill_icons.clear();
+            self.book = None;
         }
     }
 
@@ -207,9 +254,9 @@ impl Gfx {
                     ground: a
                         .ground
                         .iter()
-                        .map(|v| v.iter().map(texture).collect())
+                        .map(|v| v.iter().map(|p| art_texture(p, true)).collect())
                         .collect(),
-                    object: a.object.iter().map(texture).collect(),
+                    object: a.object.iter().map(|p| art_texture(p, false)).collect(),
                     tall: a.tall,
                     wall: a.wall,
                 },
@@ -217,7 +264,10 @@ impl Gfx {
                     // unknown (modded) tile: a coloured block, the glyph is drawn on top
                     let (fg, bg) = art::tiles::tile_colors(def);
                     TileTex {
-                        ground: vec![vec![texture(&art::tiles::ground_art("", fg, bg, 0, 0))]],
+                        ground: vec![vec![art_texture(
+                            &art::tiles::ground_art("", fg, bg, 0, 0),
+                            true,
+                        )]],
                         object: vec![],
                         tall: false,
                         wall: false,
@@ -234,8 +284,8 @@ impl Gfx {
         if !self.models.contains_key(&key) {
             let c = art::hex(color);
             let frames = [
-                texture(&art::specs::paint_model(name, c, variant, 0, gear)),
-                texture(&art::specs::paint_model(name, c, variant, 1, gear)),
+                art_texture(&art::specs::paint_model(name, c, variant, 0, gear), false),
+                art_texture(&art::specs::paint_model(name, c, variant, 1, gear), false),
             ];
             self.models.insert(
                 key.clone(),
@@ -257,31 +307,157 @@ impl Gfx {
             return Some(t.clone());
         }
         let p = art::icons::item_icon(&shape, art::hex(color))?;
-        let t = texture(&p.outlined());
+        let t = art_texture(&p.outlined(), false);
         self.icons.insert(key, t.clone());
         Some(t)
     }
 
-    /// A round rune for an ability: its colour and a sign by its kind.
+    fn book(&mut self) -> &art::picks::Book {
+        self.book
+            .get_or_insert_with(|| art::picks::Book::new(content::db()))
+    }
+
+    /// The round rune of an ability: a pictogram of what it does in its
+    /// colour, a badge for its element; no two abilities share one.
     pub fn ability_icon(&mut self, key: &str) -> Texture2D {
         if let Some(t) = self.ability_icons.get(key) {
             return t.clone();
         }
-        let d = content::db().ability(key);
-        let c = d.map_or(art::rgb(160, 160, 160), |a| art::hex(&a.color));
-        let kind = d.map_or("", |a| a.kind.as_str());
-        let p = match d.map(|a| a.parts.as_slice()) {
+        let p = match content::db().ability(key) {
             // a fusion: the runes of both parts split by a golden seam
-            Some([x, y, ..]) => paint_fusion(
-                &paint_ability(art::hex(&x.color), &x.kind, &x.key),
-                &paint_ability(art::hex(&y.color), &y.kind, &y.key),
-                key,
+            Some(a) if a.parts.len() >= 2 => {
+                let (x, y) = (&a.parts[0], &a.parts[1]);
+                let (lx, ly) = (self.book().ability(x), self.book().ability(y));
+                art::runes::fusion(
+                    &art::runes::paint(lx, art::hex(&x.color), Frame::Rune),
+                    &art::runes::paint(ly, art::hex(&y.color), Frame::Rune),
+                    key,
+                )
+            }
+            Some(a) => {
+                let look = self.book().ability(a);
+                art::runes::paint(look, art::hex(&a.color), Frame::Rune)
+            }
+            None => art::runes::paint(
+                Look {
+                    glyph: "unknown",
+                    badge: "",
+                },
+                art::rgb(160, 160, 160),
+                Frame::Rune,
             ),
-            _ => paint_ability(c, kind, key),
         };
-        let t = texture(&p);
+        let t = art_texture(&p, false);
         self.ability_icons.insert(key.to_string(), t.clone());
         t
+    }
+
+    /// The picture of a skill: the rune of the ability it grants, or a square
+    /// plaque in its branch's colour; no two skills share one.
+    pub fn skill_icon(&mut self, key: &str) -> Texture2D {
+        let db = content::db();
+        let Some(sd) = db.skill(key) else {
+            return self.ability_icon("");
+        };
+        if db.ability(&sd.grants).is_some() {
+            return self.ability_icon(&sd.grants);
+        }
+        if let Some(t) = self.skill_icons.get(key) {
+            return t.clone();
+        }
+        let c = db
+            .branch(&sd.branch)
+            .map_or(art::rgb(160, 160, 160), |b| art::hex(&b.color));
+        let look = self.book().skill(sd);
+        let t = art_texture(&art::runes::paint(look, c, Frame::Plaque), false);
+        self.skill_icons.insert(key.to_string(), t.clone());
+        t
+    }
+
+    /// The plaque of a hidden skill nobody has opened yet.
+    pub fn secret_icon(&mut self) -> Texture2D {
+        if let Some(t) = self.skill_icons.get("?") {
+            return t.clone();
+        }
+        let look = Look {
+            glyph: "unknown",
+            badge: "",
+        };
+        let t = art_texture(
+            &art::runes::paint(look, art::rgb(150, 110, 170), Frame::Plaque),
+            false,
+        );
+        self.skill_icons.insert("?".into(), t.clone());
+        t
+    }
+
+    /// The shield of a class: its pictogram on a golden rim.
+    pub fn class_icon(&mut self, key: &str) -> Texture2D {
+        self.shield(key, true)
+    }
+
+    /// The shield of a subclass, its class's sign in the corner.
+    pub fn subclass_icon(&mut self, key: &str) -> Texture2D {
+        self.shield(key, false)
+    }
+
+    /// The shield of a secret class or subclass nobody has unlocked yet.
+    pub fn secret_shield(&mut self, class: bool) -> Texture2D {
+        let id = format!("shield?{class}");
+        if let Some(t) = self.skill_icons.get(&id) {
+            return t.clone();
+        }
+        let look = Look {
+            glyph: "unknown",
+            badge: "",
+        };
+        let frame = if class { Frame::Class } else { Frame::Subclass };
+        let t = art_texture(
+            &art::runes::paint(look, art::rgb(150, 110, 170), frame),
+            false,
+        );
+        self.skill_icons.insert(id, t.clone());
+        t
+    }
+
+    fn shield(&mut self, key: &str, class: bool) -> Texture2D {
+        let id = format!("shield:{class}:{key}");
+        if let Some(t) = self.skill_icons.get(&id) {
+            return t.clone();
+        }
+        let db = content::db();
+        let (look, c, frame) = if class {
+            let Some(cl) = db.class(key) else {
+                return self.secret_shield(true);
+            };
+            (self.book().class(cl), art::hex(&cl.color), Frame::Class)
+        } else {
+            let Some(sc) = db.subclass(key) else {
+                return self.secret_shield(false);
+            };
+            (
+                self.book().subclass(sc),
+                art::hex(&sc.color),
+                Frame::Subclass,
+            )
+        };
+        let t = art_texture(&art::runes::paint(look, c, frame), false);
+        self.skill_icons.insert(id, t.clone());
+        t
+    }
+
+    /// Draws an icon into a square.
+    pub fn icon_at(&self, t: &Texture2D, x: f32, y: f32, size: f32, tint: Color) {
+        draw_texture_ex(
+            t,
+            x,
+            y,
+            tint,
+            DrawTextureParams {
+                dest_size: Some(vec2(size, size)),
+                ..Default::default()
+            },
+        );
     }
 
     // ---- text ----
@@ -466,86 +642,6 @@ impl Gfx {
             },
         );
     }
-}
-
-/// Paints a round ability rune: a ring in the ability colour with a sign of
-/// its kind (a blade, an arrow, a flame, a cross, a star...).
-fn paint_ability(c: Rgba, kind: &str, key: &str) -> Pc {
-    use art::{alpha, mix, mul, WHITE};
-    let mut p = Pc::new(20, 20, key);
-    p.circle(10.0, 10.0, 9.6, mul(c, 0.35));
-    p.ball(10.0, 10.0, 8.6, mul(c, 0.7), 0.05);
-    p.circle(
-        10.0,
-        10.0,
-        7.2,
-        mix(mul(c, 0.25), art::rgb(10, 10, 16), 0.5),
-    );
-    let fg = mix(c, WHITE, 0.25);
-    match kind {
-        "strike" | "cleave" | "dash" => {
-            p.thick(5.0, 15.0, 14.5, 5.5, 2.0, fg);
-            p.thick(4.0, 12.0, 8.0, 16.0, 1.0, art::models::C_GOLD);
-        }
-        "projectile" | "chain" => {
-            p.thick(4.0, 16.0, 15.0, 5.0, 1.0, fg);
-            p.thick(15.0, 5.0, 11.0, 5.5, 1.0, WHITE);
-            p.thick(15.0, 5.0, 14.5, 9.0, 1.0, WHITE);
-        }
-        "heal" | "revive" => {
-            p.rect(9, 4, 3, 12, fg);
-            p.rect(4, 9, 12, 3, fg);
-        }
-        "buff" | "taunt" | "decoy" => {
-            p.circle(10.0, 10.0, 4.6, alpha(fg, 200));
-            p.circle(10.0, 10.0, 2.6, mul(c, 0.4));
-        }
-        "summon" => {
-            p.ball(10.0, 8.0, 3.0, fg, 0.0);
-            p.rect(7, 11, 7, 5, fg);
-        }
-        "nova" | "echo" | "death_sentence" => {
-            for i in 0..8 {
-                let a = i as f64 * std::f64::consts::PI / 4.0;
-                p.thick(
-                    10.0,
-                    10.0,
-                    10.0 + a.cos() * 6.0,
-                    10.0 + a.sin() * 6.0,
-                    1.0,
-                    fg,
-                );
-            }
-            p.circle(10.0, 10.0, 2.0, WHITE);
-        }
-        _ => {
-            // a four-pointed spark
-            p.thick(10.0, 3.5, 10.0, 16.5, 1.0, fg);
-            p.thick(3.5, 10.0, 16.5, 10.0, 1.0, fg);
-            p.ball(10.0, 10.0, 2.8, fg, 0.0);
-            p.set(9, 9, WHITE);
-        }
-    }
-    p
-}
-
-/// The rune of a fused ability: the upper left of one part's rune, the
-/// lower right of the other's, a golden seam between them.
-fn paint_fusion(a: &Pc, b: &Pc, key: &str) -> Pc {
-    let mut p = Pc::new(a.w, a.h, key);
-    let n = a.w + a.h - 2;
-    for y in 0..a.h {
-        for x in 0..a.w {
-            let d = x + y - n / 2;
-            let c = if d < 0 { a.get(x, y) } else { b.get(x, y) };
-            if !c.visible() {
-                continue;
-            }
-            let seam = d == 0 || d == -1;
-            p.set(x, y, if seam { art::models::C_GOLD } else { c });
-        }
-    }
-    p
 }
 
 // ---- free shape helpers ----

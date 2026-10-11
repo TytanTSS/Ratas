@@ -238,6 +238,21 @@ impl Session {
                     // "!pick a b" picks abilities in the fusion window,
                     // "!fuse a b" fuses them, "!sel N" moves the cursor
                     ["!sel", n] => self.sel = n.parse().unwrap_or(0),
+                    // "!tab N" opens a tab of the window, "!learn k" learns a skill
+                    ["!tab", n] => self.tab = n.parse().unwrap_or(0),
+                    ["!learn", k] => self.cmd("learn", k, 0),
+                    // "!zoom N": N steps in (or out when negative)
+                    ["!zoom", n] => {
+                        let n: i32 = n.parse().unwrap_or(0);
+                        for _ in 0..n.abs() {
+                            self.wr.zoom(n.signum() as f32);
+                        }
+                    }
+                    // "!gallery N K": the 3D forms of K abilities from the
+                    // N-th (by key) stand round the hero
+                    ["!gallery", n, k] => self
+                        .wr
+                        .gallery(n.parse().unwrap_or(0), k.parse().unwrap_or(24)),
                     // "!cells N": N cells on the quick-access bar
                     ["!cells", n] => self.cmd("hotbar_size", "", n.parse().unwrap_or(8)),
                     ["!pick", keys @ ..] => {
@@ -296,6 +311,7 @@ impl Session {
                 "lore" => Mode::Lore,
                 "chat" => Mode::Chat,
                 "controls" => Mode::Controls,
+                "class" => Mode::Class,
                 _ => Mode::Game,
             };
         }
@@ -504,7 +520,7 @@ impl Session {
         if inp.mouse.x <= 0.0 || inp.mouse.y <= 0.0 || inp.mouse.x >= w || inp.mouse.y >= h {
             return None;
         }
-        let (x, y) = self.wr.view.world(inp.mouse.x, inp.mouse.y);
+        let (x, y) = self.wr.world_at(inp.mouse.x, inp.mouse.y);
         Some([x, y])
     }
 
@@ -752,11 +768,14 @@ impl Session {
                 input: self.held,
             };
             self.wr.update(inp.dt, &scene);
-            self.wr.draw(
-                g,
-                &scene,
-                Rect::new(0.0, 0.0, screen_width(), screen_height()),
-            );
+            let area = Rect::new(0.0, 0.0, screen_width(), screen_height());
+            if cfg.three_d() {
+                self.wr.d3.hd = cfg.detailed();
+                self.wr.d3.fine = cfg.high_poly();
+                self.wr.draw3d(g, &scene, area);
+            } else {
+                self.wr.draw(g, &scene, area);
+            }
         }
         // windows take the mouse before the world does
         let over_ui = hud::draw(self, g, inp, cfg);

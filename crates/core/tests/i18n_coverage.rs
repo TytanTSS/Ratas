@@ -5,7 +5,8 @@ use ratas_core::i18n;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// Lists of names that are transliterated, not translated.
+/// Lists of names that are transliterated, not translated, and of word
+/// stems the client looks for in names (to pick skill pictures).
 const PROPER_NAMES: &[&str] = &[
     "VILLAGE_NAMES",
     "CITY_NAMES",
@@ -16,6 +17,7 @@ const PROPER_NAMES: &[&str] = &[
     "TOWN_NOUNS",
     "CITY_ROOTS",
     "CITY_ENDS",
+    "PICTURE_WORDS",
 ];
 
 fn root() -> PathBuf {

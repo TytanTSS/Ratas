@@ -20,8 +20,12 @@ use ratas_core::proto::*;
 use ratas_core::rng::Rng;
 
 use super::{EntState, View, KIND_PROJECTILE};
+
+mod d3;
+mod forms;
 use crate::art::SPX;
-use crate::gfx::{col, mix_c, mul_c, with_a, Gfx};
+use crate::gfx::{col, mix_c, mul_c, with_a, Gfx, ART};
+pub use forms::Out;
 
 /// Particles beyond this are not spawned (a storm of storms stays smooth).
 const MAX_PARTS: usize = 5000;
@@ -29,7 +33,7 @@ const MAX_PARTS: usize = 5000;
 // ---- looks ----
 
 /// The element of a look: its colours and particles.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Elem {
     Fire,
     Frost,
@@ -210,11 +214,58 @@ struct Look {
     cross: bool,
     /// the size of projectiles ("@", "O" are big)
     big: f32,
+    /// its own forms in 3D
+    d: Design,
 }
 
-/// The look of an ability by its key (and the colour of the effect).
-fn look(key: &str, color: &str) -> Look {
-    let a = content::db().ability(key);
+/// The own forms of an ability in 3D: the heart of its missile and of its
+/// sign, what crowns them, how many of those, how they turn. Picked once
+/// for every ability of the content, so that no two abilities of an
+/// element look alike (see `designs`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Design {
+    /// one of CORES hearts (an orb, a crystal, a star...), drawn in the
+    /// ways of its element
+    pub core: u8,
+    /// one of CROWNS ornaments (motes circling, spikes, petals...)
+    pub crown: u8,
+    /// how many parts the ornament has (3..=8)
+    pub n: u8,
+    /// which way and how fast it turns (-2..=2, never 0)
+    pub spin: i8,
+}
+
+pub const CORES: u8 = 8;
+pub const CROWNS: u8 = 8;
+const COUNTS: u8 = 6;
+
+/// A number from a word that stays the same from run to run.
+fn stable(s: &str) -> u32 {
+    s.bytes().fold(0x811C_9DC5u32, |h, b| {
+        (h ^ b as u32).wrapping_mul(0x0100_0193)
+    })
+}
+
+impl Design {
+    /// The design at a place of all CORES × CROWNS × COUNTS of them.
+    fn at(i: u32, spin: i8) -> Design {
+        let i = i % (CORES as u32 * CROWNS as u32 * COUNTS as u32);
+        Design {
+            core: (i / (CROWNS as u32 * COUNTS as u32)) as u8,
+            crown: ((i / COUNTS as u32) % CROWNS as u32) as u8,
+            n: 3 + (i % COUNTS as u32) as u8,
+            spin,
+        }
+    }
+
+    fn of_word(key: &str) -> Design {
+        let h = stable(key);
+        Design::at(h, [-2, -1, 1, 2][(h >> 20) as usize % 4])
+    }
+}
+
+/// The element and the signature shape of an ability.
+fn elem_sig(key: &str, a: Option<&content::AbilityDef>) -> (Elem, Sig) {
     let (mut elem, mut sig) = (None, Sig::None);
     for w in a.map_or("", |a| a.fx.as_str()).split_whitespace() {
         if let Some((_, e)) = ELEMS.iter().find(|(n, _)| *n == w) {
@@ -228,6 +279,66 @@ fn look(key: &str, color: &str) -> Look {
     let elem = elem
         .or_else(|| a.and_then(|a| damage_elem(&a.dmg_type)))
         .unwrap_or(if bow { Elem::Arrow } else { sig.elem() });
+    (elem, sig)
+}
+
+/// The designs of all the abilities of a content set: each starts where its
+/// key points and moves on to the next free one of its element.
+fn assign(db: &content::Db) -> HashMap<String, Design> {
+    let mut all: Vec<&content::AbilityDef> = db.b.abilities.iter().collect();
+    all.sort_by(|a, b| a.key.cmp(&b.key));
+    let total = CORES as u32 * CROWNS as u32 * COUNTS as u32;
+    let mut taken: std::collections::HashSet<(Elem, Design)> = Default::default();
+    let mut out = HashMap::new();
+    for a in all {
+        let (elem, _) = elem_sig(&a.key, Some(a));
+        let first = Design::of_word(&a.key);
+        let start = stable(&a.key);
+        let mut d = first;
+        for k in 0..total {
+            d = Design::at(start.wrapping_add(k.wrapping_mul(97)), first.spin);
+            let plain = Design { spin: 0, ..d };
+            if taken.insert((elem, plain)) {
+                break;
+            }
+        }
+        out.insert(a.key.clone(), d);
+    }
+    out
+}
+
+/// The design of an ability (a fusion takes the heart of its first part
+/// and the crown of its second).
+pub fn design(key: &str) -> Design {
+    use std::sync::Mutex;
+    static TABLE: Mutex<Option<(usize, HashMap<String, Design>)>> = Mutex::new(None);
+    if let Some(rest) = key.strip_prefix("fuse:") {
+        if let Some((a, b)) = rest.split_once('+') {
+            let (da, db) = (design(a), design(b));
+            return Design {
+                core: da.core,
+                crown: db.crown,
+                n: (da.n + db.n).div_ceil(2),
+                spin: da.spin,
+            };
+        }
+    }
+    let db = content::db();
+    let id = db as *const _ as usize;
+    let mut t = TABLE.lock().unwrap();
+    if t.as_ref().map(|t| t.0) != Some(id) {
+        *t = Some((id, assign(db)));
+    }
+    t.as_ref()
+        .and_then(|t| t.1.get(key).copied())
+        .unwrap_or_else(|| Design::of_word(key))
+}
+
+/// The look of an ability by its key (and the colour of the effect).
+fn look(key: &str, color: &str) -> Look {
+    let a = content::db().ability(key);
+    let (elem, sig) = elem_sig(key, a);
+    let bow = key == "bow_shot";
     let kind = match a.map_or(if bow { "projectile" } else { "" }, |a| a.kind.as_str()) {
         "projectile" => Kind::Projectile,
         "nova" | "death_sentence" => Kind::Nova,
@@ -260,6 +371,7 @@ fn look(key: &str, color: &str) -> Look {
         pointy: matches!(glyph, "dir" | "|" | "/"),
         cross: matches!(glyph, "X" | "x"),
         big: if matches!(glyph, "@" | "O") { 1.6 } else { 1.0 },
+        d: design(key),
     }
 }
 
@@ -395,19 +507,19 @@ fn pixel(ch: char) -> Option<[u8; 4]> {
     })
 }
 
+/// A sprite from its rows of pixels, drawn as pixel art is (ART times
+/// finer than its rows).
 fn paint(rows: &[&str]) -> Texture2D {
     let (w, h) = (rows[0].len(), rows.len());
-    let mut b = vec![0u8; w * h * 4];
+    let mut pc = crate::art::Pc::new(w as i32, h as i32, "sprite");
     for (y, r) in rows.iter().enumerate() {
         for (x, ch) in r.chars().enumerate() {
-            if let Some(p) = pixel(ch) {
-                b[(y * w + x) * 4..][..4].copy_from_slice(&p);
+            if let Some([r, g, b, a]) = pixel(ch) {
+                pc.set(x as i32, y as i32, crate::art::Rgba { r, g, b, a });
             }
         }
     }
-    let t = Texture2D::from_rgba8(w as u16, h as u16, &b);
-    t.set_filter(FilterMode::Nearest);
-    t
+    crate::gfx::art_texture(&pc, false)
 }
 
 // ---- particles, shapes, decals, emitters ----
@@ -639,6 +751,8 @@ enum ShK {
     Ribbon,
     /// an ice crystal growing from the ground
     Spike,
+    /// the ability's own sign, rising and turning (drawn in 3D only)
+    Emblem,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -663,6 +777,8 @@ struct Sh {
     c2: Color,
     n: u8,
     seed: u32,
+    /// the look of the ability that made it (its 3D forms follow it)
+    lk: Option<Look>,
 }
 
 impl Sh {
@@ -687,6 +803,7 @@ impl Sh {
             c2: WHITE,
             n: 0,
             seed: 0,
+            lk: None,
         }
     }
     /// Puts the shape off its anchor (at the feet of a creature).
@@ -812,6 +929,12 @@ pub struct Spells {
     proj: HashMap<u32, Proj>,
     rng: Rng,
     tex: Vec<Texture2D>,
+    /// the sprites were painted with square pixels
+    crisp: bool,
+    /// the look of the ability whose effects are being made
+    cur: Option<Look>,
+    /// abilities whose 3D forms stand round the camera (to look them over)
+    pub gallery: Vec<String>,
     t: f32,
     shake: f32,
     cam: (f32, f32),
@@ -828,6 +951,9 @@ impl Default for Spells {
             proj: HashMap::new(),
             rng: Rng::new(7, 11),
             tex: Vec::new(),
+            crisp: false,
+            cur: None,
+            gallery: Vec::new(),
             t: 0.0,
             shake: 0.0,
             cam: (0.0, 0.0),
@@ -963,6 +1089,9 @@ impl Spells {
         if s.seed == 0 {
             s.seed = self.next_seed();
         }
+        if s.lk.is_none() {
+            s.lk = self.cur;
+        }
         self.shapes.push(s);
     }
     fn decal(&mut self, k: DecK, x: f32, y: f32, r: f32, life: f32, c: Color) {
@@ -1039,6 +1168,8 @@ impl Spells {
                 .unwrap_or(0)
         };
         let (x, y, x2, y2, r) = (f.x, f.y, f.x2, f.y2, f.radius);
+        self.cur = Some(lk);
+        self.emblem(&lk, f.part, x, y, x2, y2, who(x, y));
         match f.part {
             FX_CAST => self.cast(&lk, x, y, x2, y2, r, who(x, y)),
             FX_HIT => self.hit(&lk, x, y, x2, y2, who(x, y)),
@@ -1339,6 +1470,31 @@ impl Spells {
     }
 
     /// The moment a creature uses an ability.
+    /// The ability's own sign at a moment of it (3D only): over the caster of
+    /// a blessing, a heal or a call, at the heart of a wave, on what a blow
+    /// or a missile strikes.
+    #[allow(clippy::too_many_arguments)]
+    fn emblem(&mut self, lk: &Look, part: u8, x: f32, y: f32, x2: f32, y2: f32, who: u32) {
+        let (life, r, at, follow) = match part {
+            FX_CAST if lk.kind == Kind::Projectile => return,
+            FX_CAST => (1.4, 0.32, (x, y), who),
+            FX_AREA => (1.0, 0.45, (x, y), 0),
+            FX_HIT => (0.5, 0.22, (x, y), who),
+            FX_IMPACT => (0.45, 0.26, (x, y), 0),
+            FX_ALLY => (0.9, 0.22, (x, y), who),
+            FX_SUMMON => (1.3, 0.4, (x, y), 0),
+            FX_BEAM => (0.6, 0.2, (x2, y2), 0),
+            _ => return,
+        };
+        // n: which moment it is (rising over a creature, or bursting)
+        let s = Sh::new(ShK::Emblem, at.0, at.1, life, lk.c)
+            .r(r)
+            .n(part)
+            .c2(lk.hot)
+            .follow(follow);
+        self.shape(s);
+    }
+
     fn cast(&mut self, lk: &Look, x: f32, y: f32, x2: f32, y2: f32, r: f32, who: u32) {
         match lk.kind {
             Kind::Projectile => {
@@ -2613,7 +2769,7 @@ impl Spells {
             }
             let sprite = |s: Spr, tint: Color, scale: f32, rot: f32| {
                 let t = &self.tex[s as usize];
-                let (w, h) = (t.width() * k * scale, t.height() * k * scale);
+                let (w, h) = (t.width() / ART * k * scale, t.height() / ART * k * scale);
                 draw_texture_ex(
                     t,
                     x - w / 2.0,
@@ -2919,6 +3075,7 @@ impl Spells {
             pj.last = (st.x, st.y);
             pj.acc += (st.x - prev.0).hypot(st.y - prev.1);
             let lk = pj.lk;
+            self.cur = Some(lk);
             let step = match lk.sig {
                 Sig::Meteor => 0.05,
                 _ if lk.elem == Elem::Arrow => 0.35,
@@ -3013,6 +3170,7 @@ impl Spells {
             }
             e.t += dt;
             e.acc += dt;
+            self.cur = Some(e.lk);
             while e.acc >= e.every && e.t <= e.life {
                 e.acc -= e.every;
                 self.unit(e);
@@ -3345,9 +3503,11 @@ impl Spells {
 
     /// Paints the sprites once (needs the graphics context).
     pub fn prepare(&mut self, g: &Gfx) {
-        if !self.tex.is_empty() {
+        if !self.tex.is_empty() && self.crisp == crate::gfx::crisp() {
             return;
         }
+        self.crisp = crate::gfx::crisp();
+        self.tex.clear();
         self.tex.push(g.dot.clone());
         self.tex.push(g.dot.clone());
         for rows in SPRITES {
@@ -3357,162 +3517,167 @@ impl Spells {
 
     /// Marks on the ground (under creatures).
     pub fn draw_ground(&self, g: &Gfx, v: &View) {
-        let ts = v.ts;
         for d in &self.decals {
-            let u = d.t / d.life;
-            let e = env(u, 0.04, 0.45);
-            let (x, y) = v.px(d.x, d.y);
-            let r = d.r * ts;
-            let mut rng = Rng::new(d.seed as u64, 3);
-            match d.k {
-                DecK::Scorch => {
-                    for _ in 0..6 {
-                        let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.5);
+            self.draw_decal(g, v, d);
+        }
+    }
+
+    /// One mark on the ground.
+    fn draw_decal(&self, g: &Gfx, v: &View, d: &Dec) {
+        let ts = v.ts;
+        let u = d.t / d.life;
+        let e = env(u, 0.04, 0.45);
+        let (x, y) = v.px(d.x, d.y);
+        let r = d.r * ts;
+        let mut rng = Rng::new(d.seed as u64, 3);
+        match d.k {
+            DecK::Scorch => {
+                for _ in 0..6 {
+                    let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.5);
+                    dot(
+                        g,
+                        x + a.cos() * r * k,
+                        y + a.sin() * r * k,
+                        r * (0.4 + rng.f32() * 0.4),
+                        BLACK,
+                        0.3 * e,
+                    );
+                }
+                let hot = (1.0 - u / 0.4).max(0.0);
+                if hot > 0.0 {
+                    gl_use_material(&g.add);
+                    for _ in 0..7 {
+                        let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.7);
                         dot(
                             g,
                             x + a.cos() * r * k,
                             y + a.sin() * r * k,
-                            r * (0.4 + rng.f32() * 0.4),
-                            BLACK,
-                            0.3 * e,
+                            ts * 0.12,
+                            d.c,
+                            0.8 * hot,
                         );
                     }
-                    let hot = (1.0 - u / 0.4).max(0.0);
-                    if hot > 0.0 {
-                        gl_use_material(&g.add);
-                        for _ in 0..7 {
-                            let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.7);
-                            dot(
-                                g,
-                                x + a.cos() * r * k,
-                                y + a.sin() * r * k,
-                                ts * 0.12,
-                                d.c,
-                                0.8 * hot,
+                    gl_use_default_material();
+                }
+            }
+            DecK::Frost => {
+                gl_use_material(&g.add);
+                dot(g, x, y, r, d.c, 0.16 * e);
+                let th = (ts * 0.025).max(1.0);
+                let cc = with_a(mix_c(d.c, WHITE, 0.5), 0.45 * e);
+                for i in 0..7 {
+                    let a = i as f32 * TAU / 7.0 + rng.f32() * 0.4;
+                    let l = r * (0.55 + rng.f32() * 0.45);
+                    let (cx, cy) = (a.cos(), a.sin());
+                    draw_line(x, y, x + cx * l, y + cy * l, th, cc);
+                    for k in [0.45f32, 0.7] {
+                        let (bx, by) = (x + cx * l * k, y + cy * l * k);
+                        for s in [-0.6f32, 0.6] {
+                            let b = a + s;
+                            draw_line(
+                                bx,
+                                by,
+                                bx + b.cos() * l * 0.18,
+                                by + b.sin() * l * 0.18,
+                                th,
+                                cc,
                             );
                         }
-                        gl_use_default_material();
                     }
                 }
-                DecK::Frost => {
+                gl_use_default_material();
+            }
+            DecK::Cracks => {
+                let th = (ts * 0.045).max(1.0);
+                let glow = (1.0 - u / 0.35).max(0.0);
+                let mut lines = Vec::new();
+                for i in 0..8 {
+                    let mut a = i as f32 * TAU / 8.0 + rng.f32() * 0.5;
+                    let mut p = (x, y);
+                    let l = r * (0.5 + rng.f32() * 0.5) / 4.0;
+                    for _ in 0..4 {
+                        a += (rng.f32() - 0.5) * 0.9;
+                        let q = (p.0 + a.cos() * l, p.1 + a.sin() * l);
+                        lines.push((p, q));
+                        p = q;
+                    }
+                }
+                for (p, q) in &lines {
+                    draw_line(
+                        p.0,
+                        p.1,
+                        q.0,
+                        q.1,
+                        th,
+                        Color::new(0.05, 0.03, 0.02, 0.6 * e),
+                    );
+                }
+                if glow > 0.0 {
                     gl_use_material(&g.add);
-                    dot(g, x, y, r, d.c, 0.16 * e);
-                    let th = (ts * 0.025).max(1.0);
-                    let cc = with_a(mix_c(d.c, WHITE, 0.5), 0.45 * e);
-                    for i in 0..7 {
-                        let a = i as f32 * TAU / 7.0 + rng.f32() * 0.4;
-                        let l = r * (0.55 + rng.f32() * 0.45);
-                        let (cx, cy) = (a.cos(), a.sin());
-                        draw_line(x, y, x + cx * l, y + cy * l, th, cc);
-                        for k in [0.45f32, 0.7] {
-                            let (bx, by) = (x + cx * l * k, y + cy * l * k);
-                            for s in [-0.6f32, 0.6] {
-                                let b = a + s;
-                                draw_line(
-                                    bx,
-                                    by,
-                                    bx + b.cos() * l * 0.18,
-                                    by + b.sin() * l * 0.18,
-                                    th,
-                                    cc,
-                                );
-                            }
-                        }
+                    for (p, q) in &lines {
+                        draw_line(p.0, p.1, q.0, q.1, th * 1.6, with_a(d.c, 0.7 * glow));
                     }
                     gl_use_default_material();
                 }
-                DecK::Cracks => {
-                    let th = (ts * 0.045).max(1.0);
-                    let glow = (1.0 - u / 0.35).max(0.0);
-                    let mut lines = Vec::new();
-                    for i in 0..8 {
-                        let mut a = i as f32 * TAU / 8.0 + rng.f32() * 0.5;
-                        let mut p = (x, y);
-                        let l = r * (0.5 + rng.f32() * 0.5) / 4.0;
-                        for _ in 0..4 {
-                            a += (rng.f32() - 0.5) * 0.9;
-                            let q = (p.0 + a.cos() * l, p.1 + a.sin() * l);
-                            lines.push((p, q));
-                            p = q;
-                        }
-                    }
-                    for (p, q) in &lines {
-                        draw_line(
-                            p.0,
-                            p.1,
-                            q.0,
-                            q.1,
-                            th,
-                            Color::new(0.05, 0.03, 0.02, 0.6 * e),
-                        );
-                    }
-                    if glow > 0.0 {
-                        gl_use_material(&g.add);
-                        for (p, q) in &lines {
-                            draw_line(p.0, p.1, q.0, q.1, th * 1.6, with_a(d.c, 0.7 * glow));
-                        }
-                        gl_use_default_material();
-                    }
-                }
-                DecK::Puddle => {
-                    for _ in 0..5 {
-                        let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.45);
-                        dot2(
-                            g,
-                            x + a.cos() * r * k,
-                            y + a.sin() * r * k * 0.6,
-                            r * (0.45 + rng.f32() * 0.3),
-                            r * 0.3,
-                            d.c,
-                            0.42 * e,
-                        );
-                    }
+            }
+            DecK::Puddle => {
+                for _ in 0..5 {
+                    let (a, k) = (rng.f32() * TAU, rng.f32().sqrt() * 0.45);
                     dot2(
                         g,
-                        x - r * 0.15,
-                        y - r * 0.08,
-                        r * 0.25,
-                        r * 0.1,
-                        WHITE,
-                        0.18 * e,
+                        x + a.cos() * r * k,
+                        y + a.sin() * r * k * 0.6,
+                        r * (0.45 + rng.f32() * 0.3),
+                        r * 0.3,
+                        d.c,
+                        0.42 * e,
                     );
                 }
-                DecK::Glyph => {
-                    gl_use_material(&g.add);
-                    let th = (ts * 0.03).max(1.0);
-                    let c = with_a(d.c, 0.5 * e);
-                    ring(x, y, r, r, th, c);
-                    ring(x, y, r * 0.8, r * 0.8, th, c);
-                    for i in 0..6 {
-                        let a = i as f32 * TAU / 6.0 + self.t * 0.3;
-                        let b = a + TAU / 3.0;
-                        draw_line(
-                            x + a.cos() * r * 0.8,
-                            y + a.sin() * r * 0.8,
-                            x + b.cos() * r * 0.8,
-                            y + b.sin() * r * 0.8,
-                            th,
-                            c,
-                        );
-                    }
-                    dot(g, x, y, r * 0.8, d.c, 0.15 * e);
-                    gl_use_default_material();
-                }
-                DecK::Web => {
-                    let t = &self.tex[Spr::Web as usize];
-                    let s = r * 2.0;
-                    draw_texture_ex(
-                        t,
-                        x - s / 2.0,
-                        y - s / 2.0,
-                        with_a(d.c, 0.75 * e),
-                        DrawTextureParams {
-                            dest_size: Some(vec2(s, s)),
-                            rotation: d.seed as f32,
-                            ..Default::default()
-                        },
+                dot2(
+                    g,
+                    x - r * 0.15,
+                    y - r * 0.08,
+                    r * 0.25,
+                    r * 0.1,
+                    WHITE,
+                    0.18 * e,
+                );
+            }
+            DecK::Glyph => {
+                gl_use_material(&g.add);
+                let th = (ts * 0.03).max(1.0);
+                let c = with_a(d.c, 0.5 * e);
+                ring(x, y, r, r, th, c);
+                ring(x, y, r * 0.8, r * 0.8, th, c);
+                for i in 0..6 {
+                    let a = i as f32 * TAU / 6.0 + self.t * 0.3;
+                    let b = a + TAU / 3.0;
+                    draw_line(
+                        x + a.cos() * r * 0.8,
+                        y + a.sin() * r * 0.8,
+                        x + b.cos() * r * 0.8,
+                        y + b.sin() * r * 0.8,
+                        th,
+                        c,
                     );
                 }
+                dot(g, x, y, r * 0.8, d.c, 0.15 * e);
+                gl_use_default_material();
+            }
+            DecK::Web => {
+                let t = &self.tex[Spr::Web as usize];
+                let s = r * 2.0;
+                draw_texture_ex(
+                    t,
+                    x - s / 2.0,
+                    y - s / 2.0,
+                    with_a(d.c, 0.75 * e),
+                    DrawTextureParams {
+                        dest_size: Some(vec2(s, s)),
+                        rotation: d.seed as f32,
+                        ..Default::default()
+                    },
+                );
             }
         }
     }
@@ -3584,7 +3749,7 @@ impl Spells {
                 }
                 spr => {
                     let t = &self.tex[spr as usize];
-                    let (w, h) = (t.width() * k * s, t.height() * k * s);
+                    let (w, h) = (t.width() / ART * k * s, t.height() / ART * k * s);
                     let rot = if p.face {
                         (p.vy - p.vz).atan2(p.vx) + p.rot
                     } else {
@@ -3684,7 +3849,7 @@ impl Spells {
                     let a = rot + i as f32 * TAU / n as f32;
                     let (x, y) = (cx + a.cos() * r * 0.9, cy + a.sin() * r * 0.9 * fy);
                     let t = &self.tex[Spr::Rune as usize + (i + s.seed as usize) % 4];
-                    let (w, h) = (t.width() * k, t.height() * k);
+                    let (w, h) = (t.width() / ART * k, t.height() / ART * k);
                     draw_texture_ex(
                         t,
                         x - w / 2.0,
@@ -4181,6 +4346,8 @@ impl Spells {
                 }
                 dot(g, cx, cy, s.r * ts, c, 0.3 * e);
             }
+            // the 2D view has no room for it
+            ShK::Emblem => {}
         }
     }
 }
@@ -4217,12 +4384,34 @@ fn look_blood() -> Look {
         pointy: false,
         cross: false,
         big: 1.0,
+        d: Design::of_word("blood"),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// No two abilities of an element share their 3D forms.
+    #[test]
+    fn every_ability_has_forms_of_its_own() {
+        let db = content::db();
+        let mut seen = std::collections::HashMap::new();
+        for a in &db.b.abilities {
+            let (elem, _) = elem_sig(&a.key, Some(a));
+            let d = design(&a.key);
+            assert!(d.core < CORES && d.crown < CROWNS && (3..=8).contains(&d.n));
+            assert!(d.spin != 0);
+            let plain = Design { spin: 0, ..d };
+            if let Some(other) = seen.insert((elem, plain), a.key.clone()) {
+                panic!("{} and {} look alike: {d:?}", a.key, other);
+            }
+        }
+        // a fusion takes after its parts
+        let (a, b) = (&db.b.abilities[0].key, &db.b.abilities[1].key);
+        let f = design(&format!("fuse:{a}+{b}"));
+        assert_eq!((f.core, f.crown), (design(a).core, design(b).crown));
+    }
 
     #[test]
     fn every_look_word_is_drawn() {
