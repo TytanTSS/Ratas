@@ -469,6 +469,8 @@ pub struct Gpu {
 }
 
 /// Lets a texture be read sharply at a slant (where the card can).
+// (off Apple platforms a texture is only ever an OpenGL one)
+#[allow(irrefutable_let_patterns)]
 fn anisotropic(ctx: &mut dyn miniquad::RenderingBackend, t: miniquad::TextureId) {
     use miniquad::native::gl::*;
     const MAX_ANISOTROPY: GLenum = 0x84FE;
